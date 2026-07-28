@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+  <DesignationDef>
+    <defName>AF_HarvestPondFishDesignation</defName>
+    <label>harvest pond fish</label>
+    <texturePath>Designations/Hunt</texturePath>
+    <targetType>Thing</targetType>
+  </DesignationDef>
+
+  <JobDef>
+    <defName>AF_HarvestPondFish</defName>
+    <driverClass>AquacultureFishing.JobDriver_HarvestPondFish</driverClass>
+    <reportString>harvesting TargetA from pond.</reportString>
+    <allowOpportunisticPrefix>true</allowOpportunisticPrefix>
+  </JobDef>
+
+  <WorkGiverDef>
+    <defName>AF_HarvestPondFish</defName>
+    <label>harvest pond fish</label>
+    <giverClass>AquacultureFishing.WorkGiver_HarvestPondFish</giverClass>
+    <workType>Handling</workType>
+    <verb>harvest</verb>
+    <gerund>harvesting pond fish</gerund>
+    <priorityInType>105</priorityInType>
+    <requiredCapacities>
+      <li>Manipulation</li>
+    </requiredCapacities>
+  </WorkGiverDef>
+
+  <DesignationDef>
+    <defName>AF_RemovePondEggDesignation</defName>
+    <label>remove pond egg</label>
+    <texturePath>Designations/CutPlant</texturePath>
+    <targetType>Thing</targetType>
+  </DesignationDef>
+
+  <JobDef>
+    <defName>AF_RemovePondEgg</defName>
+    <driverClass>AquacultureFishing.JobDriver_RemovePondEgg</driverClass>
+    <reportString>removing TargetA from pond.</reportString>
+  </JobDef>
+
+  <WorkGiverDef>
+    <defName>AF_RemovePondEgg</defName>
+    <label>remove pond eggs</label>
+    <giverClass>AquacultureFishing.WorkGiver_RemovePondEgg</giverClass>
+    <workType>Handling</workType>
+    <verb>remove</verb>
+    <gerund>removing pond eggs</gerund>
+    <priorityInType>106</priorityInType>
+    <requiredCapacities>
+      <li>Manipulation</li>
+    </requiredCapacities>
+  </WorkGiverDef>
+
+  <DesignationDef>
+    <defName>AF_SterilizePondFishDesignation</defName>
+    <label>sterilize pond fish</label>
+    <texturePath>Designations/Tame</texturePath>
+    <targetType>Thing</targetType>
+  </DesignationDef>
+
+  <JobDef>
+    <defName>AF_SterilizePondFish</defName>
+    <driverClass>AquacultureFishing.JobDriver_SterilizePondFish</driverClass>
+    <reportString>sterilizing TargetA.</reportString>
+  </JobDef>
+
+  <WorkGiverDef>
+    <defName>AF_SterilizePondFish</defName>
+    <label>sterilize pond fish</label>
+    <giverClass>AquacultureFishing.WorkGiver_SterilizePondFish</giverClass>
+    <workType>Handling</workType>
+    <verb>sterilize</verb>
+    <gerund>sterilizing pond fish</gerund>
+    <priorityInType>107</priorityInType>
+    <requiredCapacities>
+      <li>Manipulation</li>
+    </requiredCapacities>
+  </WorkGiverDef>
+</Defs>

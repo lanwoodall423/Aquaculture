@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+  <RecipeDef>
+    <defName>AF_ProcessDeadFish</defName><label>process dead fish</label><description>Process a dead fish into generic fish meat.</description><jobString>Processing fish.</jobString>
+    <workAmount>250</workAmount><workSkill>Cooking</workSkill><effectWorking>Cook</effectWorking><soundWorking>Recipe_ButcherCorpseFlesh</soundWorking>
+    <ingredients><li><filter><categories><li>VCEF_RawFishCategory</li></categories></filter><count>1</count></li></ingredients>
+    <fixedIngredientFilter><categories><li>VCEF_RawFishCategory</li></categories></fixedIngredientFilter>
+    <products><AF_FishMeat>5</AF_FishMeat></products><recipeUsers><li>ButcherSpot</li><li>TableButcher</li></recipeUsers>
+    <researchPrerequisite>AF_ManagedAquaculture</researchPrerequisite>
+  </RecipeDef>
+  <RecipeDef>
+    <defName>AF_MakeFishFeed</defName>
+    <label>make fish feed</label>
+    <description>Blend raw plant food into shelf-stable feed for managed ponds.</description>
+    <jobString>Making fish feed.</jobString>
+    <workAmount>300</workAmount>
+    <workSkill>Cooking</workSkill>
+    <effectWorking>Cook</effectWorking>
+    <soundWorking>Recipe_CookMeal</soundWorking>
+    <ingredients>
+      <li><filter><categories><li>PlantFoodRaw</li></categories></filter><count>8</count></li>
+    </ingredients>
+    <fixedIngredientFilter><categories><li>PlantFoodRaw</li></categories></fixedIngredientFilter>
+    <products><AF_FishFeed>10</AF_FishFeed></products>
+    <recipeUsers><li>FueledStove</li><li>ElectricStove</li></recipeUsers>
+    <researchPrerequisite>AF_ManagedAquaculture</researchPrerequisite>
+  </RecipeDef>
+  <RecipeDef Name="AF_GatherPondLifeBase" Abstract="True">
+    <description>Gather a starter population from nearby natural water.</description>
+    <jobString>Gathering pond life.</jobString><workAmount>900</workAmount><workSkill>Animals</workSkill>
+    <effectWorking>Mine</effectWorking><soundWorking>Recipe_Surgery</soundWorking>
+    <researchPrerequisite>AF_Pondkeeping</researchPrerequisite>
+  </RecipeDef>
+  <RecipeDef ParentName="AF_GatherPondLifeBase"><defName>AF_GatherDuckweed</defName><label>gather duckweed</label><products><AF_DuckweedCulture>1</AF_DuckweedCulture></products><recipeUsers><li>AF_PondLifeSamplingStation</li></recipeUsers></RecipeDef>
+  <RecipeDef ParentName="AF_GatherPondLifeBase"><defName>AF_GatherSeaLettuce</defName><label>gather sea lettuce</label><products><AF_SeaLettuceCulture>1</AF_SeaLettuceCulture></products><recipeUsers><li>AF_PondLifeSamplingStation</li></recipeUsers></RecipeDef>
+  <RecipeDef ParentName="AF_GatherPondLifeBase"><defName>AF_GatherDaphnia</defName><label>gather daphnia</label><products><AF_DaphniaCulture>1</AF_DaphniaCulture></products><recipeUsers><li>AF_PondLifeSamplingStation</li></recipeUsers></RecipeDef>
+  <RecipeDef ParentName="AF_GatherPondLifeBase"><defName>AF_GatherBrineShrimp</defName><label>gather brine shrimp</label><products><AF_BrineShrimpCulture>1</AF_BrineShrimpCulture></products><recipeUsers><li>AF_PondLifeSamplingStation</li></recipeUsers></RecipeDef>
+  <RecipeDef ParentName="AF_GatherPondLifeBase"><defName>AF_GatherPondSnails</defName><label>gather pond snails</label><products><AF_PondSnailCulture>1</AF_PondSnailCulture></products><recipeUsers><li>AF_PondLifeSamplingStation</li></recipeUsers></RecipeDef>
+  <RecipeDef ParentName="AF_GatherPondLifeBase"><defName>AF_GatherFreshwaterMussels</defName><label>gather freshwater mussels</label><products><AF_FreshwaterMusselCulture>1</AF_FreshwaterMusselCulture></products><recipeUsers><li>AF_PondLifeSamplingStation</li></recipeUsers></RecipeDef>
+  <RecipeDef ParentName="AF_GatherPondLifeBase"><defName>AF_GatherBlueMussels</defName><label>gather blue mussels</label><products><AF_BlueMusselCulture>1</AF_BlueMusselCulture></products><recipeUsers><li>AF_PondLifeSamplingStation</li></recipeUsers></RecipeDef>
+</Defs>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+  <TerrainDef ParentName="WaterShallowBase">
+    <defName>AF_Pond</defName><label>pond</label><description>A shallow constructed pond where living caught fish can be kept.</description>
+    <texturePath>Terrain/Surfaces/WaterShallowRamp</texturePath><waterDepthShader>Map/WaterDepth</waterDepthShader><edgeType>Water</edgeType><renderPrecedence>120</renderPrecedence>
+    <natural>false</natural><changeable>true</changeable>
+    <takeSplashes>true</takeSplashes><extinguishesFire>true</extinguishesFire>
+    <pathCost>30</pathCost><fertility>0</fertility>
+    <designationCategory>Floors</designationCategory><designationHotKey>Misc1</designationHotKey>
+    <researchPrerequisites><li>AF_Pondkeeping</li></researchPrerequisites>
+    <constructionSkillPrerequisite>2</constructionSkillPrerequisite><statBases><WorkToBuild>450</WorkToBuild></statBases>
+    <costList><WoodLog>4</WoodLog></costList>
+  </TerrainDef>
+</Defs>

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+  <ResearchTabDef>
+    <defName>AF_Aquaculture</defName>
+    <label>Aquaculture</label>
+    <generalTitle>Aquaculture research</generalTitle>
+    <generalDescription>Develop constructed ponds into stable, selectively bred aquatic ecosystems.</generalDescription>
+  </ResearchTabDef>
+
+  <ResearchProjectDef>
+    <defName>AF_Pondkeeping</defName>
+    <label>pondkeeping</label>
+    <description>Construct shallow ponds, fishing buckets, natural cover, gravel beds, and a sampling station for establishing self-renewing pond communities.</description>
+    <baseCost>600</baseCost>
+    <techLevel>Neolithic</techLevel>
+    <prerequisites><li MayRequire="Ludeon.RimWorld.Odyssey">Fishing</li></prerequisites>
+    <tab>AF_Aquaculture</tab>
+    <researchViewX>0</researchViewX>
+    <researchViewY>0</researchViewY>
+  </ResearchProjectDef>
+  <ResearchProjectDef>
+    <defName>AF_ManagedAquaculture</defName>
+    <label>managed aquaculture</label>
+    <description>Process dead fish into generic fish meat, prepare fish feed, build pond feeders and fishing barrels, and set managed pond harvesting limits.</description>
+    <baseCost>1200</baseCost>
+    <techLevel>Medieval</techLevel>
+    <prerequisites><li>AF_Pondkeeping</li></prerequisites>
+    <tab>AF_Aquaculture</tab>
+    <researchViewX>1.5</researchViewX>
+    <researchViewY>0</researchViewY>
+  </ResearchProjectDef>
+  <ResearchProjectDef>
+    <defName>AF_IndustrialAquaculture</defName>
+    <label>industrial aquaculture</label>
+    <description>Unlock automatic pond feeders, powered pond aerators, ecosystem and habitat diagnostics, school information, stocking goals, and labor-backed surplus harvest management.</description>
+    <baseCost>2400</baseCost>
+    <techLevel>Industrial</techLevel>
+    <prerequisites><li>AF_ManagedAquaculture</li></prerequisites>
+    <tab>AF_Aquaculture</tab>
+    <researchViewX>3</researchViewX>
+    <researchViewY>0</researchViewY>
+  </ResearchProjectDef>
+  <ResearchProjectDef>
+    <defName>AF_SelectiveBreeding</defName>
+    <label>selective fish breeding</label>
+    <description>Control pond reproduction with egg-removal, feed-supported breeding programs, and permanent medicine-backed sterilization.</description>
+    <baseCost>1800</baseCost>
+    <techLevel>Industrial</techLevel>
+    <prerequisites><li>AF_IndustrialAquaculture</li></prerequisites>
+    <tab>AF_Aquaculture</tab>
+    <researchViewX>4.5</researchViewX>
+    <researchViewY>0</researchViewY>
+  </ResearchProjectDef>
+</Defs>

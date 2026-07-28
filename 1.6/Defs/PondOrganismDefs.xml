@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+  <AquacultureFishing.PondOrganismDef>
+    <defName>AF_Duckweed</defName><label>duckweed</label>
+    <description>A rapidly spreading floating plant eaten by herbivorous and omnivorous fish.</description>
+    <role>Producer</role><freshwater>true</freshwater><saltwater>false</saltwater><brackishwater>true</brackishwater>
+    <seedBiomass>0.14</seedBiomass><capacityPerCell>0.05</capacityPerCell><growthPerHour>0.05</growthPerHour><pondBeauty>0.08</pondBeauty>
+  </AquacultureFishing.PondOrganismDef>
+  <AquacultureFishing.PondOrganismDef>
+    <defName>AF_SeaLettuce</defName><label>sea lettuce</label>
+    <description>A salt-tolerant green alga that forms edible sheets and nursery cover.</description>
+    <role>Producer</role><freshwater>false</freshwater><saltwater>true</saltwater><brackishwater>true</brackishwater>
+    <seedBiomass>0.14</seedBiomass><capacityPerCell>0.05</capacityPerCell><growthPerHour>0.045</growthPerHour><pondBeauty>0.08</pondBeauty>
+  </AquacultureFishing.PondOrganismDef>
+  <AquacultureFishing.PondOrganismDef>
+    <defName>AF_Daphnia</defName><label>daphnia</label>
+    <description>Minute freshwater crustaceans that graze algae and provide live prey for fry and small carnivores.</description>
+    <role>Zooplankton</role><freshwater>true</freshwater><saltwater>false</saltwater><brackishwater>true</brackishwater>
+    <seedBiomass>0.12</seedBiomass><capacityPerCell>0.035</capacityPerCell><growthPerHour>0.055</growthPerHour>
+  </AquacultureFishing.PondOrganismDef>
+  <AquacultureFishing.PondOrganismDef>
+    <defName>AF_BrineShrimp</defName><label>brine shrimp</label>
+    <description>Tiny salt-tolerant crustaceans that turn algae into live prey for marine and brackish fish.</description>
+    <role>Zooplankton</role><freshwater>false</freshwater><saltwater>true</saltwater><brackishwater>true</brackishwater>
+    <seedBiomass>0.12</seedBiomass><capacityPerCell>0.035</capacityPerCell><growthPerHour>0.05</growthPerHour>
+  </AquacultureFishing.PondOrganismDef>
+  <AquacultureFishing.PondOrganismDef>
+    <defName>AF_PondSnails</defName><label>pond snails</label>
+    <description>Small snails that graze detritus and become food for bottom-feeding and omnivorous fish.</description>
+    <role>Detritivore</role><freshwater>true</freshwater><saltwater>false</saltwater><brackishwater>true</brackishwater>
+    <seedBiomass>0.10</seedBiomass><capacityPerCell>0.03</capacityPerCell><growthPerHour>0.035</growthPerHour><pondBeauty>0.04</pondBeauty>
+  </AquacultureFishing.PondOrganismDef>
+  <AquacultureFishing.PondOrganismDef>
+    <defName>AF_FreshwaterMussels</defName><label>freshwater mussels</label>
+    <description>Slow-growing freshwater filter-feeders that consume suspended algae and can support predators.</description>
+    <role>FilterFeeder</role><freshwater>true</freshwater><saltwater>false</saltwater><brackishwater>true</brackishwater>
+    <seedBiomass>0.08</seedBiomass><capacityPerCell>0.025</capacityPerCell><growthPerHour>0.022</growthPerHour><pondBeauty>0.06</pondBeauty>
+  </AquacultureFishing.PondOrganismDef>
+  <AquacultureFishing.PondOrganismDef>
+    <defName>AF_BlueMussels</defName><label>blue mussels</label>
+    <description>Marine filter-feeders that consume suspended algae and become prey for larger coastal fish.</description>
+    <role>FilterFeeder</role><freshwater>false</freshwater><saltwater>true</saltwater><brackishwater>true</brackishwater>
+    <seedBiomass>0.08</seedBiomass><capacityPerCell>0.025</capacityPerCell><growthPerHour>0.022</growthPerHour><pondBeauty>0.06</pondBeauty>
+  </AquacultureFishing.PondOrganismDef>
+</Defs>

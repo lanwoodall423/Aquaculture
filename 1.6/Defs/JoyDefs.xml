@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+  <JoyGiverDef>
+    <defName>AF_WatchPond</defName>
+    <giverClass>AquacultureFishing.JoyGiver_WatchPond</giverClass>
+    <baseChance>1.6</baseChance>
+    <desireSit>true</desireSit>
+    <thingDefs><li>AF_PondProxy</li></thingDefs>
+    <jobDef>AF_WatchPond</jobDef>
+    <joyKind>Meditative</joyKind>
+    <requiredCapacities><li>Sight</li></requiredCapacities>
+  </JoyGiverDef>
+
+  <JobDef>
+    <defName>AF_WatchPond</defName>
+    <driverClass>AquacultureFishing.JobDriver_WatchPond</driverClass>
+    <reportString>watching fish in the pond.</reportString>
+    <joyDuration>4000</joyDuration>
+    <joyMaxParticipants>8</joyMaxParticipants>
+    <joyKind>Meditative</joyKind>
+    <allowOpportunisticPrefix>true</allowOpportunisticPrefix>
+    <isCrawlingIfDowned>false</isCrawlingIfDowned>
+  </JobDef>
+</Defs>

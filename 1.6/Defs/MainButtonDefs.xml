@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+  <MainButtonDef>
+    <defName>AF_AquacultureJournal</defName>
+    <label>fish journal</label>
+    <description>Review discovered fish species, colony aquaculture milestones, records, and registered breeds.</description>
+    <tabWindowClass>AquacultureFishing.MainTabWindow_AquacultureJournal</tabWindowClass>
+    <order>65</order>
+    <closesWorldView>true</closesWorldView>
+  </MainButtonDef>
+</Defs>

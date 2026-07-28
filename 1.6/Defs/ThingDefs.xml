@@ -1,0 +1,301 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+  <ThingDef ParentName="ResourceBase">
+    <defName>AF_FishFeed</defName>
+    <label>fish feed</label>
+    <description>A shelf-stable blend of plant matter formulated for managed pond ecosystems. Automatic pond feeders dispense it when natural food is insufficient.</description>
+    <graphicData><texPath>Things/Item/Resource/Kibble</texPath><graphicClass>Graphic_Single</graphicClass></graphicData>
+    <stackLimit>75</stackLimit>
+    <statBases><MarketValue>0.12</MarketValue><Mass>0.03</Mass><Flammability>1</Flammability></statBases>
+    <thingCategories><li>Manufactured</li></thingCategories>
+  </ThingDef>
+  <ThingDef ParentName="OrganicProductBase">
+    <defName>AF_FishMeat</defName><label>fish meat</label><description>Cleaned meat processed from a dead fish.</description>
+    <graphicData><texPath>Things/Item/Resource/VCEF_Cod</texPath><graphicClass>Graphic_StackCount</graphicClass></graphicData>
+    <statBases><MarketValue>2</MarketValue><Mass>0.03</Mass><Nutrition>0.05</Nutrition><FoodPoisonChanceFixedHuman>0.02</FoodPoisonChanceFixedHuman></statBases>
+    <ingestible><foodType>Meat</foodType><preferability>RawBad</preferability><ingestEffect>EatMeat</ingestEffect><ingestSound>RawMeat_Eat</ingestSound><tasteThought>AteRawFood</tasteThought></ingestible>
+    <socialPropernessMatters>true</socialPropernessMatters>
+    <thingCategories><li>MeatRaw</li></thingCategories>
+    <comps><li Class="CompProperties_Rottable"><daysToRotStart>2</daysToRotStart><rotDestroys>true</rotDestroys></li><li Class="AquacultureFishing.CompProperties_FishMeatTraits" /></comps>
+  </ThingDef>
+  <ThingDef ParentName="ResourceBase">
+    <defName>AF_FishEgg</defName><label>fish egg</label><description>An egg laid by pond fish. It will hatch after several days if left in the pond.</description>
+    <thingClass>AquacultureFishing.FishEggThing</thingClass><drawerType>MapMeshOnly</drawerType>
+    <graphicData><texPath>Things/Item/Resource/AnimalProductRaw/EggBirdSmall</texPath><graphicClass>Graphic_StackCount</graphicClass><drawSize>(0.45,0.45)</drawSize></graphicData>
+    <stackLimit>1</stackLimit><statBases><MarketValue>1</MarketValue><Mass>0.05</Mass><DeteriorationRate>0</DeteriorationRate></statBases>
+    <thingCategories><li>Foods</li></thingCategories><comps><li Class="CompProperties_Forbiddable" /></comps>
+  </ThingDef>
+  <ThingDef Name="AF_PondCultureBase" ParentName="ResourceBase" Abstract="True">
+    <description>A gathered culture of small pond organisms ready to establish in compatible constructed water.</description>
+    <graphicData><texPath>Things/Item/Resource/Medicine/MedicineHerbal</texPath><graphicClass>Graphic_StackCount</graphicClass><drawSize>(0.55,0.55)</drawSize></graphicData>
+    <stackLimit>10</stackLimit><statBases><MarketValue>5</MarketValue><Mass>0.2</Mass><DeteriorationRate>0</DeteriorationRate></statBases>
+    <thingCategories><li>Manufactured</li></thingCategories>
+  </ThingDef>
+  <ThingDef ParentName="AF_PondCultureBase">
+    <defName>AF_DuckweedCulture</defName><label>duckweed culture</label><graphicData><color>(0.38,0.78,0.34)</color></graphicData>
+    <comps><li Class="AquacultureFishing.CompProperties_PondCulture"><organism>AF_Duckweed</organism></li></comps>
+  </ThingDef>
+  <ThingDef ParentName="AF_PondCultureBase">
+    <defName>AF_SeaLettuceCulture</defName><label>sea lettuce culture</label><graphicData><color>(0.22,0.70,0.48)</color></graphicData>
+    <comps><li Class="AquacultureFishing.CompProperties_PondCulture"><organism>AF_SeaLettuce</organism></li></comps>
+  </ThingDef>
+  <ThingDef ParentName="AF_PondCultureBase">
+    <defName>AF_DaphniaCulture</defName><label>daphnia culture</label><graphicData><color>(0.90,0.62,0.58)</color></graphicData>
+    <comps><li Class="AquacultureFishing.CompProperties_PondCulture"><organism>AF_Daphnia</organism></li></comps>
+  </ThingDef>
+  <ThingDef ParentName="AF_PondCultureBase">
+    <defName>AF_BrineShrimpCulture</defName><label>brine shrimp culture</label><graphicData><color>(0.95,0.54,0.40)</color></graphicData>
+    <comps><li Class="AquacultureFishing.CompProperties_PondCulture"><organism>AF_BrineShrimp</organism></li></comps>
+  </ThingDef>
+  <ThingDef ParentName="AF_PondCultureBase">
+    <defName>AF_PondSnailCulture</defName><label>pond snail culture</label><graphicData><color>(0.58,0.48,0.30)</color></graphicData>
+    <comps><li Class="AquacultureFishing.CompProperties_PondCulture"><organism>AF_PondSnails</organism></li></comps>
+  </ThingDef>
+  <ThingDef ParentName="AF_PondCultureBase">
+    <defName>AF_FreshwaterMusselCulture</defName><label>freshwater mussel culture</label><graphicData><color>(0.38,0.42,0.52)</color></graphicData>
+    <comps><li Class="AquacultureFishing.CompProperties_PondCulture"><organism>AF_FreshwaterMussels</organism></li></comps>
+  </ThingDef>
+  <ThingDef ParentName="AF_PondCultureBase">
+    <defName>AF_BlueMusselCulture</defName><label>blue mussel culture</label><graphicData><color>(0.30,0.38,0.62)</color></graphicData>
+    <comps><li Class="AquacultureFishing.CompProperties_PondCulture"><organism>AF_BlueMussels</organism></li></comps>
+  </ThingDef>
+  <ThingDef ParentName="BuildingBase">
+    <defName>AF_PondLifeSamplingStation</defName>
+    <label>pond life sampling station</label>
+    <description>A simple dip-net, trays, and water vessels for gathering particular plants and small aquatic creatures from nearby natural water.</description>
+    <thingClass>Building_WorkTable</thingClass>
+    <graphicData><texPath>Things/Building/Production/ButcherSpot</texPath><graphicClass>Graphic_Single</graphicClass><drawSize>(1,1)</drawSize><color>(0.52,0.70,0.62)</color></graphicData>
+    <size>(1,1)</size><altitudeLayer>FloorEmplacement</altitudeLayer><passability>Standable</passability>
+    <hasInteractionCell>true</hasInteractionCell><interactionCellOffset>(0,0,-1)</interactionCellOffset><surfaceType>Item</surfaceType>
+    <designationCategory>Production</designationCategory><researchPrerequisites><li>AF_Pondkeeping</li></researchPrerequisites>
+    <costList><WoodLog>25</WoodLog><Cloth>10</Cloth></costList>
+    <statBases><MaxHitPoints>90</MaxHitPoints><WorkToBuild>500</WorkToBuild><WorkTableWorkSpeedFactor>0.75</WorkTableWorkSpeedFactor><Flammability>1</Flammability></statBases>
+    <inspectorTabs><li>ITab_Bills</li></inspectorTabs>
+    <building><buildingTags><li>Production</li></buildingTags></building>
+    <comps><li Class="CompProperties_ReportWorkSpeed"><workSpeedStat>WorkTableWorkSpeedFactor</workSpeedStat></li></comps>
+    <placeWorkers><li>AquacultureFishing.PlaceWorker_NaturalWaterNearby</li><li>PlaceWorker_PreventInteractionSpotOverlap</li></placeWorkers>
+  </ThingDef>
+  <ThingDef ParentName="BuildingBase">
+    <defName>AF_FishingBucket</defName>
+    <label>fishing bucket</label>
+    <description>A small water-filled container for living catches. Fish caught at a nearby fishing zone are placed directly inside while Accept Fish is enabled, and remain alive until removed.</description>
+    <graphicData>
+      <texPath>Things/Building/Production/FermentingBarrel</texPath>
+      <graphicClass>Graphic_Multi</graphicClass>
+      <drawSize>(0.62,0.62)</drawSize>
+    </graphicData>
+    <size>(1,1)</size>
+    <altitudeLayer>Building</altitudeLayer>
+    <passability>PassThroughOnly</passability>
+    <fillPercent>0.25</fillPercent>
+    <pathCost>20</pathCost>
+    <minifiedDef>MinifiedThing</minifiedDef>
+    <designationCategory>Misc</designationCategory>
+    <researchPrerequisites><li>AF_Pondkeeping</li></researchPrerequisites>
+    <thingCategories><li>BuildingsMisc</li></thingCategories>
+    <stuffCategories><li>Woody</li><li>Metallic</li></stuffCategories>
+    <costStuffCount>15</costStuffCount>
+    <statBases>
+      <MaxHitPoints>80</MaxHitPoints><WorkToBuild>350</WorkToBuild><Mass>4</Mass><Flammability>1</Flammability>
+    </statBases>
+    <comps>
+      <li Class="AquacultureFishing.CompProperties_FishContainer"><capacity>6</capacity><fishingAttractionRadius>12</fishingAttractionRadius></li>
+    </comps>
+  </ThingDef>
+  <ThingDef ParentName="BuildingBase">
+    <defName>AF_FishingBarrel</defName>
+    <label>fishing barrel</label>
+    <description>A large water-filled barrel for living catches. Fish caught at a nearby fishing zone are placed directly inside while Accept Fish is enabled, and remain alive until removed.</description>
+    <graphicData>
+      <texPath>Things/Building/Production/FermentingBarrel</texPath>
+      <graphicClass>Graphic_Multi</graphicClass>
+    </graphicData>
+    <size>(1,1)</size>
+    <altitudeLayer>Building</altitudeLayer>
+    <passability>PassThroughOnly</passability>
+    <fillPercent>0.45</fillPercent>
+    <pathCost>42</pathCost>
+    <minifiedDef>MinifiedThing</minifiedDef>
+    <designationCategory>Misc</designationCategory>
+    <researchPrerequisites><li>AF_ManagedAquaculture</li></researchPrerequisites>
+    <thingCategories><li>BuildingsMisc</li></thingCategories>
+    <stuffCategories><li>Woody</li><li>Metallic</li></stuffCategories>
+    <costStuffCount>45</costStuffCount>
+    <statBases>
+      <MaxHitPoints>160</MaxHitPoints><WorkToBuild>700</WorkToBuild><Mass>10</Mass><Flammability>1</Flammability>
+    </statBases>
+    <comps>
+      <li Class="AquacultureFishing.CompProperties_FishContainer"><capacity>24</capacity><fishingAttractionRadius>16</fishingAttractionRadius></li>
+    </comps>
+  </ThingDef>
+  <ThingDef ParentName="BuildingBase">
+    <defName>AF_PondFeeder</defName>
+    <label>pond feeder</label>
+    <description>A covered feed hopper for manually dispensing prepared fish feed into a nearby pond.</description>
+    <graphicData>
+      <texPath>Things/Building/Production/FermentingBarrel</texPath>
+      <graphicClass>Graphic_Multi</graphicClass>
+      <drawSize>(0.72,0.72)</drawSize>
+    </graphicData>
+    <size>(1,1)</size>
+    <altitudeLayer>Building</altitudeLayer>
+    <passability>PassThroughOnly</passability>
+    <fillPercent>0.35</fillPercent>
+    <pathCost>24</pathCost>
+    <minifiedDef>MinifiedThing</minifiedDef>
+    <designationCategory>Misc</designationCategory>
+    <thingCategories><li>BuildingsMisc</li></thingCategories>
+    <stuffCategories><li>Woody</li><li>Metallic</li></stuffCategories>
+    <costStuffCount>45</costStuffCount>
+    <researchPrerequisites><li>AF_ManagedAquaculture</li></researchPrerequisites>
+    <statBases>
+      <MaxHitPoints>150</MaxHitPoints><WorkToBuild>900</WorkToBuild><Mass>12</Mass><Flammability>1</Flammability>
+    </statBases>
+    <comps>
+      <li Class="CompProperties_Refuelable">
+        <fuelCapacity>75</fuelCapacity>
+        <targetFuelLevelConfigurable>true</targetFuelLevelConfigurable>
+        <initialConfigurableTargetFuelLevel>50</initialConfigurableTargetFuelLevel>
+        <fuelFilter><thingDefs><li>AF_FishFeed</li></thingDefs></fuelFilter>
+        <consumeFuelOnlyWhenUsed>true</consumeFuelOnlyWhenUsed>
+        <autoRefuelPercent>0.35</autoRefuelPercent>
+        <showFuelGizmo>true</showFuelGizmo>
+        <drawOutOfFuelOverlay>false</drawOutOfFuelOverlay>
+        <drawFuelGaugeInMap>true</drawFuelGaugeInMap>
+        <showAllowAutoRefuelToggle>true</showAllowAutoRefuelToggle>
+        <canEjectFuel>true</canEjectFuel>
+      </li>
+      <li Class="AquacultureFishing.CompProperties_PondFeeder"><automaticCapable>false</automaticCapable></li>
+    </comps>
+  </ThingDef>
+  <ThingDef ParentName="BuildingBase">
+    <defName>AF_AutomaticPondFeeder</defName>
+    <label>automatic pond feeder</label>
+    <description>An industrial feed hopper that automatically maintains prepared nutrition in nearby connected ponds during ecology updates.</description>
+    <graphicData>
+      <texPath>Things/Building/Production/FermentingBarrel</texPath>
+      <graphicClass>Graphic_Multi</graphicClass>
+      <drawSize>(0.82,0.82)</drawSize>
+    </graphicData>
+    <size>(1,1)</size>
+    <altitudeLayer>Building</altitudeLayer>
+    <passability>PassThroughOnly</passability>
+    <fillPercent>0.4</fillPercent>
+    <pathCost>30</pathCost>
+    <minifiedDef>MinifiedThing</minifiedDef>
+    <designationCategory>Misc</designationCategory>
+    <thingCategories><li>BuildingsMisc</li></thingCategories>
+    <stuffCategories><li>Metallic</li></stuffCategories>
+    <costStuffCount>60</costStuffCount>
+    <costList><ComponentIndustrial>2</ComponentIndustrial></costList>
+    <researchPrerequisites><li>AF_IndustrialAquaculture</li></researchPrerequisites>
+    <statBases>
+      <MaxHitPoints>200</MaxHitPoints><WorkToBuild>1600</WorkToBuild><Mass>18</Mass><Flammability>0.5</Flammability>
+    </statBases>
+    <comps>
+      <li Class="CompProperties_Power">
+        <compClass>CompPowerTrader</compClass>
+        <basePowerConsumption>120</basePowerConsumption>
+      </li>
+      <li Class="CompProperties_Refuelable">
+        <fuelCapacity>150</fuelCapacity>
+        <targetFuelLevelConfigurable>true</targetFuelLevelConfigurable>
+        <initialConfigurableTargetFuelLevel>100</initialConfigurableTargetFuelLevel>
+        <fuelFilter><thingDefs><li>AF_FishFeed</li></thingDefs></fuelFilter>
+        <consumeFuelOnlyWhenUsed>true</consumeFuelOnlyWhenUsed>
+        <autoRefuelPercent>0.35</autoRefuelPercent>
+        <showFuelGizmo>true</showFuelGizmo>
+        <drawOutOfFuelOverlay>false</drawOutOfFuelOverlay>
+        <drawFuelGaugeInMap>true</drawFuelGaugeInMap>
+        <showAllowAutoRefuelToggle>true</showAllowAutoRefuelToggle>
+        <canEjectFuel>true</canEjectFuel>
+      </li>
+      <li Class="AquacultureFishing.CompProperties_PondFeeder"><automaticCapable>true</automaticCapable></li>
+    </comps>
+  </ThingDef>
+  <ThingDef ParentName="BuildingBase">
+    <defName>AF_AquaticPlantCover</defName>
+    <label>aquatic plant cover</label>
+    <description>Bundles of hardy aquatic plants rooted into a constructed pond. They shelter fry, support livebearers, and provide grazing structure for herbivorous fish. One planting supports about six fish worth of cover demand.</description>
+    <graphicData><texPath>Things/Plant/Grass</texPath><graphicClass>Graphic_Random</graphicClass><drawSize>(0.82,0.82)</drawSize><color>(0.32,0.72,0.42)</color></graphicData>
+    <size>(1,1)</size><altitudeLayer>Building</altitudeLayer><passability>PassThroughOnly</passability><fillPercent>0.08</fillPercent><pathCost>4</pathCost>
+    <designationCategory>Misc</designationCategory><researchPrerequisites><li>AF_Pondkeeping</li></researchPrerequisites>
+    <terrainAffordanceNeeded>ShallowWater</terrainAffordanceNeeded><placeWorkers><li>AquacultureFishing.PlaceWorker_PondHabitat</li></placeWorkers>
+    <costList><WoodLog>12</WoodLog></costList>
+    <statBases><MaxHitPoints>70</MaxHitPoints><WorkToBuild>450</WorkToBuild><Beauty>1</Beauty><Flammability>0.3</Flammability></statBases>
+    <comps><li Class="AquacultureFishing.CompProperties_PondHabitat"><kind>PlantCover</kind><capacity>6</capacity><pondBeauty>2</pondBeauty></li></comps>
+  </ThingDef>
+  <ThingDef ParentName="BuildingBase">
+    <defName>AF_PondRockShelter</defName>
+    <label>pond rock shelter</label>
+    <description>A low underwater refuge assembled from fitted stone. Solitary fish, ambush predators, eels, and crustaceans use its shaded cavities. One shelter supports about three fish worth of shelter demand.</description>
+    <graphicData><texPath>Things/Building/Natural/CollapsedRocks</texPath><graphicClass>Graphic_Single</graphicClass><drawSize>(0.76,0.76)</drawSize></graphicData>
+    <size>(1,1)</size><altitudeLayer>Building</altitudeLayer><passability>PassThroughOnly</passability><fillPercent>0.18</fillPercent><pathCost>8</pathCost>
+    <designationCategory>Misc</designationCategory><researchPrerequisites><li>AF_Pondkeeping</li></researchPrerequisites>
+    <terrainAffordanceNeeded>ShallowWater</terrainAffordanceNeeded><placeWorkers><li>AquacultureFishing.PlaceWorker_PondHabitat</li></placeWorkers>
+    <stuffCategories><li>Stony</li></stuffCategories><costStuffCount>30</costStuffCount>
+    <statBases><MaxHitPoints>180</MaxHitPoints><WorkToBuild>700</WorkToBuild><Beauty>1</Beauty><Flammability>0</Flammability></statBases>
+    <comps><li Class="AquacultureFishing.CompProperties_PondHabitat"><kind>RockShelter</kind><capacity>3</capacity><pondBeauty>1</pondBeauty></li></comps>
+  </ThingDef>
+  <ThingDef ParentName="BuildingBase">
+    <defName>AF_PreparedPondSubstrate</defName>
+    <label>pond gravel bed</label>
+    <description>A bed of coarse stone and woody pockets that supports pond snails, detritivores, and bottom-dwelling fish. One bed supports about eight fish worth of substrate demand.</description>
+    <graphicData><texPath>Things/Filth/RubbleRock</texPath><graphicClass>Graphic_Random</graphicClass><drawSize>(0.9,0.9)</drawSize><color>(0.62,0.55,0.40)</color></graphicData>
+    <size>(1,1)</size><altitudeLayer>FloorEmplacement</altitudeLayer><passability>PassThroughOnly</passability><fillPercent>0.04</fillPercent><pathCost>2</pathCost>
+    <designationCategory>Misc</designationCategory><researchPrerequisites><li>AF_Pondkeeping</li></researchPrerequisites>
+    <terrainAffordanceNeeded>ShallowWater</terrainAffordanceNeeded><placeWorkers><li>AquacultureFishing.PlaceWorker_PondHabitat</li></placeWorkers>
+    <stuffCategories><li>Stony</li></stuffCategories><costStuffCount>20</costStuffCount>
+    <costList><WoodLog>5</WoodLog></costList>
+    <statBases><MaxHitPoints>110</MaxHitPoints><WorkToBuild>600</WorkToBuild><Beauty>1</Beauty><Flammability>0</Flammability></statBases>
+    <comps><li Class="AquacultureFishing.CompProperties_PondHabitat"><kind>Substrate</kind><capacity>8</capacity><pondBeauty>1</pondBeauty></li></comps>
+  </ThingDef>
+  <ThingDef ParentName="BuildingBase">
+    <defName>AF_PondAerator</defName>
+    <label>pond aerator</label>
+    <description>A powered waterproof circulation unit. Its current supports filter-feeders, improves water movement, and raises pond capacity by eight fish. One active aerator supports about twenty fish worth of current demand.</description>
+    <graphicData><texPath>Things/Building/Misc/TempControl/Vent</texPath><graphicClass>Graphic_Multi</graphicClass><drawSize>(0.68,0.68)</drawSize><color>(0.55,0.72,0.78)</color></graphicData>
+    <size>(1,1)</size><altitudeLayer>Building</altitudeLayer><passability>PassThroughOnly</passability><fillPercent>0.16</fillPercent><pathCost>8</pathCost>
+    <designationCategory>Misc</designationCategory><researchPrerequisites><li>AF_IndustrialAquaculture</li></researchPrerequisites>
+    <terrainAffordanceNeeded>ShallowWater</terrainAffordanceNeeded><placeWorkers><li>AquacultureFishing.PlaceWorker_PondHabitat</li></placeWorkers>
+    <costList><Steel>70</Steel><ComponentIndustrial>2</ComponentIndustrial></costList>
+    <statBases><MaxHitPoints>150</MaxHitPoints><WorkToBuild>1400</WorkToBuild><Beauty>1</Beauty><Flammability>0.2</Flammability></statBases>
+    <comps>
+      <li Class="CompProperties_Power"><compClass>CompPowerTrader</compClass><basePowerConsumption>180</basePowerConsumption></li>
+      <li Class="AquacultureFishing.CompProperties_PondHabitat"><kind>Current</kind><capacity>20</capacity><pondBeauty>1</pondBeauty></li>
+    </comps>
+  </ThingDef>
+  <ThingDef ParentName="BuildingBase">
+    <defName>AF_PondProxy</defName>
+    <label>pond</label>
+    <description>A constructed pond containing living fish.</description>
+    <thingClass>AquacultureFishing.PondProxyThing</thingClass>
+    <drawerType>None</drawerType>
+    <size>(1,1)</size>
+    <altitudeLayer>FloorEmplacement</altitudeLayer>
+    <passability>PassThroughOnly</passability>
+    <fillPercent>0</fillPercent>
+    <selectable>true</selectable>
+    <useHitPoints>false</useHitPoints>
+    <building>
+      <joyKind>Meditative</joyKind>
+      <watchBuildingStandDistanceRange>1~3</watchBuildingStandDistanceRange>
+      <watchBuildingStandRectWidth>7</watchBuildingStandRectWidth>
+      <watchBuildingInSameRoom>false</watchBuildingInSameRoom>
+    </building>
+    <inspectorTabs>
+      <li>AquacultureFishing.ITab_PondManagement</li>
+      <li>AquacultureFishing.ITab_PondHabitat</li>
+      <li>AquacultureFishing.ITab_PondFish</li>
+      <li>AquacultureFishing.ITab_PondSchools</li>
+      <li>AquacultureFishing.ITab_PondOverview</li>
+    </inspectorTabs>
+    <comps>
+      <li Class="CompProperties_MeditationFocus" MayRequire="Ludeon.RimWorld.Royalty">
+        <compClass>AquacultureFishing.CompPondMeditationFocus</compClass>
+        <statDef>MeditationFocusStrength</statDef>
+        <focusTypes><li>Natural</li></focusTypes>
+      </li>
+    </comps>
+  </ThingDef>
+</Defs>
