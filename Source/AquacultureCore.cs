@@ -635,38 +635,42 @@ namespace AquacultureFishing
             if (method != null)
             {
                 AquacultureMod.Harmony.Patch(method, postfix: new HarmonyMethod(typeof(AquacultureStartup), nameof(FishingReservationPostfix)));
-                return;
+                Type closure = type.GetNestedTypes(BindingFlags.NonPublic | BindingFlags.Public)
+                    .FirstOrDefault(nested => AccessTools.Method(nested, "<MakeNewToils>b__3") != null);
+                MethodInfo catchMethod = AccessTools.Method(closure, "<MakeNewToils>b__3");
+                if (catchMethod != null)
+                    AquacultureMod.Harmony.Patch(catchMethod,
+                        prefix: new HarmonyMethod(typeof(FishingAttemptIntegration), nameof(FishingAttemptIntegration.VceCatchPrefix)),
+                        postfix: new HarmonyMethod(typeof(FishingAttemptIntegration), nameof(FishingAttemptIntegration.VceCatchPostfix)));
             }
 
             Type utilityType = AccessTools.TypeByName("RimWorld.FishingUtility");
             MethodInfo catchesMethod = AccessTools.Method(utilityType, "GetCatchesFor");
             if (catchesMethod != null)
             {
-                AquacultureMod.Harmony.Patch(catchesMethod, postfix: new HarmonyMethod(typeof(AquacultureStartup), nameof(OdysseyCatchesPostfix)));
-                return;
+                AquacultureMod.Harmony.Patch(catchesMethod,
+                    prefix: new HarmonyMethod(typeof(FishingAttemptIntegration), nameof(FishingAttemptIntegration.OdysseyCatchesPrefix)));
             }
-            Log.Error("[Aquaculture - Fishing] No supported fishing catch method was found.");
+
+            Type odysseyDriver = AccessTools.TypeByName("RimWorld.JobDriver_Fish");
+            MethodInfo odysseyReservation = AccessTools.Method(odysseyDriver, "TryMakePreToilReservations");
+            if (odysseyReservation != null)
+                AquacultureMod.Harmony.Patch(odysseyReservation,
+                    postfix: new HarmonyMethod(typeof(AquacultureStartup), nameof(OdysseyFishingReservationPostfix)));
+
+            if (method == null && catchesMethod == null)
+                Log.Error("[Aquaculture - Fishing] No supported fishing catch method was found.");
         }
 
-        public static void FishingReservationPostfix(object __instance, bool __result)
+        public static void FishingReservationPostfix(object __instance, ref bool __result)
         {
             if (!__result) return;
-            AccessTools.Field(__instance.GetType(), "fishAmount")?.SetValue(__instance, 1);
-            AccessTools.Field(__instance.GetType(), "fishAmountWithSkill")?.SetValue(__instance, 1);
+            if (FishingAttemptIntegration.PairVfe(__instance) == null) __result = false;
         }
 
-        public static void OdysseyCatchesPostfix(List<Thing> __result)
+        public static void OdysseyFishingReservationPostfix(object __instance, ref bool __result)
         {
-            if (__result == null) return;
-            bool keptFish = false;
-            for (int i = __result.Count - 1; i >= 0; i--)
-            {
-                Thing catchThing = __result[i];
-                if (!FishUtility.IsFish(catchThing?.def)) continue;
-                catchThing.stackCount = 1;
-                if (!keptFish) keptFish = true;
-                else __result.RemoveAt(i);
-            }
+            if (__result && FishingAttemptIntegration.PairOdyssey(__instance) == null) __result = false;
         }
 
         private static void PatchFishingDurationAndPreference()
@@ -691,7 +695,9 @@ namespace AquacultureFishing
             if (!__result || __instance == null) return;
             FieldInfo currentField = __instance.GetType().GetField("<>2__current", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
             if (!(currentField?.GetValue(__instance) is Toil toil) || toil.defaultCompleteMode != ToilCompleteMode.Delay || toil.defaultDuration <= 60) return;
-            toil.defaultDuration = Math.Max(60, Mathf.RoundToInt(toil.defaultDuration * (AquacultureMod.Settings?.fishingDurationFactor ?? 0.30f)));
+            float progressionFactor = FishingAttemptIntegration.CurrentDurationFactor(__instance);
+            toil.defaultDuration = Math.Max(60, Mathf.RoundToInt(toil.defaultDuration *
+                (AquacultureMod.Settings?.fishingDurationFactor ?? 0.30f) * progressionFactor));
         }
 
         public static void VceFishingJobPostfix(Pawn pawn, IntVec3 c, ref Job __result)

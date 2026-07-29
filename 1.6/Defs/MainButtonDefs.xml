@@ -3,7 +3,7 @@
   <MainButtonDef>
     <defName>AF_AquacultureJournal</defName>
     <label>fish journal</label>
-    <description>Review discovered fish species, colony aquaculture milestones, records, and registered breeds.</description>
+    <description>Review discovered fish species, colonist fishing expertise, colony aquaculture milestones, records, and researched breeds.</description>
     <tabWindowClass>AquacultureFishing.MainTabWindow_AquacultureJournal</tabWindowClass>
     <order>65</order>
     <closesWorldView>true</closesWorldView>

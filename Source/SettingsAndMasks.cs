@@ -104,6 +104,7 @@ namespace AquacultureFishing
         public float feederRange = 6f;
         public int animaFishPerTree = 20;
         public List<FishTraitSetting> traitSettings = new List<FishTraitSetting>();
+        public List<FishExpertiseSetting> fishExpertiseSettings = new List<FishExpertiseSetting>();
         public List<FishMaskRecord> masks = new List<FishMaskRecord>();
         public int maskRevision;
         public bool enhancedPondVisuals = true;
@@ -132,6 +133,23 @@ namespace AquacultureFishing
 
         public bool TraitEnabled(FishTraitDef trait) => GetTraitSetting(trait, false)?.enabled ?? true;
         public float TraitWeight(FishTraitDef trait) => Mathf.Max(0f, GetTraitSetting(trait, false)?.weight ?? trait.commonality);
+
+        public FishExpertiseSetting GetFishExpertiseSetting(ThingDef fishDef, bool create = true)
+        {
+            if (fishDef == null) return null;
+            FishExpertiseSetting record = fishExpertiseSettings.FirstOrDefault(setting => setting.fishDefName == fishDef.defName);
+            if (record == null && create)
+            {
+                record = new FishExpertiseSetting(fishDef);
+                fishExpertiseSettings.Add(record);
+            }
+            return record;
+        }
+
+        public FishingExpertiseLevel MinimumExpertiseFor(ThingDef fishDef)
+        {
+            return GetFishExpertiseSetting(fishDef, false)?.minimumFishingExpertise ?? FishingExpertiseLevel.Untrained;
+        }
 
         public FishMaskRecord GetMask(string defName, bool create = true)
         {
@@ -171,6 +189,7 @@ namespace AquacultureFishing
             Scribe_Values.Look(ref feederRange, "feederRange", 6f);
             Scribe_Values.Look(ref animaFishPerTree, "animaFishPerTree", 20);
             Scribe_Collections.Look(ref traitSettings, "traitSettings", LookMode.Deep);
+            Scribe_Collections.Look(ref fishExpertiseSettings, "fishExpertiseSettings", LookMode.Deep);
             Scribe_Collections.Look(ref masks, "fishMasks", LookMode.Deep);
             Scribe_Values.Look(ref enhancedPondVisuals, "enhancedPondVisuals", true);
             Scribe_Values.Look(ref waterTypeTint, "waterTypeTint", true);
@@ -185,6 +204,7 @@ namespace AquacultureFishing
             Scribe_Values.Look(ref pseudoDepth, "pseudoDepth", true);
             Scribe_Values.Look(ref pondRipples, "pondRipples", true);
             if (traitSettings == null) traitSettings = new List<FishTraitSetting>();
+            if (fishExpertiseSettings == null) fishExpertiseSettings = new List<FishExpertiseSetting>();
             if (masks == null) masks = new List<FishMaskRecord>();
             dataVersion = 1;
             fishingDurationFactor = Mathf.Clamp(fishingDurationFactor, 0.1f, 1f);
@@ -211,11 +231,12 @@ namespace AquacultureFishing
 
     public sealed class AquacultureMod : Mod
     {
-        private enum SettingsPage { General, Traits, Ecology, Breeding, Visuals, Masks }
+        private enum SettingsPage { General, Fishing, Traits, Ecology, Breeding, Visuals, Masks }
         public static readonly HarmonyLib.Harmony Harmony = new HarmonyLib.Harmony("lan.aquaculture.fishing");
         public static AquacultureSettings Settings;
         private SettingsPage page;
         private Vector2 traitScroll;
+        private Vector2 fishingScroll;
 
         public AquacultureMod(ModContentPack content) : base(content) { Settings = GetSettings<AquacultureSettings>(); }
         public override string SettingsCategory() => "Aquaculture - Fishing";
@@ -229,14 +250,16 @@ namespace AquacultureFishing
             Widgets.Label(new Rect(nav.x + 12f, nav.y + 10f, nav.width - 24f, 36f), "Aquaculture");
             Text.Font = GameFont.Small;
             DrawNavButton(new Rect(nav.x + 8f, nav.y + 56f, nav.width - 16f, 40f), "General", SettingsPage.General);
-            DrawNavButton(new Rect(nav.x + 8f, nav.y + 100f, nav.width - 16f, 40f), "Traits", SettingsPage.Traits);
-            DrawNavButton(new Rect(nav.x + 8f, nav.y + 144f, nav.width - 16f, 40f), "Ecology", SettingsPage.Ecology);
-            DrawNavButton(new Rect(nav.x + 8f, nav.y + 188f, nav.width - 16f, 40f), "Breeding", SettingsPage.Breeding);
-            DrawNavButton(new Rect(nav.x + 8f, nav.y + 232f, nav.width - 16f, 40f), "Visuals", SettingsPage.Visuals);
-            DrawNavButton(new Rect(nav.x + 8f, nav.y + 276f, nav.width - 16f, 40f), "Masks", SettingsPage.Masks);
+            DrawNavButton(new Rect(nav.x + 8f, nav.y + 100f, nav.width - 16f, 40f), "Fishing", SettingsPage.Fishing);
+            DrawNavButton(new Rect(nav.x + 8f, nav.y + 144f, nav.width - 16f, 40f), "Traits", SettingsPage.Traits);
+            DrawNavButton(new Rect(nav.x + 8f, nav.y + 188f, nav.width - 16f, 40f), "Ecology", SettingsPage.Ecology);
+            DrawNavButton(new Rect(nav.x + 8f, nav.y + 232f, nav.width - 16f, 40f), "Breeding", SettingsPage.Breeding);
+            DrawNavButton(new Rect(nav.x + 8f, nav.y + 276f, nav.width - 16f, 40f), "Visuals", SettingsPage.Visuals);
+            DrawNavButton(new Rect(nav.x + 8f, nav.y + 320f, nav.width - 16f, 40f), "Masks", SettingsPage.Masks);
             Widgets.DrawMenuSection(content);
             Rect body = content.ContractedBy(14f);
             if (page == SettingsPage.General) DrawGeneralPage(body);
+            else if (page == SettingsPage.Fishing) DrawFishingPage(body);
             else if (page == SettingsPage.Traits) DrawTraitsPage(body);
             else if (page == SettingsPage.Ecology) DrawEcologyPage(body);
             else if (page == SettingsPage.Breeding) DrawBreedingPage(body);
@@ -269,6 +292,36 @@ namespace AquacultureFishing
                 Settings.fishingDurationFactor = 0.30f;
                 Settings.animaFishPerTree = 20;
             }
+        }
+
+        private void DrawFishingPage(Rect rect)
+        {
+            Text.Font = GameFont.Medium;
+            Widgets.Label(new Rect(rect.x, rect.y, rect.width, 34f), "Species Expertise Requirements");
+            Text.Font = GameFont.Small;
+            Widgets.Label(new Rect(rect.x, rect.y + 38f, rect.width, 44f),
+                "Fish above a colonist's current expertise will not bite. Untrained preserves existing behavior.");
+            List<ThingDef> fish = DefDatabase<ThingDef>.AllDefs.Where(FishUtility.IsFish).OrderBy(def => def.label).ToList();
+            Rect outRect = new Rect(rect.x, rect.y + 88f, rect.width, rect.height - 88f);
+            Rect view = new Rect(0f, 0f, outRect.width - 16f, Mathf.Max(outRect.height, fish.Count * 44f));
+            Widgets.BeginScrollView(outRect, ref fishingScroll, view);
+            for (int i = 0; i < fish.Count; i++)
+            {
+                ThingDef fishDef = fish[i];
+                FishExpertiseSetting setting = Settings.GetFishExpertiseSetting(fishDef);
+                Rect row = new Rect(0f, i * 44f, view.width, 40f);
+                Widgets.DrawHighlightIfMouseover(row);
+                Widgets.ThingIcon(new Rect(row.x + 4f, row.y + 4f, 32f, 32f), fishDef);
+                Widgets.Label(new Rect(row.x + 46f, row.y + 8f, row.width - 260f, 28f), fishDef.LabelCap);
+                Rect button = new Rect(row.xMax - 200f, row.y + 3f, 190f, 34f);
+                if (Widgets.ButtonText(button, setting.minimumFishingExpertise.ToString()))
+                {
+                    List<FloatMenuOption> options = Enum.GetValues(typeof(FishingExpertiseLevel)).Cast<FishingExpertiseLevel>()
+                        .Select(level => new FloatMenuOption(level.ToString(), () => setting.minimumFishingExpertise = level)).ToList();
+                    Find.WindowStack.Add(new FloatMenu(options));
+                }
+            }
+            Widgets.EndScrollView();
         }
 
         private void DrawTraitsPage(Rect rect)

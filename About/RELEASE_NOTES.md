@@ -11,6 +11,10 @@ Research gates can be disabled in General settings for sandbox play.
 
 ## Field Journal And Breeds
 
+Fishing attempts now bind to one fish species currently present in the selected water. Animals skill, species knowledge, and five-state fishing expertise (Untrained, Novice, Adept, Expert, Master) affect catch duration and escape chance. Successful catches advance both knowledge and expertise. Per-species minimum expertise is configurable for every dynamically discovered fish definition.
+
+The Field Journal includes an Expertise tab for selecting a colonist, reviewing level progress and per-species knowledge, and identifying expertise-locked fish. The Breeds tab and breed summary remain hidden until Selective Fish Breeding is available.
+
 The Fish Journal gives the colony a persistent collection and breeding progression. Every loaded fish species can advance through Discovered, Established, Bred, and Stable milestones. Discovery records the fisher when available; establishment requires pond placement; breeding requires colony-born offspring; stability requires a healthy adult male/female population of at least three fish to persist for one quadrum. The journal also records the colony's largest, most beautiful, most nutritious, rarest, and longest-lived specimen for each discovered species.
 
 When the Wildlife mod is loaded, Fish Journal registers in its responsive Wildlife menu after Wildlife Overview and Wildlife Expeditions. Its standalone bottom-bar tab hides to avoid duplication. Wildlife remains optional; without it, the original Fish Journal tab remains visible.

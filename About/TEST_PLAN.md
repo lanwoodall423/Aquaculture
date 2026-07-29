@@ -98,3 +98,14 @@ Use a new colony with Harmony, Vanilla Fishing Expanded, its Fishing Treasures a
 2. Put a trait-bearing fish in an aquarium and confirm its visual material remains visible.
 3. Save and reload with populated ponds, eggs, containers, feeder fuel, water types, pond toggles, masks, and modified settings.
 4. Interrupt harvest, egg-removal, and sterilization jobs by drafting the handler, removing the target, and saving mid-job. Confirm reservations and designations recover without stuck work.
+
+## Fishing Expertise
+
+1. Start fishing in water with multiple species and confirm the attempt remains paired with one species until completion.
+2. Raise every present species above the fisher's expertise and confirm the fishing reservation is rejected rather than selecting a locked species.
+3. Remove the paired species, its fishing zone, or the water body's available population during the attempt and confirm no fish is produced.
+4. Compare low and high Animals skill, species knowledge, and expertise. Confirm each independently reduces catch time and escape chance.
+5. Confirm an escaped fish grants no progression and a successful catch increases both species knowledge and expertise.
+6. Save during an active attempt and after several catches, reload, and confirm the pair and progression persist.
+7. Add a fish content pack and confirm every recognized fish appears in settings and the Expertise tab with an Untrained default requirement.
+8. Before Selective Fish Breeding, confirm no Breeds tab or breed summary appears; complete the research and confirm both appear.

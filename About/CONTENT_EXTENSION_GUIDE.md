@@ -2,6 +2,8 @@
 
 Aquaculture discovers loaded fish at startup. A `ThingDef` is treated as a fish when it belongs to `VCEF_RawFishCategory` or `Fish`, or has the Aquariums fish comp. No assembly reference is required for ordinary fish packs.
 
+Every discovered fish automatically appears in Fishing settings with an Untrained minimum expertise. Players may raise that requirement without an XML patch; progression and settings remain keyed by the fish `ThingDef.defName`.
+
 ## Species Metadata
 
 Add `AquacultureFishing.AquaticSpeciesExtension` to a fish `ThingDef` when the inferred profile is not appropriate:

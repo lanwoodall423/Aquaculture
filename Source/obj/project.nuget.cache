@@ -1,11 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "eD+Xg1x3vDk=",
+  "dgSpecHash": "AIIu5Ugzug8=",
   "success": true,
   "projectFilePath": "C:\\Games\\Steam\\steamapps\\common\\RimWorld\\Mods\\AquacultureFishing\\Source\\AquacultureFishing.csproj",
-  "expectedPackageFiles": [
-    "C:\\Users\\Lan\\.nuget\\packages\\microsoft.netframework.referenceassemblies\\1.0.3\\microsoft.netframework.referenceassemblies.1.0.3.nupkg.sha512",
-    "C:\\Users\\Lan\\.nuget\\packages\\microsoft.netframework.referenceassemblies.net472\\1.0.3\\microsoft.netframework.referenceassemblies.net472.1.0.3.nupkg.sha512"
-  ],
+  "expectedPackageFiles": [],
   "logs": []
 }

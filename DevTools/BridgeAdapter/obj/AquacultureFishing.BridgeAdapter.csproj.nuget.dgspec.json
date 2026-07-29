@@ -8,7 +8,7 @@
       "version": "1.0.0",
       "restore": {
         "projectUniqueName": "C:\\Games\\Steam\\steamapps\\common\\RimWorld\\Mods\\AquacultureFishing\\DevTools\\BridgeAdapter\\AquacultureFishing.BridgeAdapter.csproj",
-        "projectName": "AquacultureFishing.BridgeAdapter.20260726183207282",
+        "projectName": "AquacultureFishing.BridgeAdapter",
         "projectPath": "C:\\Games\\Steam\\steamapps\\common\\RimWorld\\Mods\\AquacultureFishing\\DevTools\\BridgeAdapter\\AquacultureFishing.BridgeAdapter.csproj",
         "packagesPath": "C:\\Users\\Lan\\.nuget\\packages\\",
         "outputPath": "C:\\Games\\Steam\\steamapps\\common\\RimWorld\\Mods\\AquacultureFishing\\DevTools\\BridgeAdapter\\obj\\",
@@ -43,14 +43,6 @@
       "frameworks": {
         "net472": {
           "targetAlias": "net472",
-          "dependencies": {
-            "Microsoft.NETFramework.ReferenceAssemblies": {
-              "suppressParent": "All",
-              "target": "Package",
-              "version": "[1.0.3, )",
-              "autoReferenced": true
-            }
-          },
           "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.204\\RuntimeIdentifierGraph.json"
         }
       }

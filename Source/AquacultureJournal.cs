@@ -149,6 +149,20 @@ namespace AquacultureFishing
             Messages.Message("New fish discovered: " + fish.parent.def.LabelCap + ".", MessageTypeDefOf.PositiveEvent, false);
         }
 
+        public void NotifyFishingCatch(ThingDef fishDef, Pawn discoverer)
+        {
+            if (fishDef == null) return;
+            FishSpeciesJournalRecord record = RecordFor(fishDef);
+            if (record.discoveredTick >= 0)
+            {
+                if (record.discoveredBy.NullOrEmpty() && discoverer != null) record.discoveredBy = discoverer.LabelShortCap;
+                return;
+            }
+            record.discoveredTick = CurrentTick;
+            record.discoveredBy = discoverer?.LabelShortCap;
+            Messages.Message("New fish discovered: " + fishDef.LabelCap + ".", MessageTypeDefOf.PositiveEvent, false);
+        }
+
         public void NotifyEstablished(CompFishTraits fish)
         {
             if (fish?.parent?.def == null) return;
@@ -448,13 +462,15 @@ namespace AquacultureFishing
 
     public sealed class MainTabWindow_AquacultureJournal : MainTabWindow
     {
-        private enum JournalPage { Species, Breeds }
+        private enum JournalPage { Species, Expertise, Breeds }
 
         private JournalPage page;
         private Vector2 listScroll;
         private Vector2 detailScroll;
+        private Vector2 expertiseScroll;
         private string selectedSpecies;
         private string selectedBreed;
+        private Pawn selectedPawn;
 
         public override Vector2 InitialSize => new Vector2(1180f, 720f);
 
@@ -472,10 +488,17 @@ namespace AquacultureFishing
             Rect right = new Rect(left.xMax + 12f, content.y, content.width - left.width - 12f, content.height);
             Widgets.DrawMenuSection(left);
             Widgets.DrawMenuSection(right);
+            bool breedsAvailable = AquacultureProgression.IsAvailable("AF_SelectiveBreeding");
+            if (!breedsAvailable && page == JournalPage.Breeds) page = JournalPage.Species;
             if (page == JournalPage.Species)
             {
                 DrawSpeciesList(left.ContractedBy(10f), journal);
                 DrawSpeciesDetail(right.ContractedBy(14f), journal);
+            }
+            else if (page == JournalPage.Expertise)
+            {
+                DrawColonistList(left.ContractedBy(10f));
+                DrawExpertiseDetail(right.ContractedBy(14f));
             }
             else
             {
@@ -491,14 +514,85 @@ namespace AquacultureFishing
             Text.Font = GameFont.Small;
             int total = DefDatabase<ThingDef>.AllDefs.Count(FishUtility.IsFish);
             int discovered = journal.SpeciesRecords.Count(record => record.discoveredTick >= 0);
-            Widgets.Label(new Rect(rect.x, rect.y + 36f, 420f, 28f),
-                "Species " + discovered + " / " + total + "   Breeds " + journal.Breeds.Count +
-                "   Mastered " + journal.Breeds.Count(breed => breed.Mastered));
+            bool breedsAvailable = AquacultureProgression.IsAvailable("AF_SelectiveBreeding");
+            string summary = "Species " + discovered + " / " + total;
+            if (breedsAvailable) summary += "   Breeds " + journal.Breeds.Count + "   Mastered " + journal.Breeds.Count(breed => breed.Mastered);
+            Widgets.Label(new Rect(rect.x, rect.y + 36f, 500f, 28f), summary);
             float tabWidth = 150f;
-            if (Widgets.ButtonText(new Rect(rect.xMax - tabWidth * 2f - 8f, rect.y + 12f, tabWidth, 40f), "Species",
+            int tabCount = breedsAvailable ? 3 : 2;
+            float tabStart = rect.xMax - tabWidth * tabCount - 8f * (tabCount - 1);
+            if (Widgets.ButtonText(new Rect(tabStart, rect.y + 12f, tabWidth, 40f), "Species",
                 active: page != JournalPage.Species)) page = JournalPage.Species;
-            if (Widgets.ButtonText(new Rect(rect.xMax - tabWidth, rect.y + 12f, tabWidth, 40f), "Breeds",
-                active: page != JournalPage.Breeds)) page = JournalPage.Breeds;
+            if (Widgets.ButtonText(new Rect(tabStart + tabWidth + 8f, rect.y + 12f, tabWidth, 40f), "Expertise",
+                active: page != JournalPage.Expertise)) page = JournalPage.Expertise;
+            if (breedsAvailable && Widgets.ButtonText(new Rect(tabStart + (tabWidth + 8f) * 2f, rect.y + 12f, tabWidth, 40f), "Breeds",
+                    active: page != JournalPage.Breeds)) page = JournalPage.Breeds;
+        }
+
+        private void DrawColonistList(Rect rect)
+        {
+            Text.Font = GameFont.Medium;
+            Widgets.Label(new Rect(rect.x, rect.y, rect.width, 32f), "Colonists");
+            Text.Font = GameFont.Small;
+            List<Pawn> pawns = Find.Maps.SelectMany(map => map.mapPawns.FreeColonists).Distinct()
+                .OrderBy(pawn => pawn.LabelShort).ToList();
+            Rect outRect = new Rect(rect.x, rect.y + 38f, rect.width, rect.height - 38f);
+            Rect view = new Rect(0f, 0f, outRect.width - 16f, Mathf.Max(outRect.height, pawns.Count * 54f));
+            Widgets.BeginScrollView(outRect, ref listScroll, view);
+            for (int i = 0; i < pawns.Count; i++)
+            {
+                Pawn pawn = pawns[i];
+                Rect row = new Rect(0f, i * 54f, view.width, 48f);
+                if (pawn == selectedPawn) Widgets.DrawHighlightSelected(row);
+                else if (Mouse.IsOver(row)) Widgets.DrawHighlight(row);
+                Widgets.ThingIcon(new Rect(4f, row.y + 4f, 40f, 40f), pawn);
+                Widgets.Label(new Rect(52f, row.y + 4f, row.width - 58f, 24f), pawn.LabelShortCap);
+                PawnFishingProgress progress = FishingProgressionComponent.Current?.ProgressFor(pawn, false);
+                GUI.color = Color.gray;
+                Widgets.Label(new Rect(52f, row.y + 26f, row.width - 58f, 20f), (progress?.ExpertiseLevel ?? FishingExpertiseLevel.Untrained).ToString());
+                GUI.color = Color.white;
+                if (Widgets.ButtonInvisible(row)) selectedPawn = pawn;
+            }
+            Widgets.EndScrollView();
+            if (selectedPawn == null && pawns.Count > 0) selectedPawn = pawns[0];
+        }
+
+        private void DrawExpertiseDetail(Rect rect)
+        {
+            if (selectedPawn == null)
+            {
+                Widgets.Label(rect, "No colonist is available.");
+                return;
+            }
+            PawnFishingProgress progress = FishingProgressionComponent.Current?.ProgressFor(selectedPawn, false);
+            FishingExpertiseLevel level = progress?.ExpertiseLevel ?? FishingExpertiseLevel.Untrained;
+            Text.Font = GameFont.Medium;
+            Widgets.Label(new Rect(rect.x, rect.y, rect.width, 34f), selectedPawn.LabelShortCap + " - " + level);
+            Text.Font = GameFont.Small;
+            DrawProgressBar(new Rect(rect.x, rect.y + 42f, rect.width, 30f), progress?.ExpertiseProgress ?? 0f,
+                level == FishingExpertiseLevel.Master ? "Master" : "Progress toward " + ((FishingExpertiseLevel)((int)level + 1)));
+
+            List<ThingDef> fish = DefDatabase<ThingDef>.AllDefs.Where(FishUtility.IsFish).OrderBy(def => def.label).ToList();
+            Rect outRect = new Rect(rect.x, rect.y + 90f, rect.width, rect.height - 90f);
+            Rect view = new Rect(0f, 0f, outRect.width - 16f, Mathf.Max(outRect.height, fish.Count * 48f));
+            Widgets.BeginScrollView(outRect, ref expertiseScroll, view);
+            for (int i = 0; i < fish.Count; i++)
+            {
+                ThingDef fishDef = fish[i];
+                FishingExpertiseLevel required = AquacultureMod.Settings?.MinimumExpertiseFor(fishDef) ?? FishingExpertiseLevel.Untrained;
+                bool locked = required > level;
+                Rect row = new Rect(0f, i * 48f, view.width, 42f);
+                Widgets.DrawHighlightIfMouseover(row);
+                Widgets.ThingIcon(new Rect(4f, row.y + 5f, 32f, 32f), fishDef);
+                Widgets.Label(new Rect(46f, row.y + 3f, row.width * 0.45f, 24f), fishDef.LabelCap);
+                float knowledge = progress?.KnowledgeFor(fishDef) ?? 0f;
+                GUI.color = locked ? new Color(0.85f, 0.55f, 0.50f) : Color.gray;
+                Widgets.Label(new Rect(46f, row.y + 23f, row.width * 0.45f, 20f), locked ? "Locked - requires " + required : "Available");
+                GUI.color = Color.white;
+                DrawProgressBar(new Rect(row.width * 0.58f, row.y + 8f, row.width * 0.40f, 26f), knowledge,
+                    "Knowledge " + knowledge.ToStringPercent());
+            }
+            Widgets.EndScrollView();
         }
 
         private void DrawSpeciesList(Rect rect, AquacultureJournalComponent journal)

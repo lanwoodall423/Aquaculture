@@ -18,4 +18,4 @@ Load Harmony and the two required fishing mods first. Aquariums may load before 
 
 ## Save And Removal
 
-Pond state, fish traits, life-cycle state, eggs, schools, management policies, containers, feeders, and masks are serialized. Removing a fish content mod from an active save can still invalidate that mod's fish defs and is not supported.
+Pond state, fish traits, life-cycle state, eggs, schools, management policies, containers, feeders, masks, fishing attempts, species knowledge, and fishing expertise are serialized. Fishing progression uses additive save nodes and fish `defName` keys, so existing saves load with empty progression while newly added fish packs receive default Untrained requirements. Removing a fish content mod from an active save can still invalidate that mod's pond fish defs and is not supported.
