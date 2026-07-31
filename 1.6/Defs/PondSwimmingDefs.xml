@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+  <JobDef>
+    <defName>AF_EnterPond</defName>
+    <driverClass>AquacultureFishing.JobDriver_EnterPond</driverClass>
+    <reportString>swimming in pond.</reportString>
+    <joyDuration>3000</joyDuration>
+    <joyKind>Meditative</joyKind>
+    <allowOpportunisticPrefix>true</allowOpportunisticPrefix>
+    <isCrawlingIfDowned>false</isCrawlingIfDowned>
+  </JobDef>
+
+  <HediffDef>
+    <defName>AF_SpentTimeInPond</defName>
+    <label>spent time in pond</label>
+    <description>Recent time among living pond fish has left a collection of subtle, temporary benefits.</description>
+    <hediffClass>AquacultureFishing.Hediff_SpentTimeInPond</hediffClass>
+    <isBad>false</isBad>
+    <maxSeverity>1</maxSeverity>
+  </HediffDef>
+
+  <ThoughtDef><defName>AF_AteDeliciousFish</defName><durationDays>0.5</durationDays><stackLimit>1</stackLimit><stages><li><label>ate delicious fish</label><description>The fish in that meal was unusually delicious.</description><baseMoodEffect>3</baseMoodEffect></li></stages></ThoughtDef>
+  <ThoughtDef><defName>AF_CalmingPond</defName><durationDays>0.5</durationDays><stackLimit>1</stackLimit><stages><li><label>calmed by pond</label><description>Swimming among calming fish brought a welcome sense of peace.</description><baseMoodEffect>2</baseMoodEffect></li></stages></ThoughtDef>
+  <ThoughtDef><defName>AF_AromaticPond</defName><durationDays>0.5</durationDays><stackLimit>1</stackLimit><stages><li><label>aromatic pond</label><description>The pond carried a pleasant, lingering fragrance.</description><baseMoodEffect>2</baseMoodEffect></li></stages></ThoughtDef>
+  <ThoughtDef><defName>AF_SparklingPondNight</defName><durationDays>0.5</durationDays><stackLimit>1</stackLimit><stages><li><label>sparkling pond at night</label><description>The pond glittered beautifully in the darkness.</description><baseMoodEffect>2</baseMoodEffect></li></stages></ThoughtDef>
+  <ThoughtDef><defName>AF_EnjoyedLuxuryPond</defName><durationDays>1</durationDays><stackLimit>1</stackLimit><stages><li><label>enjoyed luxury pond</label><description>That luxurious swim was an indulgence worth remembering.</description><baseMoodEffect>5</baseMoodEffect></li></stages></ThoughtDef>
+</Defs>

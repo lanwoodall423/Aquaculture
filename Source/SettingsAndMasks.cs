@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using HarmonyLib;
+using KnowledgeFramework;
 using RimWorld;
 using UnityEngine;
 using Verse;
@@ -146,9 +147,9 @@ namespace AquacultureFishing
             return record;
         }
 
-        public FishingExpertiseLevel MinimumExpertiseFor(ThingDef fishDef)
+        public KnowledgeRank MinimumExpertiseFor(ThingDef fishDef)
         {
-            return GetFishExpertiseSetting(fishDef, false)?.minimumFishingExpertise ?? FishingExpertiseLevel.Untrained;
+            return GetFishExpertiseSetting(fishDef, false)?.minimumFishingExpertise ?? KnowledgeRank.Novice;
         }
 
         public FishMaskRecord GetMask(string defName, bool create = true)
@@ -316,7 +317,7 @@ namespace AquacultureFishing
                 Rect button = new Rect(row.xMax - 200f, row.y + 3f, 190f, 34f);
                 if (Widgets.ButtonText(button, setting.minimumFishingExpertise.ToString()))
                 {
-                    List<FloatMenuOption> options = Enum.GetValues(typeof(FishingExpertiseLevel)).Cast<FishingExpertiseLevel>()
+                    List<FloatMenuOption> options = Enum.GetValues(typeof(KnowledgeRank)).Cast<KnowledgeRank>()
                         .Select(level => new FloatMenuOption(level.ToString(), () => setting.minimumFishingExpertise = level)).ToList();
                     Find.WindowStack.Add(new FloatMenu(options));
                 }

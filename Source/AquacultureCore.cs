@@ -85,6 +85,7 @@ namespace AquacultureFishing
         public bool IsFemale { get { EnsureTraitCache(); return cachedIsFemale; } }
         public bool IsAlive => alive;
         public float SizeFactor { get { EnsureTraitCache(); return cachedSizeFactor; } }
+        public float MassFactor { get { EnsureTraitCache(); return Mathf.Max(0.01f, cachedSizeFactor * cachedSizeFactor * cachedSizeFactor * cachedMeatYield); } }
         public float MovementSpeed { get { EnsureTraitCache(); return cachedMovementSpeed; } }
         public float TurnRateFactor { get { EnsureTraitCache(); return cachedTurnRate; } }
         public float SchoolingFactor { get { EnsureTraitCache(); return cachedSchooling; } }
@@ -236,6 +237,7 @@ namespace AquacultureFishing
         {
             base.PostPostMake();
             InitializeTraits();
+            CaughtFishTraitTransfer.ApplyIfPending(this);
         }
 
         public override void PostSpawnSetup(bool respawningAfterLoad)
@@ -256,6 +258,15 @@ namespace AquacultureFishing
         {
             map?.GetComponent<FishPondMapComponent>()?.Deregister(this);
             base.PostDeSpawn(map, mode);
+        }
+
+        public override void PostIngested(Pawn ingester)
+        {
+            if (ActiveTraits.Any(trait => trait.pondEffect?.delicious == true) && ingester?.needs?.mood?.thoughts?.memories != null)
+            {
+                ThoughtDef thought = DefDatabase<ThoughtDef>.GetNamedSilentFail("AF_AteDeliciousFish");
+                if (thought != null) ingester.needs.mood.thoughts.memories.TryGainMemoryFast(thought);
+            }
         }
 
         public void InitializeTraits()
@@ -344,6 +355,17 @@ namespace AquacultureFishing
             if (trait == null || traitDefNames.Contains(trait.defName)) return;
             traitDefNames.Add(trait.defName);
             if (trait.IsNumeric) traitValues[trait.defName] = FishTraitUtility.RollPercent(trait);
+            NotifyTraitsChanged();
+        }
+
+        public void ApplyCaughtTraits(IEnumerable<string> names, IDictionary<string, float> values)
+        {
+            if (names == null) return;
+            traitDefNames = names.Where(name => !name.NullOrEmpty()).Distinct().ToList();
+            traitValues = values == null
+                ? new Dictionary<string, float>()
+                : new Dictionary<string, float>(values);
+            initialized = true;
             NotifyTraitsChanged();
         }
 
@@ -559,11 +581,17 @@ namespace AquacultureFishing
                     if (def.statBases == null) def.statBases = new List<StatModifier>();
                     StatModifier beauty = def.statBases.FirstOrDefault(modifier => modifier.stat == StatDefOf.Beauty);
                     if (beauty == null) def.statBases.Add(new StatModifier { stat = StatDefOf.Beauty, value = 1f });
+                    StatModifier mass = def.statBases.FirstOrDefault(modifier => modifier.stat == StatDefOf.Mass);
+                    if (mass == null) def.statBases.Add(new StatModifier { stat = StatDefOf.Mass, value = 0.1f });
                     EnsureTraitsTab(def);
                 }
+                ConfigureFishFoodTraitComps();
                 ConfigureFishProcessingRecipe(fishDefs);
                 AquacultureMod.Harmony.PatchAll(Assembly.GetExecutingAssembly());
+                AquacultureSharedKnowledgeIntegration.Register();
                 PatchFishingJob();
+                AquacultureMod.Harmony.Patch(AccessTools.Method(typeof(Pawn_EquipmentTracker), nameof(Pawn_EquipmentTracker.GetGizmos)),
+                    postfix: new HarmonyMethod(typeof(FishingRodUtility), nameof(FishingRodUtility.EquipmentGizmosPostfix)));
                 PatchFishingDurationAndPreference();
                 PatchAquariums();
                 RegisterWildlifeMenu();
@@ -618,6 +646,16 @@ namespace AquacultureFishing
             }
         }
 
+        private static void ConfigureFishFoodTraitComps()
+        {
+            foreach (ThingDef def in DefDatabase<ThingDef>.AllDefs.Where(def => def.ingestible != null))
+            {
+                if (def.comps == null) def.comps = new List<CompProperties>();
+                if (!def.comps.Any(comp => typeof(CompFishFoodTraits).IsAssignableFrom(comp.compClass)))
+                    def.comps.Add(new CompProperties_FishFoodTraits());
+            }
+        }
+
         private static void EnsureTraitsTab(ThingDef def)
         {
             if (def == null) return;
@@ -634,14 +672,17 @@ namespace AquacultureFishing
             MethodInfo method = AccessTools.Method(type, "TryMakePreToilReservations");
             if (method != null)
             {
-                AquacultureMod.Harmony.Patch(method, postfix: new HarmonyMethod(typeof(AquacultureStartup), nameof(FishingReservationPostfix)));
+                MethodInfo makeToils = AccessTools.Method(type, "MakeNewToils");
+                if (makeToils != null) AquacultureMod.Harmony.Patch(makeToils,
+                    postfix: new HarmonyMethod(typeof(FishingAttemptIntegration), nameof(FishingAttemptIntegration.VfeMakeNewToilsPostfix)));
                 Type closure = type.GetNestedTypes(BindingFlags.NonPublic | BindingFlags.Public)
                     .FirstOrDefault(nested => AccessTools.Method(nested, "<MakeNewToils>b__3") != null);
                 MethodInfo catchMethod = AccessTools.Method(closure, "<MakeNewToils>b__3");
                 if (catchMethod != null)
                     AquacultureMod.Harmony.Patch(catchMethod,
                         prefix: new HarmonyMethod(typeof(FishingAttemptIntegration), nameof(FishingAttemptIntegration.VceCatchPrefix)),
-                        postfix: new HarmonyMethod(typeof(FishingAttemptIntegration), nameof(FishingAttemptIntegration.VceCatchPostfix)));
+                        postfix: new HarmonyMethod(typeof(FishingAttemptIntegration), nameof(FishingAttemptIntegration.VceCatchPostfix)),
+                        finalizer: new HarmonyMethod(typeof(FishingAttemptIntegration), nameof(FishingAttemptIntegration.VceCatchFinalizer)));
             }
 
             Type utilityType = AccessTools.TypeByName("RimWorld.FishingUtility");
@@ -653,51 +694,33 @@ namespace AquacultureFishing
             }
 
             Type odysseyDriver = AccessTools.TypeByName("RimWorld.JobDriver_Fish");
-            MethodInfo odysseyReservation = AccessTools.Method(odysseyDriver, "TryMakePreToilReservations");
-            if (odysseyReservation != null)
-                AquacultureMod.Harmony.Patch(odysseyReservation,
-                    postfix: new HarmonyMethod(typeof(AquacultureStartup), nameof(OdysseyFishingReservationPostfix)));
+            if (odysseyDriver != null)
+            {
+                MethodInfo makeToils = AccessTools.Method(odysseyDriver, "MakeNewToils");
+                if (makeToils != null) AquacultureMod.Harmony.Patch(makeToils,
+                    postfix: new HarmonyMethod(typeof(FishingAttemptIntegration), nameof(FishingAttemptIntegration.OdysseyMakeNewToilsPostfix)));
+            }
+
+            Type odysseyWorkGiver = AccessTools.TypeByName("RimWorld.WorkGiver_Fish");
+            MethodInfo nonScanJob = AccessTools.Method(odysseyWorkGiver, "NonScanJob");
+            if (nonScanJob != null) AquacultureMod.Harmony.Patch(nonScanJob,
+                postfix: new HarmonyMethod(typeof(FishingRodUtility), nameof(FishingRodUtility.FishingJobPostfix)));
 
             if (method == null && catchesMethod == null)
                 Log.Error("[Aquaculture - Fishing] No supported fishing catch method was found.");
         }
 
-        public static void FishingReservationPostfix(object __instance, ref bool __result)
-        {
-            if (!__result) return;
-            if (FishingAttemptIntegration.PairVfe(__instance) == null) __result = false;
-        }
-
-        public static void OdysseyFishingReservationPostfix(object __instance, ref bool __result)
-        {
-            if (__result && FishingAttemptIntegration.PairOdyssey(__instance) == null) __result = false;
-        }
-
         private static void PatchFishingDurationAndPreference()
         {
-            Type driverType = AccessTools.TypeByName(ModsConfig.OdysseyActive ? "RimWorld.JobDriver_Fish" : "VCE_Fishing.JobDriver_Fish");
-            Type iteratorType = driverType?.GetNestedTypes(BindingFlags.NonPublic | BindingFlags.Public)
-                .FirstOrDefault(type => type.Name.Contains("MakeNewToils"));
-            MethodInfo moveNext = AccessTools.Method(iteratorType, "MoveNext");
-            if (moveNext != null)
-                AquacultureMod.Harmony.Patch(moveNext, postfix: new HarmonyMethod(typeof(AquacultureStartup), nameof(FishingIteratorPostfix)));
-            else
-                Log.Warning("[Aquaculture - Fishing] Could not locate the fishing toil iterator; fishing duration was not shortened.");
-
             Type workGiverType = AccessTools.TypeByName("VCE_Fishing.WorkGiver_Fish");
             MethodInfo jobOnCell = AccessTools.Method(workGiverType, "JobOnCell");
             if (jobOnCell != null)
-                AquacultureMod.Harmony.Patch(jobOnCell, postfix: new HarmonyMethod(typeof(AquacultureStartup), nameof(VceFishingJobPostfix)));
-        }
-
-        public static void FishingIteratorPostfix(object __instance, bool __result)
-        {
-            if (!__result || __instance == null) return;
-            FieldInfo currentField = __instance.GetType().GetField("<>2__current", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
-            if (!(currentField?.GetValue(__instance) is Toil toil) || toil.defaultCompleteMode != ToilCompleteMode.Delay || toil.defaultDuration <= 60) return;
-            float progressionFactor = FishingAttemptIntegration.CurrentDurationFactor(__instance);
-            toil.defaultDuration = Math.Max(60, Mathf.RoundToInt(toil.defaultDuration *
-                (AquacultureMod.Settings?.fishingDurationFactor ?? 0.30f) * progressionFactor));
+            {
+                AquacultureMod.Harmony.Patch(jobOnCell,
+                    postfix: new HarmonyMethod(typeof(FishingRodUtility), nameof(FishingRodUtility.FishingJobPostfix)));
+                AquacultureMod.Harmony.Patch(jobOnCell,
+                    postfix: new HarmonyMethod(typeof(AquacultureStartup), nameof(VceFishingJobPostfix)));
+            }
         }
 
         public static void VceFishingJobPostfix(Pawn pawn, IntVec3 c, ref Job __result)

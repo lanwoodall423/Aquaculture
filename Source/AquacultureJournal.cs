@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using KnowledgeFramework;
 using RimWorld;
 using UnityEngine;
 using Verse;
@@ -467,12 +468,24 @@ namespace AquacultureFishing
         private JournalPage page;
         private Vector2 listScroll;
         private Vector2 detailScroll;
-        private Vector2 expertiseScroll;
         private string selectedSpecies;
         private string selectedBreed;
-        private Pawn selectedPawn;
+        private readonly KnowledgeMenuState expertiseState = new KnowledgeMenuState();
 
         public override Vector2 InitialSize => new Vector2(1180f, 720f);
+
+        public static void OpenExpertise(Pawn pawn)
+        {
+            MainButtonDef button = DefDatabase<MainButtonDef>.GetNamedSilentFail("AF_AquacultureJournal");
+            if (button == null) return;
+            Find.MainTabsRoot.SetCurrentTab(button, true);
+            if (button.TabWindow is MainTabWindow_AquacultureJournal journal)
+            {
+                journal.page = JournalPage.Expertise;
+                journal.expertiseState.scope = KnowledgeMenuScope.Colonist;
+                journal.expertiseState.selectedPawn = pawn;
+            }
+        }
 
         public override void DoWindowContents(Rect inRect)
         {
@@ -484,21 +497,21 @@ namespace AquacultureFishing
             }
             DrawHeader(new Rect(inRect.x, inRect.y, inRect.width, 70f), journal);
             Rect content = new Rect(inRect.x, inRect.y + 78f, inRect.width, inRect.height - 78f);
+            bool breedsAvailable = AquacultureProgression.IsAvailable("AF_SelectiveBreeding");
+            if (!breedsAvailable && page == JournalPage.Breeds) page = JournalPage.Species;
+            if (page == JournalPage.Expertise)
+            {
+                KnowledgeMenuUI.Draw(content, expertiseState, ExpertiseModelFor, ExpertiseFor);
+                return;
+            }
             Rect left = new Rect(content.x, content.y, 380f, content.height);
             Rect right = new Rect(left.xMax + 12f, content.y, content.width - left.width - 12f, content.height);
             Widgets.DrawMenuSection(left);
             Widgets.DrawMenuSection(right);
-            bool breedsAvailable = AquacultureProgression.IsAvailable("AF_SelectiveBreeding");
-            if (!breedsAvailable && page == JournalPage.Breeds) page = JournalPage.Species;
             if (page == JournalPage.Species)
             {
                 DrawSpeciesList(left.ContractedBy(10f), journal);
                 DrawSpeciesDetail(right.ContractedBy(14f), journal);
-            }
-            else if (page == JournalPage.Expertise)
-            {
-                DrawColonistList(left.ContractedBy(10f));
-                DrawExpertiseDetail(right.ContractedBy(14f));
             }
             else
             {
@@ -529,71 +542,67 @@ namespace AquacultureFishing
                     active: page != JournalPage.Breeds)) page = JournalPage.Breeds;
         }
 
-        private void DrawColonistList(Rect rect)
+        private KnowledgeMenuModel ExpertiseModelFor(Pawn pawn, bool colony)
         {
-            Text.Font = GameFont.Medium;
-            Widgets.Label(new Rect(rect.x, rect.y, rect.width, 32f), "Colonists");
-            Text.Font = GameFont.Small;
-            List<Pawn> pawns = Find.Maps.SelectMany(map => map.mapPawns.FreeColonists).Distinct()
-                .OrderBy(pawn => pawn.LabelShort).ToList();
-            Rect outRect = new Rect(rect.x, rect.y + 38f, rect.width, rect.height - 38f);
-            Rect view = new Rect(0f, 0f, outRect.width - 16f, Mathf.Max(outRect.height, pawns.Count * 54f));
-            Widgets.BeginScrollView(outRect, ref listScroll, view);
-            for (int i = 0; i < pawns.Count; i++)
+            FishingProgressionComponent component = FishingProgressionComponent.Current;
+            if (colony)
             {
-                Pawn pawn = pawns[i];
-                Rect row = new Rect(0f, i * 54f, view.width, 48f);
-                if (pawn == selectedPawn) Widgets.DrawHighlightSelected(row);
-                else if (Mouse.IsOver(row)) Widgets.DrawHighlight(row);
-                Widgets.ThingIcon(new Rect(4f, row.y + 4f, 40f, 40f), pawn);
-                Widgets.Label(new Rect(52f, row.y + 4f, row.width - 58f, 24f), pawn.LabelShortCap);
-                PawnFishingProgress progress = FishingProgressionComponent.Current?.ProgressFor(pawn, false);
-                GUI.color = Color.gray;
-                Widgets.Label(new Rect(52f, row.y + 26f, row.width - 58f, 20f), (progress?.ExpertiseLevel ?? FishingExpertiseLevel.Untrained).ToString());
-                GUI.color = Color.white;
-                if (Widgets.ButtonInvisible(row)) selectedPawn = pawn;
+                List<PawnFishingProgress> colonyRecords = component?.PawnProgress
+                    .Where(record => record?.pawn?.Faction?.def?.isPlayer == true).ToList()
+                    ?? new List<PawnFishingProgress>();
+                return FishingKnowledgeModel(colonyRecords, null, true);
             }
-            Widgets.EndScrollView();
-            if (selectedPawn == null && pawns.Count > 0) selectedPawn = pawns[0];
+            PawnFishingProgress personal = component?.ProgressFor(pawn, false);
+            return FishingKnowledgeModel(personal == null
+                ? new List<PawnFishingProgress>() : new List<PawnFishingProgress> { personal }, pawn, false);
         }
 
-        private void DrawExpertiseDetail(Rect rect)
+        private KnowledgeMenuModel FishingKnowledgeModel(List<PawnFishingProgress> records, Pawn pawn, bool colony)
         {
-            if (selectedPawn == null)
+            PawnFishingProgress personal = colony ? null : records.FirstOrDefault();
+            KnowledgeRank level = personal?.ExpertiseLevel ?? KnowledgeRank.Novice;
+            var section = new KnowledgeMenuSection
             {
-                Widgets.Label(rect, "No colonist is available.");
-                return;
-            }
-            PawnFishingProgress progress = FishingProgressionComponent.Current?.ProgressFor(selectedPawn, false);
-            FishingExpertiseLevel level = progress?.ExpertiseLevel ?? FishingExpertiseLevel.Untrained;
-            Text.Font = GameFont.Medium;
-            Widgets.Label(new Rect(rect.x, rect.y, rect.width, 34f), selectedPawn.LabelShortCap + " - " + level);
-            Text.Font = GameFont.Small;
-            DrawProgressBar(new Rect(rect.x, rect.y + 42f, rect.width, 30f), progress?.ExpertiseProgress ?? 0f,
-                level == FishingExpertiseLevel.Master ? "Master" : "Progress toward " + ((FishingExpertiseLevel)((int)level + 1)));
-
-            List<ThingDef> fish = DefDatabase<ThingDef>.AllDefs.Where(FishUtility.IsFish).OrderBy(def => def.label).ToList();
-            Rect outRect = new Rect(rect.x, rect.y + 90f, rect.width, rect.height - 90f);
-            Rect view = new Rect(0f, 0f, outRect.width - 16f, Mathf.Max(outRect.height, fish.Count * 48f));
-            Widgets.BeginScrollView(outRect, ref expertiseScroll, view);
-            for (int i = 0; i < fish.Count; i++)
+                id = "fish",
+                label = "Fish Knowledge",
+                emptyText = "No fish species are available."
+            };
+            foreach (ThingDef fishDef in DefDatabase<ThingDef>.AllDefs.Where(FishUtility.IsFish))
             {
-                ThingDef fishDef = fish[i];
-                FishingExpertiseLevel required = AquacultureMod.Settings?.MinimumExpertiseFor(fishDef) ?? FishingExpertiseLevel.Untrained;
-                bool locked = required > level;
-                Rect row = new Rect(0f, i * 48f, view.width, 42f);
-                Widgets.DrawHighlightIfMouseover(row);
-                Widgets.ThingIcon(new Rect(4f, row.y + 5f, 32f, 32f), fishDef);
-                Widgets.Label(new Rect(46f, row.y + 3f, row.width * 0.45f, 24f), fishDef.LabelCap);
-                float knowledge = progress?.KnowledgeFor(fishDef) ?? 0f;
-                GUI.color = locked ? new Color(0.85f, 0.55f, 0.50f) : Color.gray;
-                Widgets.Label(new Rect(46f, row.y + 23f, row.width * 0.45f, 20f), locked ? "Locked - requires " + required : "Available");
-                GUI.color = Color.white;
-                DrawProgressBar(new Rect(row.width * 0.58f, row.y + 8f, row.width * 0.40f, 26f), knowledge,
-                    "Knowledge " + knowledge.ToStringPercent());
+                float knowledge = Mathf.Clamp01(records.Sum(record => record.KnowledgeFor(fishDef)));
+                KnowledgeRank required = AquacultureMod.Settings?.MinimumExpertiseFor(fishDef) ?? KnowledgeRank.Novice;
+                bool locked = !colony && required > level;
+                section.rows.Add(new KnowledgeMenuRow
+                {
+                    label = fishDef.LabelCap,
+                    iconDef = fishDef,
+                    rank = FishingProgressionUtility.LevelFor(knowledge * 700f),
+                    progress = knowledge,
+                    status = locked ? "Locked - requires " + required : "Available",
+                    tooltip = fishDef.LabelCap + "\n\n" + (locked ? "Requires " + required + " fishing expertise." : "Available to catch.") +
+                        "\nKnowledge: " + knowledge.ToStringPercent()
+                });
             }
-            Widgets.EndScrollView();
+            if (colony)
+            {
+                return new KnowledgeMenuModel
+                {
+                    title = "Colony Fishing Knowledge",
+                    sections = new List<KnowledgeMenuSection> { section }
+                };
+            }
+            return new KnowledgeMenuModel
+            {
+                title = (pawn?.LabelShortCap ?? "Colonist") + " - Fishing",
+                expertiseLabel = "Fishing expertise",
+                expertiseRank = level,
+                expertiseProgress = personal?.ExpertiseProgress ?? 0f,
+                sections = new List<KnowledgeMenuSection> { section }
+            };
         }
+
+        private static KnowledgeRank ExpertiseFor(Pawn pawn) =>
+            FishingProgressionComponent.Current?.ProgressFor(pawn, false)?.ExpertiseLevel ?? KnowledgeRank.Novice;
 
         private void DrawSpeciesList(Rect rect, AquacultureJournalComponent journal)
         {

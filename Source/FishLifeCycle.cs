@@ -53,39 +53,64 @@ namespace AquacultureFishing
         }
     }
 
-    public sealed class CompProperties_FishMeatTraits : CompProperties
+    public class CompProperties_FishFoodTraits : CompProperties
+    {
+        public CompProperties_FishFoodTraits() { compClass = typeof(CompFishFoodTraits); }
+    }
+
+    public sealed class CompProperties_FishMeatTraits : CompProperties_FishFoodTraits
     {
         public CompProperties_FishMeatTraits() { compClass = typeof(CompFishMeatTraits); }
     }
 
-    public sealed class CompFishMeatTraits : ThingComp
+    public class CompFishFoodTraits : ThingComp
     {
         public float nutritionMultiplier = 1f;
+        public bool delicious;
 
         public override void PostExposeData()
         {
             Scribe_Values.Look(ref nutritionMultiplier, "nutritionMultiplier", 1f);
+            Scribe_Values.Look(ref delicious, "delicious");
         }
 
-        public override string CompInspectStringExtra() => nutritionMultiplier > 1.001f ? "Inherited nutrition: " + nutritionMultiplier.ToStringPercent() : null;
+        public override string CompInspectStringExtra()
+        {
+            var lines = new List<string>();
+            if (nutritionMultiplier > 1.001f) lines.Add("Inherited nutrition: " + nutritionMultiplier.ToStringPercent());
+            if (delicious) lines.Add("Delicious fish ingredients");
+            return lines.Count == 0 ? null : string.Join("\n", lines);
+        }
 
         public override void PostSplitOff(Thing piece)
         {
-            CompFishMeatTraits split = piece?.TryGetComp<CompFishMeatTraits>();
-            if (split != null) split.nutritionMultiplier = nutritionMultiplier;
+            CompFishFoodTraits split = piece?.TryGetComp<CompFishFoodTraits>();
+            if (split == null) return;
+            split.nutritionMultiplier = nutritionMultiplier;
+            split.delicious = delicious;
         }
 
         public override bool AllowStackWith(Thing other)
         {
-            CompFishMeatTraits comp = other?.TryGetComp<CompFishMeatTraits>();
-            return comp != null && Mathf.Approximately(comp.nutritionMultiplier, nutritionMultiplier);
+            CompFishFoodTraits comp = other?.TryGetComp<CompFishFoodTraits>();
+            return comp != null && Mathf.Approximately(comp.nutritionMultiplier, nutritionMultiplier) && comp.delicious == delicious;
+        }
+
+        public override void PostIngested(Pawn ingester)
+        {
+            if (!delicious || ingester?.needs?.mood?.thoughts?.memories == null) return;
+            ThoughtDef thought = DefDatabase<ThoughtDef>.GetNamedSilentFail("AF_AteDeliciousFish");
+            if (thought != null) ingester.needs.mood.thoughts.memories.TryGainMemoryFast(thought);
         }
     }
+
+    public sealed class CompFishMeatTraits : CompFishFoodTraits { }
 
     public sealed partial class FishPondMapComponent : MapComponent
     {
         internal readonly HashSet<CompFishTraits> fish = new HashSet<CompFishTraits>();
         private readonly Dictionary<IntVec3, float> beautyByCell = new Dictionary<IntVec3, float>();
+        private readonly Dictionary<IntVec3, float> cropGrowthByCell = new Dictionary<IntVec3, float>();
         private int nextEggCheckTick;
 
         public FishPondMapComponent(Map map) : base(map) { }
@@ -122,6 +147,7 @@ namespace AquacultureFishing
                 if (comp.lifespanTicks > 0 && now - comp.birthTick >= comp.lifespanTicks) comp.MarkDead();
             }
             EnsurePondState();
+            RefreshTimedPondTraitEffects();
             ProcessEcology(now);
             ProcessBreeding(now);
             ProcessEggs(now);
@@ -311,7 +337,7 @@ namespace AquacultureFishing
             if (pond.ecology.populationLimit > 0) return pond.ecology.populationLimit;
             int baseCapacity = Mathf.Max(1, Mathf.FloorToInt(pond.info.cells.Count *
                 (AquacultureMod.Settings?.fishCapacityPerCell ?? 2f)));
-            return baseCapacity + EnsureHabitat(pond).activeAerators * 8;
+            return baseCapacity + EnsureHabitat(pond).activeAerators * 8 + Mathf.FloorToInt(PondTraitCapacityBonus(pond));
         }
 
         private void RebuildBeautyIfDirty()
@@ -320,6 +346,7 @@ namespace AquacultureFishing
             for (int i = 0; i < pondStates.Count; i++) dirty |= pondStates[i].beautyDirty;
             if (!dirty) return;
             beautyByCell.Clear();
+            cropGrowthByCell.Clear();
             for (int pondIndex = 0; pondIndex < pondStates.Count; pondIndex++)
             {
                 PondState pond = pondStates[pondIndex];
@@ -329,7 +356,7 @@ namespace AquacultureFishing
                     CompFishTraits fish = pond.fish[fishIndex];
                     beauty += Mathf.Max(0f, 1f + fish.BeautyOffset + (fish.Breed?.BeautyBonus ?? 0f));
                 }
-                beauty += EnsureHabitat(pond).beauty;
+                beauty += EnsureHabitat(pond).beauty + PondTraitBeauty(pond);
                 if (pond.ecology.organisms != null)
                     for (int organismIndex = 0; organismIndex < pond.ecology.organisms.Count; organismIndex++)
                     {
@@ -341,6 +368,7 @@ namespace AquacultureFishing
                 pond.beauty = beauty;
                 pond.beautyDirty = false;
                 pond.menuSnapshot = null;
+                float cropGrowth = PondTraitCropGrowth(pond);
                 for (int pondCellIndex = 0; pondCellIndex < pond.info.cells.Count; pondCellIndex++)
                 {
                     IntVec3 pondCell = pond.info.cells[pondCellIndex];
@@ -351,6 +379,17 @@ namespace AquacultureFishing
                         if (!beautyByCell.TryGetValue(cell, out float current) || contribution > current) beautyByCell[cell] = contribution;
                     }
                 }
+                if (cropGrowth > 0f)
+                    for (int pondCellIndex = 0; pondCellIndex < pond.info.cells.Count; pondCellIndex++)
+                    {
+                        IntVec3 pondCell = pond.info.cells[pondCellIndex];
+                        foreach (IntVec3 cell in GenRadial.RadialCellsAround(pondCell, 6f, true))
+                        {
+                            if (!cell.InBounds(map)) continue;
+                            float contribution = cropGrowth * Mathf.Clamp01(1f - pondCell.DistanceTo(cell) / 7f);
+                            if (!cropGrowthByCell.TryGetValue(cell, out float current) || contribution > current) cropGrowthByCell[cell] = contribution;
+                        }
+                    }
             }
         }
     }
@@ -374,13 +413,14 @@ namespace AquacultureFishing
             {
                 CompFishTraits fish = thing.TryGetComp<CompFishTraits>();
                 if (stat == StatDefOf.Beauty) __result += fish.BeautyOffset;
+                if (stat == StatDefOf.Mass) __result *= fish.MassFactor;
                 if (stat == StatDefOf.Nutrition) __result *= fish.NutritionMultiplier;
                 if (stat == StatDefOf.MarketValue && fish.Breed != null) __result *= fish.Breed.MarketValueFactor;
             }
-            else if (stat == StatDefOf.Nutrition && thing.def.defName == "AF_FishMeat")
+            else if (stat == StatDefOf.Nutrition)
             {
-                CompFishMeatTraits meat = thing.TryGetComp<CompFishMeatTraits>();
-                if (meat != null) __result *= meat.nutritionMultiplier;
+                CompFishFoodTraits food = thing.TryGetComp<CompFishFoodTraits>();
+                if (food != null) __result *= food.nutritionMultiplier;
             }
         }
     }
@@ -390,23 +430,33 @@ namespace AquacultureFishing
     {
         public static void Postfix(RecipeDef recipeDef, List<Thing> ingredients, ref IEnumerable<Thing> __result)
         {
-            if (recipeDef?.defName != "AF_ProcessDeadFish" || ingredients == null || __result == null) return;
-            Thing dead = ingredients.FirstOrDefault(thing => thing.TryGetComp<CompFishTraits>() is CompFishTraits traits && !traits.IsAlive);
-            if (dead == null) return;
-            __result = Adjust(__result, dead.TryGetComp<CompFishTraits>());
+            if (recipeDef == null || ingredients == null || __result == null) return;
+            CompFishTraits dead = ingredients.Select(thing => thing.TryGetComp<CompFishTraits>()).FirstOrDefault(traits => traits != null && !traits.IsAlive);
+            float nutrition = dead?.NutritionMultiplier ?? 1f;
+            bool delicious = dead?.ActiveTraits.Any(trait => trait.pondEffect?.delicious == true) == true;
+            foreach (Thing ingredient in ingredients)
+            {
+                CompFishFoodTraits source = ingredient.TryGetComp<CompFishFoodTraits>();
+                if (source == null) continue;
+                nutrition = Mathf.Max(nutrition, source.nutritionMultiplier);
+                delicious |= source.delicious;
+            }
+            if (dead == null && nutrition <= 1.001f && !delicious) return;
+            __result = InheritFoodTraits(__result, recipeDef.defName == "AF_ProcessDeadFish" ? dead?.MeatYield ?? 1f : 1f,
+                nutrition, delicious);
         }
 
-        private static IEnumerable<Thing> Adjust(IEnumerable<Thing> products, CompFishTraits dead)
+        private static IEnumerable<Thing> InheritFoodTraits(IEnumerable<Thing> products, float yieldFactor,
+            float nutritionMultiplier, bool delicious)
         {
-            float yield = dead.MeatYield;
-            float nutrition = dead.NutritionMultiplier;
             foreach (Thing product in products)
             {
-                if (product.def.defName == "AF_FishMeat")
+                if (product.def.defName == "AF_FishMeat") product.stackCount = Mathf.Max(1, Mathf.RoundToInt(product.stackCount * yieldFactor));
+                CompFishFoodTraits comp = product.TryGetComp<CompFishFoodTraits>();
+                if (comp != null)
                 {
-                    product.stackCount = Mathf.Max(1, Mathf.RoundToInt(product.stackCount * yield));
-                    CompFishMeatTraits comp = product.TryGetComp<CompFishMeatTraits>();
-                    if (comp != null) comp.nutritionMultiplier = nutrition;
+                    comp.nutritionMultiplier = Mathf.Max(comp.nutritionMultiplier, nutritionMultiplier);
+                    comp.delicious |= delicious;
                 }
                 yield return product;
             }

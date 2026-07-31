@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+  <ThingDef ParentName="BaseWeapon">
+    <defName>AF_FishingRod</defName>
+    <label>fishing rod</label>
+    <description>A simple fishing rod. Its handle, rod, reel, line, and lure can be upgraded on this individual item.</description>
+    <graphicData>
+      <texPath>Things/Item/Equipment/FishingRod</texPath>
+      <graphicClass>Graphic_Single</graphicClass>
+      <drawSize>(1.4,1.4)</drawSize>
+    </graphicData>
+    <techLevel>Neolithic</techLevel>
+    <thingCategories><li>WeaponsRanged</li></thingCategories>
+    <weaponClasses><li>Ranged</li></weaponClasses>
+    <tradeTags><li>WeaponRanged</li></tradeTags>
+    <costList><WoodLog>20</WoodLog><Cloth>5</Cloth></costList>
+    <statBases><WorkToMake>1200</WorkToMake><Mass>0.8</Mass><MarketValue>38</MarketValue></statBases>
+    <tools>
+      <li>
+        <label>rod</label>
+        <capacities><li>Blunt</li><li>Poke</li></capacities>
+        <power>5</power>
+        <cooldownTime>2.4</cooldownTime>
+      </li>
+    </tools>
+    <recipeMaker>
+      <workSpeedStat>GeneralLaborSpeed</workSpeedStat><workSkill>Crafting</workSkill>
+      <effectWorking>Smith</effectWorking><soundWorking>Recipe_Smith</soundWorking>
+      <recipeUsers><li>CraftingSpot</li><li>FueledSmithy</li><li>ElectricSmithy</li></recipeUsers>
+      <skillRequirements><Crafting>2</Crafting></skillRequirements>
+    </recipeMaker>
+    <comps><li Class="AquacultureFishing.CompProperties_FishingRodTackle"/></comps>
+    <modExtensions><li Class="AquacultureFishing.FishingRodExtension"><baseMaximumFishMass>1</baseMaximumFishMass></li></modExtensions>
+  </ThingDef>
+</Defs>

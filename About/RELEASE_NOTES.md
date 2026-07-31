@@ -11,7 +11,29 @@ Research gates can be disabled in General settings for sandbox play.
 
 ## Field Journal And Breeds
 
+Fishing jobs now use visible Cast, Wait, and Reel phases. Fishing requires an equipped fishing rod; lure and expertise control the Wait phase, reel tackle and expertise control the Reel phase, and line strength, species knowledge, expertise, and Max Fish Mass participate in catch resolution. Fish mass is derived from the loaded Mass stat and the hooked individual's size-related traits.
+
+Fishing rods now carry per-item Handle, Rod, Reel, Line, and Lure modifications. The equipped rod's Tackle gizmo opens an aligned Name, Effects, and Cost comparison window. Rod and Line parts affect Max Fish Mass, Rod parts do not affect Reel Time, and the default lure is None. Changes create Crafting work with def-defined materials, skill, work, and research requirements instead of installing instantly; installed and pending parts persist on that rod.
+
+Tackle material costs use RimWorld 1.6's keyed `ThingDefCountClass` format, and the default fishing rod includes a valid low-power melee tool so it passes equipment configuration validation.
+
+Rodless fishing is rejected by the VFE and Odyssey job producers before `StartJob()` rather than by changing a successful reservation result afterward. Empty saved tackle keys are also handled without passing null names to `DefDatabase`, preventing upgrade WorkGiver float-menu exceptions on rods without a pending upgrade.
+
+Pending rod upgrades are event-indexed. Work scans inspect only rods with pending state and keep ingredient pathfinding out of `HasJobOnThing`; failed allocations retry after 600 ticks instead of repeating every scan.
+
+Added Delicious, Beautiful, Healing, Playful, Calming, Energizing, Cleansing, Aromatic, Cooling, Warming, Therapeutic, Luxurious, Sparkling, Friendly, Grazer, Fertilizing, Oxygenator, Anima, and Lunar traits, while extending the existing Nutritious and Curious traits. Connected ponds aggregate these effects from living fish with square-root diminishing returns and def-configured caps.
+
+Selected colonists can now right-click a safe constructed pond containing living fish and choose **Enter Pond**. Swimming is an interruptible recreation job that validates health, schedule, danger, reachability, reservation, and temperature. Temporary bonuses are collected in one refreshable **Spent Time in Pond** hediff. Fish nutrition and Delicious provenance propagate through prepared food without repeated recipe multiplication.
+
 Fishing attempts now bind to one fish species currently present in the selected water. Animals skill, species knowledge, and five-state fishing expertise (Untrained, Novice, Adept, Expert, Master) affect catch duration and escape chance. Successful catches advance both knowledge and expertise. Per-species minimum expertise is configurable for every dynamically discovered fish definition.
+
+Natural ponds, lakes, rivers, marshes, coasts, and oceans now receive deterministic habitat populations shared across each connected water body. Smooth connected-cell curves make roughly 70 cells support two or three compatible species and treat 500 cells as a large source with six or more when habitat and biome compatibility permit. Every generated species receives a viable founding population. Common fish dominate, uncommon fish are sparser, and rare fish become more likely only as compatible diversity grows. Species defs may restrict habitat, biome, temperature, and season or tune rarity, density, and suitability.
+
+Initial generation now fills the diversity target using only compatible, currently present species; incompatible, extinct, or sub-present framework entries no longer consume species slots. Capacity is divided across the selected species with a breeding-viable floor, and records produced by the earlier underfilled generator receive one additive repair. The bottom-left water readout lists every species in the shared population ledger with an estimated count.
+
+The Odyssey Fishing tab now shows the authoritative connected-water total, capacity, and every present species with its estimated population. Connected-water membership and prepared UI summaries are cached, terrain invalidation is debounced, and lifecycle simulation wakes only at configured habitat intervals; UI and routine fishing queries no longer repeat region discovery, stable-anchor sorting, or per-frame population formatting.
+
+Existing Odyssey populations and VFE zone species seed additive natural-water records. After initialization, ponds, lakes, and marshes are closed populations: viable survivors breed under capacity, natural mortality and explicit gameplay events change abundance, and local extinction persists until explicit compatible stocking. Rivers, coastal waters, and oceans instead receive small pressure- and region-weighted migration updates. All lifecycle work runs at a def-configured infrequent cadence, and over-cap legacy populations rebalance gradually. Successful catches consume one unit from the shared connected-body population, while different fishing spots retain small deterministic differences in species weight.
 
 The Field Journal includes an Expertise tab for selecting a colonist, reviewing level progress and per-species knowledge, and identifying expertise-locked fish. The Breeds tab and breed summary remain hidden until Selective Fish Breeding is available.
 

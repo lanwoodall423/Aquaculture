@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+  <AquacultureFishing.FishPopulationHabitatDef>
+    <defName>AF_FishHabitat_Pond</defName><label>pond fish habitat</label><habitat>Pond</habitat><pondMaximumCells>120</pondMaximumCells>
+    <populationPerCell>0.18</populationPerCell><carryingCapacityFactor>1</carryingCapacityFactor><minimumPopulation>2</minimumPopulation><maximumPopulation>24</maximumPopulation>
+    <diversityCurve><points><li>(0,0)</li><li>(25,1)</li><li>(70,2)</li><li>(150,3)</li><li>(300,3)</li><li>(500,3)</li></points></diversityCurve>
+    <maximumDiversity>3</maximumDiversity><minimumViablePopulation>3</minimumViablePopulation><minimumBreedingPopulation>3</minimumBreedingPopulation><localVariation>0.18</localVariation>
+    <updateIntervalTicks>60000</updateIntervalTicks><breedingPerDay>0.045</breedingPerDay><naturalMortalityPerDay>0.012</naturalMortalityPerDay><migrationPerDay>0</migrationPerDay><maximumMigrationPerDay>0</maximumMigrationPerDay><rebalancePerDay>0.05</rebalancePerDay>
+  </AquacultureFishing.FishPopulationHabitatDef>
+  <AquacultureFishing.FishPopulationHabitatDef>
+    <defName>AF_FishHabitat_Lake</defName><label>lake fish habitat</label><habitat>Lake</habitat>
+    <populationPerCell>0.14</populationPerCell><carryingCapacityFactor>1</carryingCapacityFactor><minimumPopulation>2</minimumPopulation><maximumPopulation>500</maximumPopulation>
+    <diversityCurve><points><li>(0,0)</li><li>(25,1)</li><li>(70,2)</li><li>(110,3)</li><li>(150,3)</li><li>(225,4)</li><li>(300,4)</li><li>(400,6)</li><li>(500,7)</li><li>(800,9)</li></points></diversityCurve>
+    <maximumDiversity>10</maximumDiversity><minimumViablePopulation>3</minimumViablePopulation><minimumBreedingPopulation>3</minimumBreedingPopulation><localVariation>0.12</localVariation>
+    <updateIntervalTicks>60000</updateIntervalTicks><breedingPerDay>0.04</breedingPerDay><naturalMortalityPerDay>0.01</naturalMortalityPerDay><migrationPerDay>0</migrationPerDay><maximumMigrationPerDay>0</maximumMigrationPerDay><rebalancePerDay>0.05</rebalancePerDay>
+  </AquacultureFishing.FishPopulationHabitatDef>
+  <AquacultureFishing.FishPopulationHabitatDef>
+    <defName>AF_FishHabitat_River</defName><label>river fish habitat</label><habitat>River</habitat>
+    <populationPerCell>0.13</populationPerCell><carryingCapacityFactor>1.1</carryingCapacityFactor><minimumPopulation>2</minimumPopulation><maximumPopulation>450</maximumPopulation>
+    <diversityCurve><points><li>(0,0)</li><li>(25,1)</li><li>(70,2)</li><li>(110,3)</li><li>(150,3)</li><li>(225,4)</li><li>(300,5)</li><li>(400,6)</li><li>(500,7)</li><li>(800,9)</li></points></diversityCurve>
+    <maximumDiversity>10</maximumDiversity><minimumViablePopulation>3</minimumViablePopulation><minimumBreedingPopulation>3</minimumBreedingPopulation><localVariation>0.16</localVariation>
+    <updateIntervalTicks>60000</updateIntervalTicks><breedingPerDay>0.035</breedingPerDay><naturalMortalityPerDay>0.01</naturalMortalityPerDay><migrationPerDay>0.012</migrationPerDay><maximumMigrationPerDay>2</maximumMigrationPerDay><rebalancePerDay>0.05</rebalancePerDay>
+  </AquacultureFishing.FishPopulationHabitatDef>
+  <AquacultureFishing.FishPopulationHabitatDef>
+    <defName>AF_FishHabitat_Marsh</defName><label>marsh fish habitat</label><habitat>Marsh</habitat>
+    <populationPerCell>0.11</populationPerCell><carryingCapacityFactor>0.9</carryingCapacityFactor><minimumPopulation>2</minimumPopulation><maximumPopulation>180</maximumPopulation>
+    <diversityCurve><points><li>(0,0)</li><li>(25,1)</li><li>(70,2)</li><li>(110,3)</li><li>(150,3)</li><li>(225,4)</li><li>(300,4)</li><li>(500,6)</li></points></diversityCurve>
+    <maximumDiversity>7</maximumDiversity><minimumViablePopulation>3</minimumViablePopulation><minimumBreedingPopulation>3</minimumBreedingPopulation><localVariation>0.2</localVariation>
+    <updateIntervalTicks>60000</updateIntervalTicks><breedingPerDay>0.035</breedingPerDay><naturalMortalityPerDay>0.015</naturalMortalityPerDay><migrationPerDay>0</migrationPerDay><maximumMigrationPerDay>0</maximumMigrationPerDay><rebalancePerDay>0.05</rebalancePerDay>
+  </AquacultureFishing.FishPopulationHabitatDef>
+  <AquacultureFishing.FishPopulationHabitatDef>
+    <defName>AF_FishHabitat_Coastal</defName><label>coastal fish habitat</label><habitat>Coastal</habitat>
+    <populationPerCell>0.15</populationPerCell><carryingCapacityFactor>1.1</carryingCapacityFactor><minimumPopulation>2</minimumPopulation><maximumPopulation>650</maximumPopulation>
+    <diversityCurve><points><li>(0,0)</li><li>(25,1)</li><li>(70,2)</li><li>(110,3)</li><li>(150,3)</li><li>(225,4)</li><li>(300,5)</li><li>(400,6)</li><li>(500,8)</li><li>(800,11)</li></points></diversityCurve>
+    <maximumDiversity>12</maximumDiversity><minimumViablePopulation>3</minimumViablePopulation><minimumBreedingPopulation>3</minimumBreedingPopulation><localVariation>0.15</localVariation>
+    <updateIntervalTicks>60000</updateIntervalTicks><breedingPerDay>0.035</breedingPerDay><naturalMortalityPerDay>0.009</naturalMortalityPerDay><migrationPerDay>0.012</migrationPerDay><maximumMigrationPerDay>2</maximumMigrationPerDay><rebalancePerDay>0.05</rebalancePerDay>
+  </AquacultureFishing.FishPopulationHabitatDef>
+  <AquacultureFishing.FishPopulationHabitatDef>
+    <defName>AF_FishHabitat_Ocean</defName><label>ocean fish habitat</label><habitat>Ocean</habitat><minimumCells>800</minimumCells>
+    <populationPerCell>0.12</populationPerCell><carryingCapacityFactor>1.25</carryingCapacityFactor><minimumPopulation>2</minimumPopulation><maximumPopulation>1200</maximumPopulation>
+    <diversityCurve><points><li>(0,0)</li><li>(25,1)</li><li>(70,2)</li><li>(110,3)</li><li>(150,3)</li><li>(225,4)</li><li>(300,5)</li><li>(400,6)</li><li>(500,8)</li><li>(800,12)</li><li>(1500,16)</li></points></diversityCurve>
+    <maximumDiversity>16</maximumDiversity><minimumViablePopulation>3</minimumViablePopulation><minimumBreedingPopulation>3</minimumBreedingPopulation><localVariation>0.1</localVariation>
+    <updateIntervalTicks>60000</updateIntervalTicks><breedingPerDay>0.03</breedingPerDay><naturalMortalityPerDay>0.008</naturalMortalityPerDay><migrationPerDay>0.015</migrationPerDay><maximumMigrationPerDay>3</maximumMigrationPerDay><rebalancePerDay>0.05</rebalancePerDay>
+  </AquacultureFishing.FishPopulationHabitatDef>
+</Defs>

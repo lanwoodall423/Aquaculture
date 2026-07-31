@@ -61,12 +61,23 @@ namespace AquacultureFishing
         public float substrateDemand = -1f;
         public float currentDemand = -1f;
         public float openWaterDemand = -1f;
+        public List<NaturalWaterHabitat> compatibleHabitats;
+        public List<FishHabitatPreference> habitatPreferences;
+        public List<BiomeDef> compatibleBiomes;
+        public List<BiomeDef> excludedBiomes;
+        public List<Season> populationSeasons;
+        public float populationMinimumTemperature = -999f;
+        public float populationMaximumTemperature = -999f;
+        public FishPopulationRarity populationRarity = FishPopulationRarity.Common;
+        public float populationDensity = 1f;
     }
 
     public sealed class AquaticSpeciesProfile
     {
         private static readonly Dictionary<ThingDef, AquaticSpeciesProfile> Cache = new Dictionary<ThingDef, AquaticSpeciesProfile>();
         private static readonly Dictionary<ThingDef, PondWaterKind> DependencyWater = new Dictionary<ThingDef, PondWaterKind>();
+        private static readonly Dictionary<ThingDef, float> DependencyCommonality = new Dictionary<ThingDef, float>();
+        private static readonly Dictionary<ThingDef, HashSet<string>> DependencyBiomes = new Dictionary<ThingDef, HashSet<string>>();
         private static bool dependencyScanned;
 
         public FishDiet diet;
@@ -121,6 +132,19 @@ namespace AquacultureFishing
 
         public static bool WaterCompatible(PondWaterKind fish, PondWaterKind pond) => fish == PondWaterKind.Brackishwater || fish == pond;
 
+        public static float PopulationCommonality(ThingDef fish)
+        {
+            EnsureDependencyMetadata();
+            return fish != null && DependencyCommonality.TryGetValue(fish, out float value) ? Mathf.Max(0.01f, value) : 1f;
+        }
+
+        public static bool PopulationBiomeCompatible(ThingDef fish, BiomeDef biome)
+        {
+            EnsureDependencyMetadata();
+            return fish == null || biome == null || !DependencyBiomes.TryGetValue(fish, out HashSet<string> biomes) ||
+                biomes.Count == 0 || biomes.Contains(biome.defName);
+        }
+
         private static void EnsureDependencyMetadata()
         {
             if (dependencyScanned) return;
@@ -134,6 +158,10 @@ namespace AquacultureFishing
                 FieldInfo thingField = AccessTools.Field(type, "thingDef");
                 FieldInfo freshField = AccessTools.Field(type, "canBeFreshwater");
                 FieldInfo saltField = AccessTools.Field(type, "canBeSaltwater");
+                FieldInfo commonalityField = AccessTools.Field(type, "commonality");
+                FieldInfo allowedBiomesField = AccessTools.Field(type, "allowedBiomes");
+                FieldInfo anyBiomeField = AccessTools.Field(type, "anyBiomeAllowed");
+                Dictionary<string, HashSet<string>> biomeGroups = DependencyBiomeGroups();
                 if (defs == null || thingField == null) return;
                 foreach (object fishDef in defs)
                 {
@@ -142,9 +170,39 @@ namespace AquacultureFishing
                     bool fresh = freshField != null && (bool)freshField.GetValue(fishDef);
                     bool salt = saltField != null && (bool)saltField.GetValue(fishDef);
                     DependencyWater[thing] = fresh && salt ? PondWaterKind.Brackishwater : salt ? PondWaterKind.Saltwater : PondWaterKind.Freshwater;
+                    if (commonalityField?.GetValue(fishDef) is float commonality) DependencyCommonality[thing] = commonality;
+                    bool anyBiome = anyBiomeField != null && (bool)anyBiomeField.GetValue(fishDef);
+                    if (!anyBiome && allowedBiomesField?.GetValue(fishDef) is IEnumerable<string> allowed)
+                    {
+                        var resolved = new HashSet<string>();
+                        foreach (string key in allowed.Where(value => !value.NullOrEmpty()))
+                        {
+                            if (DefDatabase<BiomeDef>.GetNamedSilentFail(key) != null) resolved.Add(key);
+                            if (biomeGroups.TryGetValue(key, out HashSet<string> grouped)) resolved.UnionWith(grouped);
+                        }
+                        if (resolved.Count > 0) DependencyBiomes[thing] = resolved;
+                    }
                 }
             }
             catch (Exception exception) { Log.Warning("[Aquaculture - Fishing] Could not read fishing water metadata: " + exception.Message); }
+        }
+
+        private static Dictionary<string, HashSet<string>> DependencyBiomeGroups()
+        {
+            var result = new Dictionary<string, HashSet<string>>();
+            Type type = AccessTools.TypeByName("VCE_Fishing.BiomeTempDef");
+            if (type == null) return result;
+            Type database = typeof(DefDatabase<>).MakeGenericType(type);
+            IEnumerable defs = AccessTools.Property(database, "AllDefsListForReading")?.GetValue(null) as IEnumerable;
+            FieldInfo biomesField = AccessTools.Field(type, "biomes");
+            if (defs == null || biomesField == null) return result;
+            foreach (object def in defs)
+            {
+                string key = (def as Def)?.defName;
+                if (key.NullOrEmpty() || !(biomesField.GetValue(def) is IEnumerable<string> biomes)) continue;
+                result[key] = new HashSet<string>(biomes.Where(value => !value.NullOrEmpty()));
+            }
+            return result;
         }
 
         private static FishDiet ClassifyDiet(string key)
@@ -397,6 +455,7 @@ namespace AquacultureFishing
         {
             PondEcologyRecord record = pond.ecology;
             UpdateHabitat(pond, hours);
+            ApplyPondTraitEcology(pond, hours);
             float capacity = Mathf.Max(0.1f, pond.info.cells.Count * 0.25f);
             float algaeGrowth = AquacultureMod.Settings?.algaeGrowthMultiplier ?? 1f;
             PondHabitatSnapshot habitat = EnsureHabitat(pond);

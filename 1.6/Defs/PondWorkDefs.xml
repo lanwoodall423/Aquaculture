@@ -27,6 +27,20 @@
     </requiredCapacities>
   </WorkGiverDef>
 
+  <JobDef>
+    <defName>AF_UpgradeFishingRod</defName>
+    <driverClass>AquacultureFishing.JobDriver_UpgradeFishingRod</driverClass>
+    <reportString>upgrading TargetA.</reportString>
+  </JobDef>
+  <WorkGiverDef>
+    <defName>AF_UpgradeFishingRod</defName>
+    <label>upgrade fishing rod</label>
+    <giverClass>AquacultureFishing.WorkGiver_UpgradeFishingRod</giverClass>
+    <workType>Crafting</workType>
+    <verb>upgrade</verb><gerund>upgrading fishing rod</gerund><priorityInType>108</priorityInType>
+    <requiredCapacities><li>Manipulation</li></requiredCapacities>
+  </WorkGiverDef>
+
   <DesignationDef>
     <defName>AF_RemovePondEggDesignation</defName>
     <label>remove pond egg</label>

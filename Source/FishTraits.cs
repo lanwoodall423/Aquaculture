@@ -7,7 +7,7 @@ using Verse;
 
 namespace AquacultureFishing
 {
-    public enum FishTraitKind { Color, Variegated, Scale, NumericSize, Nutritious, Age, Sex, Diet, Water, Finish, Body, Breeding, Behavior, Hardiness }
+    public enum FishTraitKind { Color, Variegated, Scale, NumericSize, Nutritious, Age, Sex, Diet, Water, Finish, Body, Breeding, Behavior, Hardiness, Effect }
     public enum FishPattern { None, Spotted, Striped }
     public enum FishDiet { Herbivore, Omnivore, Carnivore, Detritivore, FilterFeeder }
     public enum PondWaterKind { Freshwater, Saltwater, Brackishwater }
@@ -43,6 +43,7 @@ namespace AquacultureFishing
         public bool solitary;
         public bool curious;
         public float temperatureRangeOffset;
+        public FishTraitPondEffect pondEffect;
 
         public bool IsNumeric => kind == FishTraitKind.NumericSize || kind == FishTraitKind.Nutritious;
 
@@ -55,6 +56,8 @@ namespace AquacultureFishing
             if (IsNumeric && (minPercent <= 0 || maxPercent < minPercent || percentStep <= 0)) yield return defName + " has invalid percentage bounds.";
             if (opacity <= 0f || opacity > 1f) yield return defName + " opacity must be greater than zero and no more than one.";
             if (breedingCooldownFactor <= 0f) yield return defName + " must have a positive breedingCooldownFactor.";
+            if (pondEffect != null)
+                foreach (string error in pondEffect.ConfigErrors(defName)) yield return error;
         }
     }
 
@@ -179,6 +182,7 @@ namespace AquacultureFishing
             else if (trait.solitary) result = "Does not align or cohere with a school";
             else if (trait.curious) result = "Approaches colonists watching the pond";
             else if (trait.temperatureRangeOffset > 0f) result = "Livable temperature range: " + trait.temperatureRangeOffset.ToString("0.#") + " C wider at both limits";
+            else if (trait.pondEffect != null) result = trait.pondEffect.summary.NullOrEmpty() ? "Affects pawns swimming in its pond" : trait.pondEffect.summary;
             if (!Mathf.Approximately(trait.beautyOffset, 0f)) result += "; beauty: " + (trait.beautyOffset > 0f ? "+" : "") + trait.beautyOffset.ToString("0.#");
             return result;
         }
