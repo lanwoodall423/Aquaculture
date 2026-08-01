@@ -10,3 +10,4 @@ C:\Games\Steam\steamapps\common\RimWorld\Mods\AquacultureFishing\Source\obj\Rele
 C:\Games\Steam\steamapps\common\RimWorld\Mods\AquacultureFishing\Source\obj\Release\AquacultureFishing.dll
 C:\Games\Steam\steamapps\common\RimWorld\Mods\AquacultureFishing\Source\Build\AquacultureFishing.dll
 C:\Games\Steam\steamapps\common\RimWorld\Mods\AquacultureFishing\1.6\Assemblies\AquacultureFishing.dll
+C:\Games\Steam\steamapps\common\RimWorld\Mods\AquacultureFishing\Source\CompatibilityValidation\AquacultureFishing.dll
