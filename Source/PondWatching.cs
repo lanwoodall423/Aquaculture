@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using RimWorld;
 using UnityEngine;
 using Verse;
@@ -30,6 +31,7 @@ namespace AquacultureFishing
             public PondState pond;
             public Vector2 target;
             public int expiresAt;
+            public int nextObservationTick;
         }
 
         private readonly Dictionary<Pawn, PondWatcherState> pondWatchers = new Dictionary<Pawn, PondWatcherState>();
@@ -61,7 +63,18 @@ namespace AquacultureFishing
                 }
                 pondWatchers[pawn] = state;
             }
-            state.expiresAt = (Find.TickManager?.TicksGame ?? 0) + 120;
+            int now = Find.TickManager?.TicksGame ?? 0;
+            state.expiresAt = now + 120;
+            if (now < state.nextObservationTick) return;
+            state.nextObservationTick = now + 2500;
+            foreach (IGrouping<ThingDef, CompFishTraits> group in pond.fish.Where(fish => fish?.IsAlive == true)
+                .GroupBy(fish => fish.parent.def).Take(3))
+            {
+                CompFishTraits observed = group.FirstOrDefault();
+                AquacultureEventRouter.FishObserved(observed, pawn, "watched_pond");
+                AquacultureEventRouter.Ecology(AquacultureEventKind.PopulationSurveyed, map, pond.info.anchor,
+                    group.Key, group.Count(), "Pond watch produced an uncertainty-bounded population estimate.");
+            }
         }
 
         private bool TryGetCuriousTarget(PondState pond, out Vector2 target)

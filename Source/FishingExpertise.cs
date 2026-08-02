@@ -45,14 +45,12 @@ namespace AquacultureFishing
         public float expertiseExperience;
         public Dictionary<string, float> speciesKnowledge = new Dictionary<string, float>();
 
-        public KnowledgeRank ExpertiseLevel => FishingProgressionUtility.LevelFor(expertiseExperience);
-        public float ExpertiseProgress => FishingProgressionUtility.ProgressFor(expertiseExperience);
+        public KnowledgeRank ExpertiseLevel => AquacultureKnowledgeAdapter.ExpertiseRankFor(pawn);
+        public float ExpertiseProgress => AquacultureKnowledgeAdapter.ExpertiseProgressFor(pawn);
 
         public float KnowledgeFor(ThingDef fishDef)
         {
-            return fishDef != null && speciesKnowledge.TryGetValue(fishDef.defName, out float value)
-                ? Mathf.Clamp01(value)
-                : 0f;
+            return AquacultureKnowledgeAdapter.SpeciesKnowledgeFor(pawn, fishDef);
         }
 
         public void ExposeData()
@@ -80,6 +78,9 @@ namespace AquacultureFishing
         public int startedTick;
         public bool biteDecided;
         public bool fishBit;
+        public bool feedbackBiteShown;
+        public int biteTick = -1;
+        public int waitDuration;
         public float hookedFishMass;
         public List<string> hookedTraitNames = new List<string>();
         public Dictionary<string, float> hookedTraitValues = new Dictionary<string, float>();
@@ -96,6 +97,9 @@ namespace AquacultureFishing
             Scribe_Values.Look(ref startedTick, "startedTick");
             Scribe_Values.Look(ref biteDecided, "biteDecided");
             Scribe_Values.Look(ref fishBit, "fishBit");
+            Scribe_Values.Look(ref feedbackBiteShown, "feedbackBiteShown");
+            Scribe_Values.Look(ref biteTick, "biteTick", -1);
+            Scribe_Values.Look(ref waitDuration, "waitDuration");
             Scribe_Values.Look(ref hookedFishMass, "hookedFishMass");
             Scribe_Collections.Look(ref hookedTraitNames, "hookedTraitNames", LookMode.Value);
             Scribe_Collections.Look(ref hookedTraitValues, "hookedTraitValues", LookMode.Value, LookMode.Value);
@@ -242,33 +246,66 @@ namespace AquacultureFishing
             return attempts.LastOrDefault(item => item.pawn == pawn && (framework == null || item.framework == framework));
         }
 
+        public FishingAttemptRecord BeginAttempt(Pawn pawn, IntVec3 cell, string framework, int waitDuration)
+        {
+            if (pawn == null || pawn.Map == null) return null;
+            attempts.RemoveAll(item => item.pawn == pawn);
+            var attempt = new FishingAttemptRecord
+            {
+                pawn = pawn,
+                waterCell = cell,
+                framework = framework,
+                startedTick = Find.TickManager?.TicksGame ?? 0,
+                biteDecided = false,
+                fishBit = false,
+                waitDuration = Mathf.Max(1, waitDuration),
+                biteTick = -1
+            };
+            attempts.Add(attempt);
+            AquacultureEventRouter.FishingStarted(pawn, pawn.Map, cell, framework);
+            return attempt;
+        }
+
+        public FishingAttemptRecord ProgressWait(Pawn pawn, string framework, IEnumerable<ThingDef> presentSpecies,
+            Func<ThingDef, float> attraction, int elapsedTicks, int waitDuration)
+        {
+            FishingAttemptRecord attempt = AttemptFor(pawn, framework);
+            if (attempt == null) return null;
+            attempt.waitDuration = Mathf.Max(1, waitDuration);
+            if (!attempt.biteDecided && elapsedTicks >= Mathf.Max(30, Mathf.RoundToInt(attempt.waitDuration * 0.35f)))
+                DecideBite(attempt, presentSpecies, attraction);
+            return attempt;
+        }
+
         public FishingAttemptRecord Pair(Pawn pawn, IntVec3 cell, string framework, IEnumerable<ThingDef> presentSpecies,
             Func<ThingDef, float> attraction = null)
         {
             if (pawn == null || pawn.Map == null) return null;
-            attempts.RemoveAll(item => item.pawn == pawn);
-            KnowledgeRank level = ProgressFor(pawn, false)?.ExpertiseLevel ?? KnowledgeRank.Novice;
+            FishingAttemptRecord attempt = BeginAttempt(pawn, cell, framework, BaseWaitTicksForLegacyPair());
+            DecideBite(attempt, presentSpecies, attraction);
+            return attempt;
+        }
+
+        private void DecideBite(FishingAttemptRecord attempt, IEnumerable<ThingDef> presentSpecies, Func<ThingDef, float> attraction)
+        {
+            if (attempt == null || attempt.biteDecided) return;
+            KnowledgeRank level = ProgressFor(attempt.pawn, false)?.ExpertiseLevel ?? KnowledgeRank.Novice;
             List<ThingDef> eligible = presentSpecies?.Where(FishUtility.IsFish).Distinct()
                 .Where(fish => (AquacultureMod.Settings?.MinimumExpertiseFor(fish) ?? KnowledgeRank.Novice) <= level)
                 .ToList() ?? new List<ThingDef>();
-            NaturalFishPopulationMapComponent populations = pawn.Map.GetComponent<NaturalFishPopulationMapComponent>();
+            NaturalFishPopulationMapComponent populations = attempt.pawn.Map.GetComponent<NaturalFishPopulationMapComponent>();
             ThingDef selected = eligible.Count == 0 ? null : eligible.RandomElementByWeight(fish => Mathf.Max(0.01f,
-                (attraction?.Invoke(fish) ?? 1f) * (populations?.LocalWeight(cell, fish) ?? 1f)));
-            bool fishBit = selected != null && Rand.Chance(FishingProgressionUtility.BiteChance(pawn, selected));
-            var attempt = new FishingAttemptRecord
-            {
-                pawn = pawn,
-                fishDefName = selected?.defName,
-                waterCell = cell,
-                framework = framework,
-                startedTick = Find.TickManager?.TicksGame ?? 0,
-                biteDecided = true,
-                fishBit = fishBit
-            };
+                (attraction?.Invoke(fish) ?? 1f) * (populations?.LocalWeight(attempt.waterCell, fish) ?? 1f)));
+            bool fishBit = selected != null && Rand.Chance(FishingProgressionUtility.BiteChance(attempt.pawn, selected));
+            attempt.fishDefName = selected?.defName;
+            attempt.biteDecided = true;
+            attempt.fishBit = fishBit;
+            attempt.biteTick = Find.TickManager?.TicksGame ?? 0;
             attempt.CaptureHookedFish();
-            attempts.Add(attempt);
-            return attempt;
+            AquacultureEventRouter.FishHooked(attempt);
         }
+
+        private static int BaseWaitTicksForLegacyPair() => Mathf.Max(300, FishingRodUtility.BaseWaitTicks);
 
         public bool Resolve(Pawn pawn, string framework, Func<FishingAttemptRecord, bool> stillAvailable, out FishingAttemptRecord attempt)
         {
@@ -280,7 +317,12 @@ namespace AquacultureFishing
                 (ProgressFor(pawn, false)?.ExpertiseLevel ?? KnowledgeRank.Novice);
             bool capacityPassed = allowed && attempt.HookedFishMass <= rod.MaxFishMass;
             bool caught = capacityPassed && !Rand.Chance(FishingProgressionUtility.EscapeChance(pawn, attempt.FishDef));
-            if (!caught) attempts.Remove(attempt);
+            if (!caught)
+            {
+                attempts.Remove(attempt);
+                AquacultureEventRouter.FishEscaped(attempt, rod == null ? "No suitable rod was equipped." :
+                    capacityPassed ? "The fish slipped the hook." : "The fish was too heavy for the line.");
+            }
             return caught;
         }
 
@@ -288,14 +330,15 @@ namespace AquacultureFishing
         {
             if (attempt?.pawn == null || attempt.FishDef == null) return;
             PawnFishingProgress progress = ProgressFor(attempt.pawn);
-            float knowledge = progress.KnowledgeFor(attempt.FishDef);
+            float knowledge = progress.speciesKnowledge.TryGetValue(attempt.fishDefName, out float legacyKnowledge)
+                ? Mathf.Clamp01(legacyKnowledge) : 0f;
             progress.speciesKnowledge[attempt.fishDefName] = Mathf.Clamp01(knowledge + 0.08f + (1f - knowledge) * 0.04f);
             KnowledgeRank required = AquacultureMod.Settings?.MinimumExpertiseFor(attempt.FishDef) ?? KnowledgeRank.Novice;
             progress.expertiseExperience += 8f + (int)required * 2f + (1f - knowledge) * 4f;
             attempt.pawn.Map?.GetComponent<NaturalFishPopulationMapComponent>()?.ConsumeCatch(attempt.waterCell, attempt.FishDef);
             attempts.Remove(attempt);
-            AquacultureJournalComponent.Current?.NotifyFishingCatch(attempt.FishDef, attempt.pawn);
-            KnowledgeProviderRegistry.Invalidate(attempt.pawn);
+            AquacultureEventRouter.FishCaught(attempt);
+            AquacultureKnowledgeAdapter.Invalidate(attempt.pawn);
         }
     }
 
@@ -342,12 +385,39 @@ namespace AquacultureFishing
             return attempt;
         }
 
+        public static FishingAttemptRecord ProgressVfe(object driver, int elapsedTicks, int waitDuration)
+        {
+            Pawn pawn = PawnFor(driver);
+            object zone = VfeZoneFor(driver);
+            IntVec3 cell = WaterCellFor(driver);
+            IEnumerable<ThingDef> frameworkSpecies = VfeSpecies(zone);
+            IEnumerable<ThingDef> species = pawn?.Map?.GetComponent<NaturalFishPopulationMapComponent>()?
+                .SpeciesAt(cell, frameworkSpecies) ?? frameworkSpecies;
+            FishingAttemptRecord attempt = FishingProgressionComponent.Current?.ProgressWait(pawn, VfeFramework, species,
+                fish => FishingRodUtility.AttractionFor(pawn, fish), elapsedTicks, waitDuration);
+            if (attempt?.biteDecided == true)
+            {
+                AccessTools.Field(driver?.GetType(), "fishCaught")?.SetValue(driver, attempt.FishDef);
+                AccessTools.Field(driver?.GetType(), "fishAmount")?.SetValue(driver, 1);
+                AccessTools.Field(driver?.GetType(), "fishAmountWithSkill")?.SetValue(driver, 1);
+            }
+            return attempt;
+        }
+
         public static FishingAttemptRecord PairOdyssey(object driver)
         {
             Pawn pawn = PawnFor(driver);
             IntVec3 cell = WaterCellFor(driver);
             return FishingProgressionComponent.Current?.Pair(pawn, cell, OdysseyFramework,
                 OdysseySpecies(pawn, cell), fish => FishingRodUtility.AttractionFor(pawn, fish));
+        }
+
+        public static FishingAttemptRecord ProgressOdyssey(object driver, int elapsedTicks, int waitDuration)
+        {
+            Pawn pawn = PawnFor(driver);
+            IntVec3 cell = WaterCellFor(driver);
+            return FishingProgressionComponent.Current?.ProgressWait(pawn, OdysseyFramework,
+                OdysseySpecies(pawn, cell), fish => FishingRodUtility.AttractionFor(pawn, fish), elapsedTicks, waitDuration);
         }
 
         public static IEnumerable<ThingDef> OdysseySpecies(Pawn pawn, IntVec3 cell)
@@ -380,10 +450,16 @@ namespace AquacultureFishing
             return FishingRodUtility.HasEquippedRod(PawnFor(driver));
         }
 
-        public static void BeginWaitPhase(object driver, string framework)
+        public static void BeginWaitPhase(object driver, string framework, int waitDuration)
         {
-            if (framework == VfeFramework) PairVfe(driver);
-            else PairOdyssey(driver);
+            Pawn pawn = PawnFor(driver);
+            FishingProgressionComponent.Current?.BeginAttempt(pawn, WaterCellFor(driver), framework, waitDuration);
+        }
+
+        public static FishingAttemptRecord ProgressWaitPhase(object driver, string framework, int elapsedTicks, int waitDuration)
+        {
+            return framework == VfeFramework ? ProgressVfe(driver, elapsedTicks, waitDuration) :
+                ProgressOdyssey(driver, elapsedTicks, waitDuration);
         }
 
         public static IEnumerable<Toil> VfeMakeNewToilsPostfix(IEnumerable<Toil> __result, object __instance)

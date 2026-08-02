@@ -397,7 +397,7 @@ namespace AquacultureFishing
             int removed = pond.ecology.organisms?.RemoveAll(population => population.Organism?.Compatible(kind) != true) ?? 0;
             pond.ecology.waterKind = kind;
             pond.beautyDirty = true;
-            pond.menuSnapshot = null;
+            InvalidatePondSnapshot(pond);
             Messages.Message("The empty pond will be filled as " + WaterLabel(kind) +
                 (removed > 0 ? "; " + removed + " incompatible pond population" + (removed == 1 ? " was" : "s were") + " lost." : "."),
                 MessageTypeDefOf.TaskCompletion, false);
@@ -406,7 +406,11 @@ namespace AquacultureFishing
         public void AddPreparedFeed(IntVec3 cell, float amount)
         {
             EnsurePondState();
-            if (pondByCell.TryGetValue(cell, out PondState pond)) pond.ecology.preparedFeed = Mathf.Max(0f, pond.ecology.preparedFeed + amount);
+            if (pondByCell.TryGetValue(cell, out PondState pond))
+            {
+                pond.ecology.preparedFeed = Mathf.Max(0f, pond.ecology.preparedFeed + amount);
+                InvalidatePondSnapshot(pond);
+            }
         }
 
         public bool FishFitsWater(IntVec3 cell, CompFishTraits fish)
@@ -525,7 +529,32 @@ namespace AquacultureFishing
             for (int i = 0; i < ecologyDeaths.Count; i++) if (!ecologyDeaths[i].parent.Destroyed) ecologyDeaths[i].MarkDead();
             ApplyAutomaticHarvestPolicy(pond);
             pond.beautyDirty = true;
-            pond.menuSnapshot = null;
+            InvalidatePondSnapshot(pond);
+            PublishEcologySignal(pond);
+        }
+
+        private void PublishEcologySignal(PondState pond)
+        {
+            if (pond?.fish == null) return;
+            CompFishTraits stressed = pond.fish.FirstOrDefault(fish => fish?.IsAlive == true &&
+                !AquaticSpeciesProfile.WaterCompatible(fish.WaterKind, pond.ecology.waterKind));
+            if (stressed != null)
+            {
+                AquacultureEventRouter.Ecology(AquacultureEventKind.EcologyWarning, map, pond.info.anchor, stressed.parent.def,
+                    stressed.waterStress, stressed.parent.def.LabelCap + " is in incompatible water. Osmotic stress will worsen unless the fish is moved or the pond is refilled.");
+                return;
+            }
+            stressed = pond.fish.FirstOrDefault(fish => fish?.IsAlive == true && fish.starvationProgress > 0f);
+            if (stressed != null)
+            {
+                AquacultureEventRouter.Ecology(AquacultureEventKind.EcologyWarning, map, pond.info.anchor, stressed.parent.def,
+                    stressed.starvationProgress, stressed.parent.def.LabelCap + " is starving. Restore algae, pond organisms, or prepared feed to prevent loss.");
+                return;
+            }
+            stressed = pond.fish.FirstOrDefault(fish => fish?.IsAlive == true && fish.temperatureStress > 0f);
+            if (stressed != null)
+                AquacultureEventRouter.Ecology(AquacultureEventKind.EcologyWarning, map, pond.info.anchor, stressed.parent.def,
+                    stressed.temperatureStress, stressed.parent.def.LabelCap + " is temperature stressed. Adjust water temperature or move it to a suitable pond.");
         }
 
         private static void AllocatePlantPool(PondState pond, ref float pool, float totalDemand, bool algaePool)

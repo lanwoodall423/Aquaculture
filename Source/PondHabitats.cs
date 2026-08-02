@@ -128,7 +128,7 @@ namespace AquacultureFishing
             if (pondByCell.TryGetValue(cell, out PondState pond))
             {
                 pond.habitatDirty = true;
-                pond.menuSnapshot = null;
+                InvalidatePondSnapshot(pond);
                 pond.beautyDirty = true;
                 for (int i = 0; i < pond.schools.Count; i++) pond.schools[i].runtime.targetUntilTick = 0;
             }

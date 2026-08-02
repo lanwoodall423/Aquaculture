@@ -30,6 +30,8 @@ namespace AquacultureFishing
         public bool colonyBorn;
         public string breedId;
         public int breedGeneration;
+        public int parentOneThingId;
+        public int parentTwoThingId;
         public bool breedBirthRecorded;
         public bool breedMasteryAnnounced;
         public float foodReserve = 1f;
@@ -248,9 +250,9 @@ namespace AquacultureFishing
             if (!respawningAfterLoad)
             {
                 AquacultureJournalComponent journal = AquacultureJournalComponent.Current;
-                if (IsInPond) journal?.NotifyEstablished(this);
+                if (IsInPond) AquacultureEventRouter.FishEstablished(this);
                 else if (!colonyBorn) journal?.NotifyCaught(this, FindLikelyDiscoverer());
-                if (colonyBorn) journal?.NotifyColonyBorn(this);
+                if (colonyBorn) AquacultureEventRouter.ColonyBorn(this);
             }
         }
 
@@ -308,12 +310,20 @@ namespace AquacultureFishing
         public void InitializeFromEgg(IEnumerable<string> inheritedNames, IDictionary<string, float> inheritedValues,
             string inheritedBreedId, int inheritedBreedGeneration)
         {
+            InitializeFromEgg(inheritedNames, inheritedValues, inheritedBreedId, inheritedBreedGeneration, 0, 0);
+        }
+
+        public void InitializeFromEgg(IEnumerable<string> inheritedNames, IDictionary<string, float> inheritedValues,
+            string inheritedBreedId, int inheritedBreedGeneration, int parentOneId, int parentTwoId)
+        {
             initialized = true;
             alive = true;
             sterilized = false;
             colonyBorn = true;
             breedId = inheritedBreedId;
             breedGeneration = inheritedBreedGeneration;
+            parentOneThingId = parentOneId;
+            parentTwoThingId = parentTwoId;
             breedBirthRecorded = false;
             breedMasteryAnnounced = false;
             airExposureTicks = 0f;
@@ -422,6 +432,8 @@ namespace AquacultureFishing
             Scribe_Values.Look(ref colonyBorn, "colonyBorn");
             Scribe_Values.Look(ref breedId, "breedId");
             Scribe_Values.Look(ref breedGeneration, "breedGeneration");
+            Scribe_Values.Look(ref parentOneThingId, "parentOneThingId");
+            Scribe_Values.Look(ref parentTwoThingId, "parentTwoThingId");
             Scribe_Values.Look(ref breedBirthRecorded, "breedBirthRecorded");
             Scribe_Values.Look(ref breedMasteryAnnounced, "breedMasteryAnnounced");
             Scribe_Values.Look(ref foodReserve, "foodReserve", 1f);
@@ -540,6 +552,8 @@ namespace AquacultureFishing
             }
             return best;
         }
+
+        internal Pawn FindLikelyDiscovererForKnowledge() => FindLikelyDiscoverer();
     }
 
     public static class FishUtility

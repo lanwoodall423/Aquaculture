@@ -154,6 +154,19 @@ namespace AquacultureFishing
         }
     }
 
+    /// <summary>Prepared, uncertainty-preserving water data for map overlays and journal pages.</summary>
+    public sealed class NaturalWaterViewSnapshot
+    {
+        public IntVec3 anchor;
+        public NaturalWaterHabitat habitat;
+        public float totalPopulation;
+        public int carryingCapacity;
+        public readonly List<ThingDef> species = new List<ThingDef>();
+        public readonly Dictionary<ThingDef, int> estimates = new Dictionary<ThingDef, int>();
+
+        public string AbundanceLabel => "~" + Mathf.RoundToInt(totalPopulation) + " / " + carryingCapacity;
+    }
+
     public sealed class NaturalFishPopulationMapComponent : MapComponent
     {
         private static readonly IntVec3[] CardinalDirections =
@@ -165,6 +178,8 @@ namespace AquacultureFishing
         private readonly Dictionary<IntVec3, NaturalWaterPopulation> populationByCell = new Dictionary<IntVec3, NaturalWaterPopulation>();
         private readonly Dictionary<NaturalWaterPopulation, NaturalFishPopulationSummary> summaryByPopulation =
             new Dictionary<NaturalWaterPopulation, NaturalFishPopulationSummary>();
+        private readonly List<NaturalWaterViewSnapshot> preparedViews = new List<NaturalWaterViewSnapshot>();
+        private bool preparedViewsDirty = true;
         private int nextBalanceTick;
         private int topologyRebuildTick;
         private bool initializedAllBodies;
@@ -181,6 +196,8 @@ namespace AquacultureFishing
                 populations.RemoveAll(record => record == null || !record.anchor.IsValid);
                 populationByCell.Clear();
                 summaryByPopulation.Clear();
+                preparedViews.Clear();
+                preparedViewsDirty = true;
             }
         }
 
@@ -283,6 +300,8 @@ namespace AquacultureFishing
             int tick = Find.TickManager?.TicksGame ?? 0;
             topologyRebuildTick = tick + 60;
             nextBalanceTick = Mathf.Min(nextBalanceTick, topologyRebuildTick);
+            preparedViewsDirty = true;
+            AquacultureSnapshotCache.Invalidate();
         }
 
         public bool TryGetPreparedSummary(IntVec3 cell, out NaturalFishPopulationSummary summary)
@@ -290,6 +309,36 @@ namespace AquacultureFishing
             summary = null;
             return populationByCell.TryGetValue(cell, out NaturalWaterPopulation record) &&
                 summaryByPopulation.TryGetValue(record, out summary);
+        }
+
+        public IReadOnlyList<NaturalWaterViewSnapshot> PreparedWaterSnapshots
+        {
+            get
+            {
+                if (preparedViewsDirty)
+                {
+                    preparedViews.Clear();
+                    for (int i = 0; i < populations.Count; i++)
+                    {
+                        NaturalWaterPopulation population = populations[i];
+                        if (population == null || !summaryByPopulation.TryGetValue(population, out NaturalFishPopulationSummary summary)) continue;
+                        var view = new NaturalWaterViewSnapshot
+                        {
+                            anchor = population.anchor,
+                            habitat = population.habitat,
+                            totalPopulation = summary.totalPopulation,
+                            carryingCapacity = summary.carryingCapacity
+                        };
+                        view.species.AddRange(summary.presentSpecies);
+                        foreach (KeyValuePair<ThingDef, int> pair in summary.estimatedPopulation) view.estimates[pair.Key] = pair.Value;
+                        preparedViews.Add(view);
+                    }
+                    preparedViews.Sort((left, right) => left.anchor.z != right.anchor.z
+                        ? left.anchor.z.CompareTo(right.anchor.z) : left.anchor.x.CompareTo(right.anchor.x));
+                    preparedViewsDirty = false;
+                }
+                return preparedViews;
+            }
         }
 
         private NaturalWaterPopulation PreparedRecordAt(IntVec3 cell)
@@ -815,6 +864,8 @@ namespace AquacultureFishing
                 lines.Add("  " + displayLabel);
             }
             summary.readoutText = string.Join("\n", lines);
+            preparedViewsDirty = true;
+            AquacultureSnapshotCache.Invalidate();
         }
 
         private static Season NormalizeSeason(Season season)

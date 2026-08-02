@@ -15,6 +15,8 @@ namespace AquacultureFishing
         public Dictionary<string, float> inheritedValues = new Dictionary<string, float>();
         public string inheritedBreedId;
         public int inheritedBreedGeneration;
+        public int parentOneThingId;
+        public int parentTwoThingId;
         public int hatchTick;
 
         public override string GetInspectString()
@@ -33,6 +35,8 @@ namespace AquacultureFishing
             Scribe_Collections.Look(ref inheritedValues, "inheritedValues", LookMode.Value, LookMode.Value);
             Scribe_Values.Look(ref inheritedBreedId, "inheritedBreedId");
             Scribe_Values.Look(ref inheritedBreedGeneration, "inheritedBreedGeneration");
+            Scribe_Values.Look(ref parentOneThingId, "parentOneThingId");
+            Scribe_Values.Look(ref parentTwoThingId, "parentTwoThingId");
             Scribe_Values.Look(ref hatchTick, "hatchTick");
             if (inheritedTraits == null) inheritedTraits = new List<string>();
             if (inheritedValues == null) inheritedValues = new Dictionary<string, float>();
@@ -47,7 +51,7 @@ namespace AquacultureFishing
             Map map = Map;
             Thing fish = ThingMaker.MakeThing(fishDef);
             fish.TryGetComp<CompFishTraits>()?.InitializeFromEgg(inheritedTraits, inheritedValues,
-                inheritedBreedId, inheritedBreedGeneration);
+                inheritedBreedId, inheritedBreedGeneration, parentOneThingId, parentTwoThingId);
             Destroy();
             GenSpawn.Spawn(fish, cell, map);
         }
@@ -126,7 +130,7 @@ namespace AquacultureFishing
                 pondMembershipDirty = true;
                 if (pondByFish.TryGetValue(comp, out PondState pond))
                 {
-                    pond.menuSnapshot = null;
+                    InvalidatePondSnapshot(pond);
                     pond.beautyDirty = true;
                 }
             }
@@ -259,7 +263,9 @@ namespace AquacultureFishing
             Thing fish = ThingMaker.MakeThing(first.parent.def);
             BuildInheritance(first, second, out List<string> traits, out Dictionary<string, float> values,
                 out string breedId, out int breedGeneration);
-            fish.TryGetComp<CompFishTraits>()?.InitializeFromEgg(traits, values, breedId, breedGeneration);
+            CompFishTraits child = fish.TryGetComp<CompFishTraits>();
+            child?.InitializeFromEgg(traits, values, breedId, breedGeneration, first.parent.thingIDNumber, second.parent.thingIDNumber);
+            AquacultureEventRouter.FishBred(first, second, child);
             GenSpawn.Spawn(fish, first.parent.Position, map);
         }
 
@@ -275,8 +281,11 @@ namespace AquacultureFishing
             egg.inheritedValues = inheritedValues;
             egg.inheritedBreedId = inheritedBreedId;
             egg.inheritedBreedGeneration = inheritedBreedGeneration;
+            egg.parentOneThingId = first.parent.thingIDNumber;
+            egg.parentTwoThingId = second.parent.thingIDNumber;
             egg.hatchTick = now + Mathf.RoundToInt((AquacultureMod.Settings?.eggHatchDays ?? 3f) * 60000f);
             if (nextEggCheckTick == 0 || egg.hatchTick < nextEggCheckTick) nextEggCheckTick = egg.hatchTick;
+            AquacultureEventRouter.FishBred(first, second);
             GenSpawn.Spawn(egg, first.parent.Position, map);
         }
 
@@ -367,7 +376,7 @@ namespace AquacultureFishing
                     }
                 pond.beauty = beauty;
                 pond.beautyDirty = false;
-                pond.menuSnapshot = null;
+                InvalidatePondSnapshot(pond);
                 float cropGrowth = PondTraitCropGrowth(pond);
                 for (int pondCellIndex = 0; pondCellIndex < pond.info.cells.Count; pondCellIndex++)
                 {

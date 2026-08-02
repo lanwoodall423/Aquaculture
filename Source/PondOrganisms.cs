@@ -136,7 +136,7 @@ namespace AquacultureFishing
             }
             float capacity = Mathf.Max(0.05f, pond.info.cells.Count * organism.capacityPerCell);
             population.biomass = Mathf.Min(capacity, population.biomass + Mathf.Max(0.01f, organism.seedBiomass));
-            pond.menuSnapshot = null;
+            InvalidatePondSnapshot(pond);
             pond.beautyDirty = true;
             return true;
         }

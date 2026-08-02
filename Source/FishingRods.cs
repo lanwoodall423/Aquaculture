@@ -402,26 +402,50 @@ namespace AquacultureFishing
             Toil cast = Toils_General.Wait(CastTicks, TargetIndex.A);
             cast.debugName = "Fishing - Cast";
             cast.WithProgressBarToilDelay(TargetIndex.A);
-            cast.initAction = () => { if (pawn?.CurJob != null) pawn.CurJob.reportStringOverride = "fishing - cast."; };
+            cast.initAction = () =>
+            {
+                if (pawn?.CurJob != null) pawn.CurJob.reportStringOverride = "fishing - cast.";
+                FishingFeedback.Cast(pawn, cell);
+            };
             cast.tickAction = () => pawn?.rotationTracker?.FaceCell(cell);
             yield return cast;
 
-            Toil wait = Toils_General.Wait(WaitTicks(pawn), TargetIndex.A);
+            int waitDuration = WaitTicks(pawn);
+            int waitElapsed = 0;
+            Toil wait = Toils_General.Wait(waitDuration, TargetIndex.A);
             wait.debugName = "Fishing - Wait";
             wait.WithProgressBarToilDelay(TargetIndex.A);
             wait.initAction = () =>
             {
                 if (pawn?.CurJob != null) pawn.CurJob.reportStringOverride = "fishing - wait.";
-                FishingAttemptIntegration.BeginWaitPhase(driver, framework);
+                FishingAttemptIntegration.BeginWaitPhase(driver, framework, waitDuration);
+                FishingFeedback.WaitStarted(pawn, cell);
             };
-            wait.tickAction = () => MaintainFishing(pawn, cell);
+            wait.tickAction = () =>
+            {
+                waitElapsed++;
+                FishingAttemptRecord attempt = FishingAttemptIntegration.ProgressWaitPhase(driver, framework, waitElapsed, waitDuration);
+                FishingFeedback.WaitTick(pawn, cell, attempt, waitElapsed, waitDuration);
+                MaintainFishing(pawn, cell);
+            };
             yield return wait;
 
-            Toil reel = Toils_General.Wait(ReelTicks(pawn), TargetIndex.A);
+            int reelDuration = ReelTicks(pawn);
+            int reelElapsed = 0;
+            Toil reel = Toils_General.Wait(reelDuration, TargetIndex.A);
             reel.debugName = "Fishing - Reel";
             reel.WithProgressBarToilDelay(TargetIndex.A);
-            reel.initAction = () => { if (pawn?.CurJob != null) pawn.CurJob.reportStringOverride = "fishing - reel."; };
-            reel.tickAction = () => MaintainFishing(pawn, cell);
+            reel.initAction = () =>
+            {
+                if (pawn?.CurJob != null) pawn.CurJob.reportStringOverride = "fishing - reel.";
+                FishingFeedback.ReelStarted(pawn, cell);
+            };
+            reel.tickAction = () =>
+            {
+                reelElapsed++;
+                FishingFeedback.ReelTick(pawn, cell, FishingProgressionComponent.Current?.AttemptFor(pawn), reelElapsed, reelDuration);
+                MaintainFishing(pawn, cell);
+            };
             reel.AddFinishAction(() => { if (pawn?.CurJob != null) pawn.CurJob.reportStringOverride = "fishing."; });
             yield return reel;
         }
@@ -432,6 +456,64 @@ namespace AquacultureFishing
             CompFishingRodTackle rod = EquippedRod(pawn);
             if (pawn?.needs?.joy != null && rod != null && rod.RecreationLossFactor < 1f)
                 pawn.needs.joy.CurLevel += (1f - rod.RecreationLossFactor) * 0.000004f;
+        }
+    }
+
+    /// <summary>Small, pawn-driven feedback cues. It deliberately reuses the fishing job cadence.</summary>
+    public static class FishingFeedback
+    {
+        public static void Cast(Pawn pawn, IntVec3 cell)
+        {
+            if (pawn?.Map == null || !cell.IsValid) return;
+            MoteMaker.ThrowText(cell.ToVector3Shifted(), pawn.Map, "Cast");
+        }
+
+        public static void WaitStarted(Pawn pawn, IntVec3 cell)
+        {
+            if (pawn?.Map == null || !cell.IsValid) return;
+            MoteMaker.ThrowText(cell.ToVector3Shifted(), pawn.Map, "Waiting");
+        }
+
+        public static void WaitTick(Pawn pawn, IntVec3 cell, FishingAttemptRecord attempt, int elapsed, int duration)
+        {
+            if (attempt?.biteDecided != true || attempt.feedbackBiteShown || elapsed % 45 != 0) return;
+            if (attempt.fishBit)
+            {
+                attempt.feedbackBiteShown = true;
+                MoteMaker.ThrowText(cell.ToVector3Shifted(), pawn.Map, "Bite!");
+                if (pawn?.CurJob != null) pawn.CurJob.reportStringOverride = "fishing - bite!";
+            }
+            else if (elapsed >= Mathf.Max(45, Mathf.RoundToInt(duration * 0.35f)))
+            {
+                attempt.feedbackBiteShown = true;
+                MoteMaker.ThrowText(cell.ToVector3Shifted(), pawn.Map, "No bite");
+            }
+        }
+
+        public static void ReelStarted(Pawn pawn, IntVec3 cell)
+        {
+            if (pawn?.Map == null || !cell.IsValid) return;
+            MoteMaker.ThrowText(cell.ToVector3Shifted(), pawn.Map, "Reel");
+        }
+
+        public static void ReelTick(Pawn pawn, IntVec3 cell, FishingAttemptRecord attempt, int elapsed, int duration)
+        {
+            if (pawn == null || attempt?.fishBit != true || elapsed % 90 != 0) return;
+            float tension = TensionFor(pawn, attempt);
+            if (pawn.CurJob != null) pawn.CurJob.reportStringOverride = "fishing - reel (tension " + tension.ToStringPercent() + ")";
+            if (tension > 0.90f) MoteMaker.ThrowText(cell.ToVector3Shifted(), pawn.Map, "Line strain");
+            else if (tension < 0.35f) MoteMaker.ThrowText(cell.ToVector3Shifted(), pawn.Map, "Fish tiring");
+        }
+
+        public static float TensionFor(Pawn pawn, FishingAttemptRecord attempt)
+        {
+            if (attempt?.FishDef == null) return 0f;
+            CompFishingRodTackle rod = FishingRodUtility.EquippedRod(pawn);
+            float capacity = rod?.MaxFishMass ?? 0.1f;
+            float massPressure = Mathf.Clamp01(attempt.HookedFishMass / Mathf.Max(0.1f, capacity));
+            float animals = pawn?.skills?.GetSkill(SkillDefOf.Animals).Level / 20f ?? 0f;
+            float knowledge = AquacultureKnowledgeAdapter.SpeciesKnowledgeFor(pawn, attempt.FishDef);
+            return Mathf.Clamp01(0.18f + massPressure * 0.70f - animals * 0.18f - knowledge * 0.12f);
         }
     }
 

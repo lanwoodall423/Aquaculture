@@ -128,7 +128,7 @@ namespace AquacultureFishing
             pond.ecology.breedingEnabled = mode != PondBreedingMode.Paused;
             if (mode == PondBreedingMode.Paused) RemovePondEggs(pond);
             for (int i = 0; i < pond.schools.Count; i++) pond.schools[i].nextBreedingCheckTick = 0;
-            pond.menuSnapshot = null;
+            InvalidatePondSnapshot(pond);
         }
 
         private void RemovePondEggs(PondState pond)
@@ -145,7 +145,7 @@ namespace AquacultureFishing
                 map.designationManager.AddDesignation(new Designation(egg, AquacultureJobDefOf.AF_RemovePondEggDesignation));
                 designated++;
             }
-            pond.menuSnapshot = null;
+            InvalidatePondSnapshot(pond);
             if (designated > 0) Messages.Message("Marked " + designated + " pond egg" + (designated == 1 ? "" : "s") + " for removal by a handler.", MessageTypeDefOf.TaskCompletion, false);
         }
 
@@ -160,7 +160,7 @@ namespace AquacultureFishing
             EnsurePondState();
             if (!pondByCell.TryGetValue(cell, out PondState pond)) return;
             pond.ecology.minimumHarvestPopulation = Mathf.Clamp(value, 0, 200);
-            pond.menuSnapshot = null;
+            InvalidatePondSnapshot(pond);
         }
 
         public bool HarvestAdultsOnlyAt(IntVec3 cell)
@@ -174,7 +174,7 @@ namespace AquacultureFishing
             EnsurePondState();
             if (!pondByCell.TryGetValue(cell, out PondState pond)) return;
             pond.ecology.harvestAdultsOnly = value;
-            pond.menuSnapshot = null;
+            InvalidatePondSnapshot(pond);
         }
 
         public bool ProtectBreedingFemalesAt(IntVec3 cell)
@@ -188,7 +188,7 @@ namespace AquacultureFishing
             EnsurePondState();
             if (!pondByCell.TryGetValue(cell, out PondState pond)) return;
             pond.ecology.protectBreedingFemales = value;
-            pond.menuSnapshot = null;
+            InvalidatePondSnapshot(pond);
         }
 
         public bool AutomaticFeedingAt(IntVec3 cell)
@@ -202,7 +202,7 @@ namespace AquacultureFishing
             EnsurePondState();
             if (!pondByCell.TryGetValue(cell, out PondState pond)) return;
             pond.ecology.automaticFeeding = enabled;
-            pond.menuSnapshot = null;
+            InvalidatePondSnapshot(pond);
         }
 
         public float TargetFeedDaysAt(IntVec3 cell)
@@ -216,7 +216,7 @@ namespace AquacultureFishing
             EnsurePondState();
             if (!pondByCell.TryGetValue(cell, out PondState pond)) return;
             pond.ecology.targetFeedDays = Mathf.Clamp(days, 0.25f, 5f);
-            pond.menuSnapshot = null;
+            InvalidatePondSnapshot(pond);
         }
 
         public bool PredationEnabledAt(IntVec3 cell)
@@ -230,7 +230,7 @@ namespace AquacultureFishing
             EnsurePondState();
             if (!pondByCell.TryGetValue(cell, out PondState pond)) return;
             pond.ecology.predationEnabled = enabled;
-            pond.menuSnapshot = null;
+            InvalidatePondSnapshot(pond);
         }
 
         public int PopulationLimitAt(IntVec3 cell)
@@ -244,7 +244,7 @@ namespace AquacultureFishing
             EnsurePondState();
             if (!pondByCell.TryGetValue(cell, out PondState pond)) return;
             pond.ecology.populationLimit = Mathf.Max(0, limit);
-            pond.menuSnapshot = null;
+            InvalidatePondSnapshot(pond);
         }
 
         public int ManagementPopulationTargetAt(IntVec3 cell)
@@ -258,7 +258,7 @@ namespace AquacultureFishing
             EnsurePondState();
             if (!pondByCell.TryGetValue(cell, out PondState pond)) return;
             pond.ecology.managementPopulationTarget = Mathf.Clamp(target, 0, 200);
-            pond.menuSnapshot = null;
+            InvalidatePondSnapshot(pond);
         }
 
         public bool AutomaticSurplusHarvestAt(IntVec3 cell)
@@ -278,7 +278,7 @@ namespace AquacultureFishing
             }
             pond.ecology.automaticSurplusHarvest = enabled;
             if (enabled) ApplyAutomaticHarvestPolicy(pond);
-            pond.menuSnapshot = null;
+            InvalidatePondSnapshot(pond);
         }
 
         public Dictionary<ThingDef, int> StockingBlueprintAt(IntVec3 cell)
@@ -314,7 +314,7 @@ namespace AquacultureFishing
             int total = pond.ecology.stockingTargets.Sum(target => target.targetCount);
             pond.ecology.managementPopulationTarget = total;
             if (pond.ecology.automaticSurplusHarvest) ApplyAutomaticHarvestPolicy(pond);
-            pond.menuSnapshot = null;
+            InvalidatePondSnapshot(pond);
         }
 
         public void ClearStockingBlueprint(IntVec3 cell)
@@ -322,7 +322,7 @@ namespace AquacultureFishing
             EnsurePondState();
             if (!pondByCell.TryGetValue(cell, out PondState pond)) return;
             pond.ecology.stockingTargets.Clear();
-            pond.menuSnapshot = null;
+            InvalidatePondSnapshot(pond);
         }
 
         public int PopulationAt(IntVec3 cell)
@@ -526,7 +526,7 @@ namespace AquacultureFishing
             thing.DeSpawn();
             GenSpawn.Spawn(thing, shore, map);
             pondMembershipDirty = true;
-            pond.menuSnapshot = null;
+            InvalidatePondSnapshot(pond);
             Messages.Message((harvest ? "Harvested " : "Removed ") + species.LabelCap + ".", MessageTypeDefOf.TaskCompletion, false);
         }
 

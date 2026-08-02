@@ -329,6 +329,7 @@ namespace AquacultureFishing
         {
             pondTopologyDirty = true;
             pondMembershipDirty = true;
+            AquacultureSnapshotCache.Invalidate();
         }
 
         public void NotifyFishChanged(CompFishTraits comp)
@@ -339,11 +340,12 @@ namespace AquacultureFishing
             if (isMember != shouldBeMember)
             {
                 pondMembershipDirty = true;
+                AquacultureSnapshotCache.Invalidate();
                 return;
             }
             if (isMember)
             {
-                state.menuSnapshot = null;
+                InvalidatePondSnapshot(state);
                 state.beautyDirty = true;
                 state.habitatDirty = true;
                 RecountAnimaFish(state);
@@ -380,6 +382,14 @@ namespace AquacultureFishing
         public void InvalidatePondMenus()
         {
             for (int i = 0; i < pondStates.Count; i++) pondStates[i].menuSnapshot = null;
+            AquacultureSnapshotCache.Invalidate();
+        }
+
+        private static void InvalidatePondSnapshot(PondState pond)
+        {
+            if (pond == null) return;
+            pond.menuSnapshot = null;
+            AquacultureSnapshotCache.Invalidate();
         }
 
         public Vector3 SchoolDrawPosition(CompFishTraits comp, Vector3 fallback)
@@ -655,7 +665,7 @@ namespace AquacultureFishing
                 pond.fish.Clear();
                 pond.schools.Clear();
                 pond.schoolBySpecies.Clear();
-                pond.menuSnapshot = null;
+                InvalidatePondSnapshot(pond);
                 pond.beautyDirty = true;
                 pond.animaFishCount = 0;
             }
@@ -691,7 +701,7 @@ namespace AquacultureFishing
             int count = 0;
             for (int i = 0; i < pond.fish.Count; i++) if (IsAnimaFish(pond.fish[i])) count++;
             pond.animaFishCount = count;
-            pond.menuSnapshot = null;
+            InvalidatePondSnapshot(pond);
         }
 
         private PondMenuSnapshot BuildMenuSnapshot(PondState pond)
