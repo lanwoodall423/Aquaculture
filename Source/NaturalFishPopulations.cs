@@ -100,6 +100,7 @@ namespace AquacultureFishing
         public bool odysseyRarityInitialized;
         public bool initialPopulationComplete;
         public int generationVersion;
+        public string deferredRealityStableId;
         public List<NaturalFishSpeciesPopulation> species = new List<NaturalFishSpeciesPopulation>();
 
         public float TotalPopulation => species?.Sum(item => Mathf.Max(0f, item.population)) ?? 0f;
@@ -117,11 +118,13 @@ namespace AquacultureFishing
             Scribe_Values.Look(ref odysseyRarityInitialized, "odysseyRarityInitialized");
             Scribe_Values.Look(ref initialPopulationComplete, "initialPopulationComplete");
             Scribe_Values.Look(ref generationVersion, "generationVersion");
+            Scribe_Values.Look(ref deferredRealityStableId, "deferredRealityStableId");
             Scribe_Collections.Look(ref species, "species", LookMode.Deep);
             if (species == null) species = new List<NaturalFishSpeciesPopulation>();
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
             {
-                species.RemoveAll(item => item?.FishDef == null);
+                // Preserve missing Def names for Deferred Reality migration and orphan inspection.
+                species.RemoveAll(item => item == null || string.IsNullOrEmpty(item.fishDefName));
                 species = species.GroupBy(item => item.fishDefName).Select(group => new NaturalFishSpeciesPopulation
                 {
                     fishDefName = group.Key,
@@ -185,6 +188,10 @@ namespace AquacultureFishing
         private bool initializedAllBodies;
 
         public NaturalFishPopulationMapComponent(Map map) : base(map) { }
+
+        // Read-only integration surface for optional Deferred Reality natural-water ownership.
+        public Map ActiveMap => map;
+        public IReadOnlyList<NaturalWaterPopulation> Populations => populations;
 
         public override void ExposeData()
         {
