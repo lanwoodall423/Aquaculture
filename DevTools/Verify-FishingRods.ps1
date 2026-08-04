@@ -4,6 +4,7 @@ $ErrorActionPreference = 'Stop'
 $required = @(
     'About\FISHING_ROD_ARCHITECTURE.md',
     'Source\FishingRods.cs',
+    'Source\FishingRodWorkflow.cs',
     '1.6\Defs\FishingTackleDefs.xml',
     '1.6\Defs\FishingRodDefs.xml'
 )
@@ -15,6 +16,7 @@ foreach ($relative in $required) {
 $rods = Get-Content -Raw (Join-Path $Root 'Source\FishingRods.cs')
 $expertise = Get-Content -Raw (Join-Path $Root 'Source\FishingExpertise.cs')
 $core = Get-Content -Raw (Join-Path $Root 'Source\AquacultureCore.cs')
+$workflow = Get-Content -Raw (Join-Path $Root 'Source\FishingRodWorkflow.cs')
 $parts = Get-Content -Raw (Join-Path $Root '1.6\Defs\FishingTackleDefs.xml')
 $rodDefs = Get-Content -Raw (Join-Path $Root '1.6\Defs\FishingRodDefs.xml')
 [xml]$partsXml = $parts
@@ -41,6 +43,12 @@ if ($referencedCostsExist) {
 $checks = [ordered]@{
     'five tackle slots' = $rods -match 'Handle[\s\S]*Rod[\s\S]*Reel[\s\S]*Line[\s\S]*Lure'
     'equipped rod requirement' = $rods -match 'EquippedRod' -and $rods -match 'HasEquippedRod'
+    'inventory and storage workflow' = $workflow -match 'BestInventoryRod' -and $workflow -match 'BestStoredRod' -and $workflow -match 'FishingRodMapComponent'
+    'upgraded rod preference' = $workflow -match 'OrderByDescending\(RodMass\)' -and $workflow -match 'ThenByDescending\(RodCatch\)'
+    'map rod reservation' = $workflow -match 'FishingPreToilReservationsPrefix' -and $workflow -match 'pawn\.Reserve\(session\.rod'
+    'temporary equipment session' = $workflow -match 'previousPrimary' -and $workflow -match 'prepared' -and $workflow -match 'FishingRodSession'
+    'cleanup restoration' = $workflow -match 'CleanupPostfix' -and $workflow -match 'RestoreTemporaryEquipment' -and $core -match '"Cleanup"'
+    'safe rejection reason' = $workflow -match 'JobFailReason\.Is' -and $workflow -match 'NoReachableFishingRod'
     'work giver rod gate' = $rods -match 'FishingJobPostfix' -and $core -match 'AccessTools.Method\(odysseyWorkGiver, "NonScanJob"\)'
     'reservation result retained' = $core -notmatch 'FishingReservationPostfix|OdysseyFishingReservationPostfix'
     'null-safe tackle def lookup' = $rods -match 'PendingPart => pendingPart.NullOrEmpty\(\)' -and $rods -match 'key.NullOrEmpty\(\)'

@@ -69,22 +69,24 @@ namespace AquacultureFishing
                     if (!compatible) water += "   Osmotic Stress: " + selected.waterStress.ToStringPercent();
                     Widgets.Label(new Rect(rect.x, rect.y + 62f, rect.width, 26f), water);
                 }
-                Widgets.Label(new Rect(rect.x, rect.y + 86f, rect.width, 44f),
+                Widgets.Label(new Rect(rect.x, rect.y + 86f, rect.width, 60f),
                     "Species Profile: " + profile.diet + " | " + profile.waterKind +
                     "   Lifespan: " + profile.lifespanFactor.ToString("0.00") + "x   Meat: " +
-                    profile.meatYieldFactor.ToStringPercent() + "   Breeding: " + profile.breedingIntervalFactor.ToString("0.00") + "x");
-                Widgets.Label(new Rect(rect.x, rect.y + 128f, rect.width, 26f),
+                    profile.meatYieldFactor.ToStringPercent() + "   Expected processing: " +
+                    FishProcessingYield.ExpectedMeatCount(selected) + " fish meat   Breeding: " +
+                    profile.breedingIntervalFactor.ToString("0.00") + "x");
+                Widgets.Label(new Rect(rect.x, rect.y + 150f, rect.width, 26f),
                     selected.Breed == null
                         ? "Breed: Unregistered"
                         : "Breed: " + selected.Breed.name + "   Generation " + selected.breedGeneration +
-                          "   Stability " + selected.Breed.Stability.ToStringPercent());
+                           "   Stability " + selected.Breed.Stability.ToStringPercent());
                 if (selected.IsInPond)
                 {
                     Color old = GUI.color;
                     GUI.color = selected.habitatStress > 0.05f
                         ? new Color(1f, 0.72f, 0.42f)
                         : new Color(0.62f, 0.92f, 0.68f);
-                    Widgets.Label(new Rect(rect.x, rect.y + 152f, rect.width, 26f),
+                    Widgets.Label(new Rect(rect.x, rect.y + 174f, rect.width, 26f),
                         "Habitat Fit: " + selected.habitatFit.ToStringPercent() +
                         (selected.habitatStress > 0.001f
                             ? "   Habitat Stress: " + selected.habitatStress.ToStringPercent()
@@ -93,7 +95,7 @@ namespace AquacultureFishing
                 }
             }
 
-            Rect panel = new Rect(rect.x, rect.y + 184f, rect.width, rect.height - 184f);
+            Rect panel = new Rect(rect.x, rect.y + 206f, rect.width, rect.height - 206f);
             Widgets.DrawMenuSection(panel);
             Rect outRect = new Rect(panel.x + 8f, panel.y + 8f, panel.width - 16f, panel.height - 16f);
             float viewWidth = outRect.width - 16f;

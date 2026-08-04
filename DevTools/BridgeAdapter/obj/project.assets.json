@@ -14,7 +14,7 @@
     "version": "1.0.0",
     "restore": {
       "projectUniqueName": "C:\\Games\\Steam\\steamapps\\common\\RimWorld\\Mods\\AquacultureFishing\\DevTools\\BridgeAdapter\\AquacultureFishing.BridgeAdapter.csproj",
-      "projectName": "AquacultureFishing.BridgeAdapter.20260731150541092",
+      "projectName": "AquacultureFishing.BridgeAdapter",
       "projectPath": "C:\\Games\\Steam\\steamapps\\common\\RimWorld\\Mods\\AquacultureFishing\\DevTools\\BridgeAdapter\\AquacultureFishing.BridgeAdapter.csproj",
       "packagesPath": "C:\\Users\\Lan\\.nuget\\packages\\",
       "outputPath": "C:\\Games\\Steam\\steamapps\\common\\RimWorld\\Mods\\AquacultureFishing\\DevTools\\BridgeAdapter\\obj\\",

@@ -1,2 +1,178 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LanguageData><AF_PlaceInPond>Place in pond</AF_PlaceInPond><AF_PlaceInPondDesc>Move this living fish into a constructed pond cell.</AF_PlaceInPondDesc><AF_TraitsTab>Traits</AF_TraitsTab><AF_PondManagementTab>Manage</AF_PondManagementTab><AF_PondHabitatTab>Habitat</AF_PondHabitatTab><AF_PondOverviewTab>Overview</AF_PondOverviewTab><AF_PondFishTab>Fish</AF_PondFishTab><AF_PondSchoolsTab>Schools</AF_PondSchoolsTab></LanguageData>
+<LanguageData>
+  <AF_PlaceInPond>Place in pond</AF_PlaceInPond>
+  <AF_PlaceInPondDesc>Move this living fish into a constructed pond cell.</AF_PlaceInPondDesc>
+  <AF_TraitsTab>Traits</AF_TraitsTab>
+  <AF_PondManagementTab>Manage</AF_PondManagementTab>
+  <AF_PondHabitatTab>Habitat</AF_PondHabitatTab>
+  <AF_PondOverviewTab>Overview</AF_PondOverviewTab>
+  <AF_PondFishTab>Fish</AF_PondFishTab>
+  <AF_PondSchoolsTab>Schools</AF_PondSchoolsTab>
+  <AquacultureFishing.NoUsableFishingRod>No usable fishing rod is available.</AquacultureFishing.NoUsableFishingRod>
+  <AquacultureFishing.NoReachableFishingRod>No usable fishing rod is reachable in approved storage.</AquacultureFishing.NoReachableFishingRod>
+  <AquacultureFishing.FishingRodRestricted>This pawn cannot automatically acquire a fishing rod.</AquacultureFishing.FishingRodRestricted>
+  <AquacultureFishing.ExpectedProcessingYield>Expected processing yield: {0} {1}.</AquacultureFishing.ExpectedProcessingYield>
+  <AquacultureFishing.MigrationRule>Regional migration</AquacultureFishing.MigrationRule>
+  <AquacultureFishing.MigrationClosed>Closed water</AquacultureFishing.MigrationClosed>
+  <AquacultureFishing.MigrationRiver>River-to-river only</AquacultureFishing.MigrationRiver>
+  <AquacultureFishing.MigrationCoastal>Coastal-to-coastal only</AquacultureFishing.MigrationCoastal>
+  <AquacultureFishing.MigrationOcean>Ocean-to-ocean only</AquacultureFishing.MigrationOcean>
+  <AquacultureFishing.ConservationWaterTotal>Fish population: ~{0} / {1}</AquacultureFishing.ConservationWaterTotal>
+  <AquacultureFishing.ConservationPopulation>Approximate population: ~{0}; breeding floor: {1}</AquacultureFishing.ConservationPopulation>
+  <AquacultureFishing.ConservationGrowing>Expected direction: growing</AquacultureFishing.ConservationGrowing>
+  <AquacultureFishing.ConservationStable>Expected direction: stable</AquacultureFishing.ConservationStable>
+  <AquacultureFishing.ConservationDeclining>Expected direction: declining</AquacultureFishing.ConservationDeclining>
+  <AquacultureFishing.ConservationBelowFloor>Expected direction: below breeding population</AquacultureFishing.ConservationBelowFloor>
+  <AquacultureFishing.ConservationExtinct>No current population is recorded in this water body.</AquacultureFishing.ConservationExtinct>
+  <AquacultureFishing.ConservationBreedingPossible>Breeding is currently possible.</AquacultureFishing.ConservationBreedingPossible>
+  <AquacultureFishing.ConservationBreedingPaused>Breeding is currently paused by population, capacity, or habitat conditions.</AquacultureFishing.ConservationBreedingPaused>
+  <AquacultureFishing.ConservationCatchRisk>One additional catch is likely to cross the breeding floor.</AquacultureFishing.ConservationCatchRisk>
+  <AquacultureFishing.ConservationCatchRiskBelow>This population is already below its breeding floor; one additional catch increases depletion risk.</AquacultureFishing.ConservationCatchRiskBelow>
+  <AquacultureFishing.ConservationCatchWarning>Caution: catching another {0} may leave this water body below its breeding floor (approximately {1}; floor {2}).</AquacultureFishing.ConservationCatchWarning>
+  <AquacultureFishing.ConservationUnavailable>Population status is unavailable until this water body is initialized.</AquacultureFishing.ConservationUnavailable>
+  <AquacultureFishing.ConservationMigrationClosed>This is closed water. Recovery depends on local breeding or explicit stocking.</AquacultureFishing.ConservationMigrationClosed>
+  <AquacultureFishing.ConservationMigrationSourceRiver>River migration from a compatible water body may recover this population.</AquacultureFishing.ConservationMigrationSourceRiver>
+  <AquacultureFishing.ConservationMigrationSourceCoastal>Coastal migration from a compatible water body may recover this population.</AquacultureFishing.ConservationMigrationSourceCoastal>
+  <AquacultureFishing.ConservationMigrationSourceOcean>Ocean migration from a compatible water body may recover this population.</AquacultureFishing.ConservationMigrationSourceOcean>
+  <AquacultureFishing.ConservationMigrationNoSourceRiver>River migration is enabled, but no compatible source population is currently recorded.</AquacultureFishing.ConservationMigrationNoSourceRiver>
+  <AquacultureFishing.ConservationMigrationNoSourceCoastal>Coastal migration is enabled, but no compatible source population is currently recorded.</AquacultureFishing.ConservationMigrationNoSourceCoastal>
+  <AquacultureFishing.ConservationMigrationNoSourceOcean>Ocean migration is enabled, but no compatible source population is currently recorded.</AquacultureFishing.ConservationMigrationNoSourceOcean>
+  <AquacultureFishing.PondCapacityBaselineTooltip>Base ecological support is {0} fish per valid pond cell. A powered aerator adds {1} biological-support fish, while food, habitat, physical space, and management limits can still be lower.</AquacultureFishing.PondCapacityBaselineTooltip>
+  <AquacultureFishing.PondBaseCapacitySetting>Base Ecological Support Per Pond Cell</AquacultureFishing.PondBaseCapacitySetting>
+  <AquacultureFishing.PondCapacityTransitionWarning>This save uses the previous {0} fish-per-cell setting. The new default is {1}; existing settings and fish are preserved.</AquacultureFishing.PondCapacityTransitionWarning>
+  <AquacultureFishing.PondCapacityUseNewBaseline>Use new baseline</AquacultureFishing.PondCapacityUseNewBaseline>
+  <AquacultureFishing.PondCapacityKeepExisting>Keep existing</AquacultureFishing.PondCapacityKeepExisting>
+  <AquacultureFishing.PondCapacitySummary>Physical space: {0}; sustainable now: ~{1}; industrial support: {2}</AquacultureFishing.PondCapacitySummary>
+  <AquacultureFishing.PondCapacityManagementOverride>Management limit: {0}; effective limit: {1} (industrial support {2})</AquacultureFishing.PondCapacityManagementOverride>
+  <AquacultureFishing.PondCapacityNoManagementOverride>Effective industrial limit: {0}</AquacultureFishing.PondCapacityNoManagementOverride>
+  <AquacultureFishing.PondCapacityExplanation>Powered aerators add {0} each. Estimated food support is ~{1}; habitat support is ~{2}. Current limiting factor: {3}.</AquacultureFishing.PondCapacityExplanation>
+  <AquacultureFishing.PondPhysicalSpace>Physical space: {0} fish</AquacultureFishing.PondPhysicalSpace>
+  <AquacultureFishing.PondPopulation>Population: {0} fish</AquacultureFishing.PondPopulation>
+  <AquacultureFishing.PondEffectiveCapacity>Effective operational limit: {0} fish</AquacultureFishing.PondEffectiveCapacity>
+  <AquacultureFishing.PondSustainableCapacity>Sustainable now: ~{0} fish</AquacultureFishing.PondSustainableCapacity>
+  <AquacultureFishing.PondIndustrialCapacity>Industrial support: {0} fish</AquacultureFishing.PondIndustrialCapacity>
+  <AquacultureFishing.PondManagementCapacity>Management limit: {0} fish</AquacultureFishing.PondManagementCapacity>
+  <AquacultureFishing.PondLimitingFactor>Limiting factor: {0}</AquacultureFishing.PondLimitingFactor>
+  <AquacultureFishing.PondOverManagementCapacity>Population exceeds the management limit of {0}; breeding is paused until it falls below the limit.</AquacultureFishing.PondOverManagementCapacity>
+  <AquacultureFishing.PondOverIndustrialCapacity>Population exceeds industrial biological support by {0} fish. No automatic mass removal will occur.</AquacultureFishing.PondOverIndustrialCapacity>
+  <AquacultureFishing.PondEcologicallyUnsupported>Population is physically possible but ecologically unsupported; {0} is limiting.</AquacultureFishing.PondEcologicallyUnsupported>
+  <AquacultureFishing.PondCapacityConstraintNone>None; current population is supported.</AquacultureFishing.PondCapacityConstraintNone>
+  <AquacultureFishing.PondCapacityConstraintFood>natural food supply</AquacultureFishing.PondCapacityConstraintFood>
+  <AquacultureFishing.PondCapacityConstraintHabitat>habitat structures and open water</AquacultureFishing.PondCapacityConstraintHabitat>
+  <AquacultureFishing.PondCapacityConstraintIndustrial>industrial biological support</AquacultureFishing.PondCapacityConstraintIndustrial>
+  <AquacultureFishing.PondCapacityConstraintManagement>management limit</AquacultureFishing.PondCapacityConstraintManagement>
+  <AquacultureFishing.PondPlannerPhysical>Physical space</AquacultureFishing.PondPlannerPhysical>
+  <AquacultureFishing.PondPlannerSustainable>Sustainable now (approx.)</AquacultureFishing.PondPlannerSustainable>
+  <AquacultureFishing.PondPlannerIndustrial>Industrial support</AquacultureFishing.PondPlannerIndustrial>
+  <AquacultureFishing.PondPlannerOverPhysical>Plan exceeds physical pond space by {0} fish.</AquacultureFishing.PondPlannerOverPhysical>
+  <AquacultureFishing.PondPlannerOverIndustrial>Plan exceeds industrial biological support by {0} fish.</AquacultureFishing.PondPlannerOverIndustrial>
+  <AquacultureFishing.PondPlannerUnsupported>Plan is physically possible but ecologically unsupported; {0} support is limiting.</AquacultureFishing.PondPlannerUnsupported>
+  <AquacultureFishing.PondPhysicalSpaceShort>Physical space</AquacultureFishing.PondPhysicalSpaceShort>
+  <AquacultureFishing.PondSustainableShort>Sustainable now</AquacultureFishing.PondSustainableShort>
+  <AquacultureFishing.PondIndustrialShort>Industrial support</AquacultureFishing.PondIndustrialShort>
+  <AquacultureFishing.PondWorkShort>Harvestable / pending work</AquacultureFishing.PondWorkShort>
+  <AquacultureFishing.PondCausalTitle>Why this pond is succeeding or failing</AquacultureFishing.PondCausalTitle>
+  <AquacultureFishing.PondCausalPopulation>Population: {0} fish; physical space {1}; sustainable now ~{2}</AquacultureFishing.PondCausalPopulation>
+  <AquacultureFishing.PondCausalFoodReserve>Prepared food reserve: ~{0} days ({1} hours); hungry or starving fish: {2}</AquacultureFishing.PondCausalFoodReserve>
+  <AquacultureFishing.PondCausalWaterMismatch>Water compatibility problem: {0} fish are in unsuitable water.</AquacultureFishing.PondCausalWaterMismatch>
+  <AquacultureFishing.PondCausalWaterCompatible>Water compatibility: all current fish match this pond.</AquacultureFishing.PondCausalWaterCompatible>
+  <AquacultureFishing.PondCausalTemperature>Temperature: {0} C; affected fish: {1}</AquacultureFishing.PondCausalTemperature>
+  <AquacultureFishing.PondCausalHabitat>Habitat: {0} fish affected; limiting support: {1}</AquacultureFishing.PondCausalHabitat>
+  <AquacultureFishing.PondCausalNoActiveRisks>No active pond-wide risks detected.</AquacultureFishing.PondCausalNoActiveRisks>
+  <AquacultureFishing.PondCausalDetails>Details</AquacultureFishing.PondCausalDetails>
+  <AquacultureFishing.PondCausalPhysicalOvercrowding>Physical space exceeded by {0} fish.</AquacultureFishing.PondCausalPhysicalOvercrowding>
+  <AquacultureFishing.PondCausalIndustrialOverage>Industrial support exceeded by {0} fish.</AquacultureFishing.PondCausalIndustrialOverage>
+  <AquacultureFishing.PondCausalEcologicalSupport>Ecological support is exceeded by {0} fish; {1} is limiting.</AquacultureFishing.PondCausalEcologicalSupport>
+  <AquacultureFishing.PondCausalWaterRisk>Water mismatch is dangerous for {0} fish.</AquacultureFishing.PondCausalWaterRisk>
+  <AquacultureFishing.PondCausalTemperatureCritical>Critical temperature stress affects {0} fish.</AquacultureFishing.PondCausalTemperatureCritical>
+  <AquacultureFishing.PondCausalTemperatureRisk>Temperature stress affects {0} fish.</AquacultureFishing.PondCausalTemperatureRisk>
+  <AquacultureFishing.PondCausalStarvation>{0} fish are starving.</AquacultureFishing.PondCausalStarvation>
+  <AquacultureFishing.PondCausalHunger>{0} fish have low food reserves.</AquacultureFishing.PondCausalHunger>
+  <AquacultureFishing.PondCausalWaterStress>Severe water stress affects {0} fish.</AquacultureFishing.PondCausalWaterStress>
+  <AquacultureFishing.PondCausalHabitatDeficit>Habitat deficits affect {0} fish.</AquacultureFishing.PondCausalHabitatDeficit>
+  <AquacultureFishing.PondCausalBreedingEmpty>No fish are present to breed.</AquacultureFishing.PondCausalBreedingEmpty>
+  <AquacultureFishing.PondCausalBreedingDisabled>Breeding is disabled or paused.</AquacultureFishing.PondCausalBreedingDisabled>
+  <AquacultureFishing.PondCausalBreedingAtCapacity>Breeding is blocked by the effective population limit.</AquacultureFishing.PondCausalBreedingAtCapacity>
+  <AquacultureFishing.PondCausalBreedingPossible>Breeding is possible for {0} species.</AquacultureFishing.PondCausalBreedingPossible>
+  <AquacultureFishing.PondCausalBreedingWaiting>{0} species have compatible adults waiting for their next breeding opportunity.</AquacultureFishing.PondCausalBreedingWaiting>
+  <AquacultureFishing.PondCausalBreedingBlocked>No compatible breeding pair can currently proceed.</AquacultureFishing.PondCausalBreedingBlocked>
+  <AquacultureFishing.PondCausalNextBreeding>Next possible breeding opportunity: ~{0}</AquacultureFishing.PondCausalNextBreeding>
+  <AquacultureFishing.PondCausalJuvenileOnly>{0} species have no adult breeding pair ({1} fish affected); juveniles must mature.</AquacultureFishing.PondCausalJuvenileOnly>
+  <AquacultureFishing.PondCausalNoAdultFemale>{0} species have no adult female ({1} fish affected).</AquacultureFishing.PondCausalNoAdultFemale>
+  <AquacultureFishing.PondCausalNoAdultMale>{0} species have no adult male ({1} fish affected).</AquacultureFishing.PondCausalNoAdultMale>
+  <AquacultureFishing.PondCausalSterile>{0} adult fish are sterile.</AquacultureFishing.PondCausalSterile>
+  <AquacultureFishing.PondCausalBreedingConditions>{0} adult fish are blocked by food, water, temperature, habitat, or season conditions.</AquacultureFishing.PondCausalBreedingConditions>
+  <AquacultureFishing.PondOverviewTitle>Pond overview</AquacultureFishing.PondOverviewTitle>
+  <AquacultureFishing.PondNoData>No pond data is available.</AquacultureFishing.PondNoData>
+  <AquacultureFishing.PondNoActiveWarnings>No ecosystem warnings.</AquacultureFishing.PondNoActiveWarnings>
+  <AquacultureFishing.PondWarnings>Warnings</AquacultureFishing.PondWarnings>
+  <AquacultureFishing.PondManagementTitle>Pond management</AquacultureFishing.PondManagementTitle>
+  <AquacultureFishing.PondPageBasic>Basic</AquacultureFishing.PondPageBasic>
+  <AquacultureFishing.PondPageAdvanced>Advanced</AquacultureFishing.PondPageAdvanced>
+  <AquacultureFishing.PondPageBreeding>Breeding</AquacultureFishing.PondPageBreeding>
+  <AquacultureFishing.PondPagePlanner>Planner</AquacultureFishing.PondPagePlanner>
+  <AquacultureFishing.PondWaterLabel>Pond water</AquacultureFishing.PondWaterLabel>
+  <AquacultureFishing.PondWaterLockedMessage>Remove all fish and eggs before refilling the pond.</AquacultureFishing.PondWaterLockedMessage>
+  <AquacultureFishing.PondWaterChooseTooltip>Choose how this empty pond is filled before stocking it. Incompatible established pond organisms will be lost.</AquacultureFishing.PondWaterChooseTooltip>
+  <AquacultureFishing.PondWaterLockedTooltip>Water type is locked while fish or eggs are present.</AquacultureFishing.PondWaterLockedTooltip>
+  <AquacultureFishing.PondHarvestPolicy>Harvest policy</AquacultureFishing.PondHarvestPolicy>
+  <AquacultureFishing.PondMinimumBreedingStock>Minimum breeding stock</AquacultureFishing.PondMinimumBreedingStock>
+  <AquacultureFishing.PondMinimumBreedingStockTooltip>Handlers cannot harvest below this living population.</AquacultureFishing.PondMinimumBreedingStockTooltip>
+  <AquacultureFishing.PondHarvestAdultsOnly>Harvest adults and elders only</AquacultureFishing.PondHarvestAdultsOnly>
+  <AquacultureFishing.PondProtectBreedingFemales>Protect adult breeding females</AquacultureFishing.PondProtectBreedingFemales>
+  <AquacultureFishing.PondArea>Area: {0} cells</AquacultureFishing.PondArea>
+  <AquacultureFishing.PondEggs>Eggs: {0}</AquacultureFishing.PondEggs>
+  <AquacultureFishing.PondWaterTemperature>Water: {0} at {1} C</AquacultureFishing.PondWaterTemperature>
+  <AquacultureFishing.PondAlgae>Algae: {0}</AquacultureFishing.PondAlgae>
+  <AquacultureFishing.PondDetritus>Detritus: {0}</AquacultureFishing.PondDetritus>
+  <AquacultureFishing.PondPreparedFeed>Prepared feed: {0}; estimated reserve: {1} hours</AquacultureFishing.PondPreparedFeed>
+  <AquacultureFishing.PondHarvestReserve>Harvest reserve: {0}; protect females: {1}</AquacultureFishing.PondHarvestReserve>
+  <AquacultureFishing.PondManagementTarget>Management target: {0}</AquacultureFishing.PondManagementTarget>
+  <AquacultureFishing.PondBreedingMode>Breeding mode: {0}</AquacultureFishing.PondBreedingMode>
+  <AquacultureFishing.PondAutomaticFeeding>Automatic feeding: {0}; target reserve: {1} days</AquacultureFishing.PondAutomaticFeeding>
+  <AquacultureFishing.PondPredation>Predation: {0}</AquacultureFishing.PondPredation>
+  <AquacultureFishing.PondPredationGlobalDisabled>disabled globally</AquacultureFishing.PondPredationGlobalDisabled>
+  <AquacultureFishing.PondPredationNatural>natural</AquacultureFishing.PondPredationNatural>
+  <AquacultureFishing.PondPredationPondDisabled>disabled for this pond</AquacultureFishing.PondPredationPondDisabled>
+  <AquacultureFishing.PondYes>yes</AquacultureFishing.PondYes>
+  <AquacultureFishing.PondNo>no</AquacultureFishing.PondNo>
+  <AquacultureFishing.PondHabitatPath>Habitat path: {0}; average fit: {1}</AquacultureFishing.PondHabitatPath>
+  <AquacultureFishing.PondOrganisms>Pond organisms: {0}</AquacultureFishing.PondOrganisms>
+  <AquacultureFishing.PondBlueprintStatus>Blueprint: {0} ({1} fit; {2} missing; {3} surplus)</AquacultureFishing.PondBlueprintStatus>
+  <AquacultureFishing.PondNoBlueprint>No blueprint</AquacultureFishing.PondNoBlueprint>
+  <AquacultureFishing.PondBlueprintBalanced>Balanced</AquacultureFishing.PondBlueprintBalanced>
+  <AquacultureFishing.PondBlueprintAtRisk>At risk</AquacultureFishing.PondBlueprintAtRisk>
+  <AquacultureFishing.PondBlueprintEstablishing>Establishing</AquacultureFishing.PondBlueprintEstablishing>
+  <AquacultureFishing.PondPendingLabor>{0} pond management jobs await handler labor.</AquacultureFishing.PondPendingLabor>
+  <AquacultureFishing.PondMissingAutomaticFeeder>Automatic feeding is enabled but no automatic feeder is in range.</AquacultureFishing.PondMissingAutomaticFeeder>
+  <AquacultureFishing.PondMissingSterilizationMedicine>Sterilization is waiting for medicine.</AquacultureFishing.PondMissingSterilizationMedicine>
+  <AquacultureFishing.CommissionUnknown>unknown</AquacultureFishing.CommissionUnknown>
+  <AquacultureFishing.CommissionRequirements>Request: a living healthy {0} from registered breed {1}; stability at least {2}, generation {3} or higher, defining trait {4}, and size at least {5}.</AquacultureFishing.CommissionRequirements>
+  <AquacultureFishing.CommissionLetterLabel>Aquaculture collector commission</AquacultureFishing.CommissionLetterLabel>
+  <AquacultureFishing.CommissionLetterText>A collector is seeking a specimen from your registered breed.
+
+{1}
+
+Deadline: {2} days
+Reward: {3} silver
+
+Deliver the living fish through the breed record in the Aquaculture Journal. Delivery consumes the specimen.</AquacultureFishing.CommissionLetterText>
+  <AquacultureFishing.CommissionTitle>Collector commission</AquacultureFishing.CommissionTitle>
+  <AquacultureFishing.CommissionPreview>Deadline: {0} days   Reward: {1} silver</AquacultureFishing.CommissionPreview>
+  <AquacultureFishing.CommissionDeliverButton>Deliver specimen</AquacultureFishing.CommissionDeliverButton>
+  <AquacultureFishing.CommissionDeliverTitle>Deliver a commission specimen</AquacultureFishing.CommissionDeliverTitle>
+  <AquacultureFishing.CommissionDeliverInstruction>Select a healthy living {0}. Delivery consumes the fish and places the reward nearby.</AquacultureFishing.CommissionDeliverInstruction>
+  <AquacultureFishing.CommissionSpecimenDetails>Generation {0}; size {1}</AquacultureFishing.CommissionSpecimenDetails>
+  <AquacultureFishing.CommissionNoEligible>No currently eligible living specimen is available.</AquacultureFishing.CommissionNoEligible>
+  <AquacultureFishing.CommissionOtherActive>Another collector commission is active. Complete or wait for it before receiving another request.</AquacultureFishing.CommissionOtherActive>
+  <AquacultureFishing.CommissionWaiting>Collector requests arrive occasionally after a registered breed has an eligible living specimen.</AquacultureFishing.CommissionWaiting>
+  <AquacultureFishing.CommissionCompletedCount>Completed commissions: {0}</AquacultureFishing.CommissionCompletedCount>
+  <AquacultureFishing.CommissionCompletedRecord>Collector commissions</AquacultureFishing.CommissionCompletedRecord>
+  <AquacultureFishing.CommissionExpired>The collector commission for {0} expired. No specimen was consumed.</AquacultureFishing.CommissionExpired>
+  <AquacultureFishing.CommissionExpiredShort>This commission has expired.</AquacultureFishing.CommissionExpiredShort>
+  <AquacultureFishing.CommissionNoActive>No collector commission is active.</AquacultureFishing.CommissionNoActive>
+  <AquacultureFishing.CommissionSpecimenInvalid>This fish no longer satisfies the commission requirements.</AquacultureFishing.CommissionSpecimenInvalid>
+  <AquacultureFishing.CommissionRewardPlacementFailed>The reward could not be placed safely, so the specimen was not consumed.</AquacultureFishing.CommissionRewardPlacementFailed>
+  <AquacultureFishing.CommissionSpecimenTransferFailed>The specimen could not be transferred, so the reward was withdrawn.</AquacultureFishing.CommissionSpecimenTransferFailed>
+  <AquacultureFishing.CommissionCompleted>Commission complete: {0} delivered for {1} silver.</AquacultureFishing.CommissionCompleted>
+</LanguageData>

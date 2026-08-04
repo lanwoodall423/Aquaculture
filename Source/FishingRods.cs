@@ -132,11 +132,13 @@ namespace AquacultureFishing
         {
             base.PostSpawnSetup(respawningAfterLoad);
             PendingFishingRodRegistry.Notify(this);
+            parent.Map?.GetComponent<FishingRodMapComponent>()?.Register(parent);
         }
 
         public override void PostDeSpawn(Map map, DestroyMode mode = DestroyMode.Vanish)
         {
             PendingFishingRodRegistry.Remove(parent, map);
+            map?.GetComponent<FishingRodMapComponent>()?.Deregister(parent);
             base.PostDeSpawn(map, mode);
         }
 
@@ -339,14 +341,35 @@ namespace AquacultureFishing
 
         public static CompFishingRodTackle EquippedRod(Pawn pawn)
         {
-            return pawn?.equipment?.AllEquipmentListForReading.Select(thing => thing.TryGetComp<CompFishingRodTackle>()).FirstOrDefault(comp => comp != null);
+            return EquippedRodThing(pawn)?.TryGetComp<CompFishingRodTackle>();
         }
 
-        public static bool HasEquippedRod(Pawn pawn) => EquippedRod(pawn) != null;
+        public static ThingWithComps EquippedRodThing(Pawn pawn)
+        {
+            return pawn?.equipment?.AllEquipmentListForReading.FirstOrDefault(thing => thing.TryGetComp<CompFishingRodTackle>() != null);
+        }
+
+        public static CompFishingRodTackle ActiveRod(Pawn pawn)
+        {
+            CompFishingRodTackle equipped = EquippedRod(pawn);
+            if (equipped != null) return equipped;
+            FishingRodSession session = FishingRodWorkflowComponent.Current?.Find(pawn, pawn?.CurJob);
+            if (session == null && pawn?.CurJob == null)
+                session = FishingRodWorkflowComponent.Current?.FindForPawn(pawn);
+            return session?.rod?.TryGetComp<CompFishingRodTackle>();
+        }
+
+        public static bool HasEquippedRod(Pawn pawn) => ActiveRod(pawn) != null;
 
         public static void FishingJobPostfix(Pawn pawn, ref Job __result)
         {
-            if (__result != null && !HasEquippedRod(pawn)) __result = null;
+            if (__result == null) return;
+
+            if (!FishingRodWorkflow.TryEnsureSelection(pawn, __result, out string reason))
+            {
+                __result = null;
+                FishingRodWorkflow.ReportFailure(reason);
+            }
         }
 
         public static IEnumerable<Gizmo> EquipmentGizmosPostfix(IEnumerable<Gizmo> __result, Pawn_EquipmentTracker __instance)
@@ -364,21 +387,21 @@ namespace AquacultureFishing
 
         public static int WaitTicks(Pawn pawn)
         {
-            CompFishingRodTackle rod = EquippedRod(pawn);
+            CompFishingRodTackle rod = ActiveRod(pawn);
             return Mathf.Max(300, Mathf.RoundToInt(BaseWaitTicks * (rod?.WaitTimeFactor ?? 1f) * ExpertiseFactor(pawn) *
                 (AquacultureMod.Settings?.fishingDurationFactor ?? 0.30f)));
         }
 
         public static int ReelTicks(Pawn pawn)
         {
-            CompFishingRodTackle rod = EquippedRod(pawn);
+            CompFishingRodTackle rod = ActiveRod(pawn);
             return Mathf.Max(240, Mathf.RoundToInt(BaseReelTicks * (rod?.ReelTimeFactor ?? 1f) * ExpertiseFactor(pawn) *
                 (AquacultureMod.Settings?.fishingDurationFactor ?? 0.30f)));
         }
 
         public static float AttractionFor(Pawn pawn, ThingDef fishDef)
         {
-            FishingTacklePartDef lure = EquippedRod(pawn)?.Lure;
+            FishingTacklePartDef lure = ActiveRod(pawn)?.Lure;
             FishFishingExtension fish = fishDef?.GetModExtension<FishFishingExtension>();
             PondWaterKind water = AquaticSpeciesProfile.For(fishDef).waterKind;
             float lureFactor = water == PondWaterKind.Saltwater ? lure?.saltwaterAttraction ?? 1f : lure?.freshwaterAttraction ?? 1f;
@@ -453,7 +476,7 @@ namespace AquacultureFishing
         private static void MaintainFishing(Pawn pawn, IntVec3 cell)
         {
             pawn?.rotationTracker?.FaceCell(cell);
-            CompFishingRodTackle rod = EquippedRod(pawn);
+            CompFishingRodTackle rod = ActiveRod(pawn);
             if (pawn?.needs?.joy != null && rod != null && rod.RecreationLossFactor < 1f)
                 pawn.needs.joy.CurLevel += (1f - rod.RecreationLossFactor) * 0.000004f;
         }
@@ -508,7 +531,7 @@ namespace AquacultureFishing
         public static float TensionFor(Pawn pawn, FishingAttemptRecord attempt)
         {
             if (attempt?.FishDef == null) return 0f;
-            CompFishingRodTackle rod = FishingRodUtility.EquippedRod(pawn);
+            CompFishingRodTackle rod = FishingRodUtility.ActiveRod(pawn);
             float capacity = rod?.MaxFishMass ?? 0.1f;
             float massPressure = Mathf.Clamp01(attempt.HookedFishMass / Mathf.Max(0.1f, capacity));
             float animals = pawn?.skills?.GetSkill(SkillDefOf.Animals).Level / 20f ?? 0f;

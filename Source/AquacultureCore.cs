@@ -454,6 +454,12 @@ namespace AquacultureFishing
             if (!alive) parts.Add("Dead");
             else if (sterilized) parts.Add("Sterilized");
             RefreshAgeTrait();
+            if (!alive && FishUtility.IsRuntimeFish(parent?.def))
+            {
+                ThingDef meatDef = DefDatabase<ThingDef>.GetNamedSilentFail(FishProcessingYield.MeatDefName);
+                parts.Add("AquacultureFishing.ExpectedProcessingYield".Translate(
+                    FishProcessingYield.ExpectedMeatCount(this), meatDef?.LabelCap ?? "fish meat").ToString());
+            }
             if (!BreedName.NullOrEmpty()) parts.Add("Breed: " + BreedName + " (generation " + breedGeneration + ")");
             if (HasAnyTraits) parts.Add("Traits: " + TraitSummary);
             if (alive && lifespanTicks > 0) parts.Add("Lifespan remaining: " + Mathf.Max(0, lifespanTicks - ((Find.TickManager?.TicksGame ?? birthTick) - birthTick)).ToStringTicksToPeriod());
@@ -579,6 +585,7 @@ namespace AquacultureFishing
     public static class AquacultureStartup
     {
         private static FieldInfo aquariumFishThingField;
+        private static readonly HashSet<string> DefDiagnostics = new HashSet<string>();
 
         static AquacultureStartup()
         {
@@ -588,22 +595,16 @@ namespace AquacultureFishing
                 foreach (ThingDef def in fishDefs)
                 {
                     FishUtility.RegisterRuntimeFish(def);
-                    def.stackLimit = 1;
-                    def.drawerType = DrawerType.RealtimeOnly;
-                    if (def.comps == null) def.comps = new List<CompProperties>();
-                    if (!def.comps.Any(c => c.compClass == typeof(CompFishTraits))) def.comps.Add(new CompProperties_FishTraits());
-                    if (def.statBases == null) def.statBases = new List<StatModifier>();
-                    StatModifier beauty = def.statBases.FirstOrDefault(modifier => modifier.stat == StatDefOf.Beauty);
-                    if (beauty == null) def.statBases.Add(new StatModifier { stat = StatDefOf.Beauty, value = 1f });
-                    StatModifier mass = def.statBases.FirstOrDefault(modifier => modifier.stat == StatDefOf.Mass);
-                    if (mass == null) def.statBases.Add(new StatModifier { stat = StatDefOf.Mass, value = 0.1f });
-                    EnsureTraitsTab(def);
+                    ConfigureRuntimeFishDef(def);
                 }
-                ConfigureFishFoodTraitComps();
                 ConfigureFishProcessingRecipe(fishDefs);
                 AquacultureMod.Harmony.PatchAll(Assembly.GetExecutingAssembly());
                 AquacultureSharedKnowledgeIntegration.Register();
                 PatchFishingJob();
+                MethodInfo cleanup = AccessTools.Method(typeof(JobDriver), "Cleanup");
+                if (cleanup != null)
+                    AquacultureMod.Harmony.Patch(cleanup,
+                        postfix: new HarmonyMethod(typeof(FishingRodWorkflow), nameof(FishingRodWorkflow.CleanupPostfix)));
                 AquacultureMod.Harmony.Patch(AccessTools.Method(typeof(Pawn_EquipmentTracker), nameof(Pawn_EquipmentTracker.GetGizmos)),
                     postfix: new HarmonyMethod(typeof(FishingRodUtility), nameof(FishingRodUtility.EquipmentGizmosPostfix)));
                 PatchFishingDurationAndPreference();
@@ -660,14 +661,58 @@ namespace AquacultureFishing
             }
         }
 
-        private static void ConfigureFishFoodTraitComps()
+        private static void ConfigureRuntimeFishDef(ThingDef def)
         {
-            foreach (ThingDef def in DefDatabase<ThingDef>.AllDefs.Where(def => def.ingestible != null))
+            if (def == null) return;
+            if (def.stackLimit != 1)
             {
-                if (def.comps == null) def.comps = new List<CompProperties>();
-                if (!def.comps.Any(comp => typeof(CompFishFoodTraits).IsAssignableFrom(comp.compClass)))
-                    def.comps.Add(new CompProperties_FishFoodTraits());
+                LogDefDiagnostic("stack:" + def.defName,
+                    "Fish " + def.defName + " uses stackLimit " + def.stackLimit + "; individual fish state requires stackLimit 1.");
+                def.stackLimit = 1;
             }
+            if (def.drawerType == DrawerType.MapMeshAndRealTime)
+                def.drawerType = DrawerType.RealtimeOnly;
+            else if (def.drawerType != DrawerType.RealtimeOnly)
+                LogDefDiagnostic("drawer:" + def.defName,
+                    "Fish " + def.defName + " keeps explicit drawer type " + def.drawerType + "; realtime fish drawing may be limited.");
+            EnsureFishComp(def);
+            EnsureFishStat(def, StatDefOf.Beauty, 1f);
+            EnsureFishStat(def, StatDefOf.Mass, 0.1f);
+            EnsureTraitsTab(def);
+        }
+
+        private static void EnsureFishComp(ThingDef def)
+        {
+            if (def.comps == null) def.comps = new List<CompProperties>();
+            if (def.comps.Any(comp => comp?.compClass == typeof(CompFishTraits))) return;
+            def.comps.Add(new CompProperties_FishTraits());
+        }
+
+        private static void EnsureFishStat(ThingDef def, StatDef stat, float fallback)
+        {
+            if (def.statBases == null) def.statBases = new List<StatModifier>();
+            if (def.statBases.Any(modifier => modifier?.stat == stat)) return;
+            try
+            {
+                float inherited = def.GetStatValueAbstract(stat);
+                if (Mathf.Abs(inherited) > 0.0001f)
+                {
+                    LogDefDiagnostic("stat:" + def.defName + ":" + stat.defName,
+                        "Fish " + def.defName + " keeps inherited " + stat.defName + " value " + inherited + ".");
+                    return;
+                }
+            }
+            catch (Exception exception)
+            {
+                LogDefDiagnostic("stat-error:" + def.defName + ":" + stat.defName,
+                    "Could not inspect " + stat.defName + " for fish " + def.defName + ": " + exception.GetBaseException().Message);
+            }
+            def.statBases.Add(new StatModifier { stat = stat, value = fallback });
+        }
+
+        private static void LogDefDiagnostic(string key, string message)
+        {
+            if (DefDiagnostics.Add(key)) Log.Warning("[Aquaculture - Fishing] " + message);
         }
 
         private static void EnsureTraitsTab(ThingDef def)
@@ -686,6 +731,8 @@ namespace AquacultureFishing
             MethodInfo method = AccessTools.Method(type, "TryMakePreToilReservations");
             if (method != null)
             {
+                AquacultureMod.Harmony.Patch(method,
+                    prefix: new HarmonyMethod(typeof(FishingRodWorkflow), nameof(FishingRodWorkflow.FishingPreToilReservationsPrefix)));
                 MethodInfo makeToils = AccessTools.Method(type, "MakeNewToils");
                 if (makeToils != null) AquacultureMod.Harmony.Patch(makeToils,
                     postfix: new HarmonyMethod(typeof(FishingAttemptIntegration), nameof(FishingAttemptIntegration.VfeMakeNewToilsPostfix)));
@@ -710,6 +757,10 @@ namespace AquacultureFishing
             Type odysseyDriver = AccessTools.TypeByName("RimWorld.JobDriver_Fish");
             if (odysseyDriver != null)
             {
+                MethodInfo reservations = AccessTools.Method(odysseyDriver, "TryMakePreToilReservations");
+                if (reservations != null)
+                    AquacultureMod.Harmony.Patch(reservations,
+                        prefix: new HarmonyMethod(typeof(FishingRodWorkflow), nameof(FishingRodWorkflow.FishingPreToilReservationsPrefix)));
                 MethodInfo makeToils = AccessTools.Method(odysseyDriver, "MakeNewToils");
                 if (makeToils != null) AquacultureMod.Harmony.Patch(makeToils,
                     postfix: new HarmonyMethod(typeof(FishingAttemptIntegration), nameof(FishingAttemptIntegration.OdysseyMakeNewToilsPostfix)));

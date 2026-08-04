@@ -80,6 +80,7 @@ namespace AquacultureFishing
 
     public sealed class AquacultureSettings : ModSettings
     {
+        public const int CurrentCapacityModelVersion = 2;
         public int dataVersion = 1;
         public bool enableResearchProgression = true;
         public float fishingDurationFactor = 0.30f;
@@ -99,7 +100,9 @@ namespace AquacultureFishing
         public float starvationHours = 96f;
         public float waterStressHours = 12f;
         public float temperatureStressHours = 48f;
-        public float fishCapacityPerCell = 2f;
+        public float fishCapacityPerCell = PondCapacityRules.DefaultCapacityPerCell;
+        public int capacityModelVersion = CurrentCapacityModelVersion;
+        public bool capacityTransitionWarning;
         public bool predationEnabled = true;
         public float feedValuePerUnit = 0.05f;
         public float feederRange = 6f;
@@ -184,7 +187,9 @@ namespace AquacultureFishing
             Scribe_Values.Look(ref starvationHours, "starvationHours", 96f);
             Scribe_Values.Look(ref waterStressHours, "waterStressHours", 12f);
             Scribe_Values.Look(ref temperatureStressHours, "temperatureStressHours", 48f);
-            Scribe_Values.Look(ref fishCapacityPerCell, "fishCapacityPerCell", 2f);
+            Scribe_Values.Look(ref fishCapacityPerCell, "fishCapacityPerCell", PondCapacityRules.DefaultCapacityPerCell);
+            Scribe_Values.Look(ref capacityModelVersion, "capacityModelVersion", 0);
+            Scribe_Values.Look(ref capacityTransitionWarning, "capacityTransitionWarning", false);
             Scribe_Values.Look(ref predationEnabled, "predationEnabled", true);
             Scribe_Values.Look(ref feedValuePerUnit, "feedValuePerUnit", 0.05f);
             Scribe_Values.Look(ref feederRange, "feederRange", 6f);
@@ -207,6 +212,16 @@ namespace AquacultureFishing
             if (traitSettings == null) traitSettings = new List<FishTraitSetting>();
             if (fishExpertiseSettings == null) fishExpertiseSettings = new List<FishExpertiseSetting>();
             if (masks == null) masks = new List<FishMaskRecord>();
+            if (Scribe.mode == LoadSaveMode.PostLoadInit && capacityModelVersion < CurrentCapacityModelVersion)
+            {
+                if (fishCapacityPerCell > PondCapacityRules.DefaultCapacityPerCell + 0.001f)
+                    capacityTransitionWarning = true;
+                capacityModelVersion = CurrentCapacityModelVersion;
+            }
+            else if (Scribe.mode == LoadSaveMode.Saving)
+            {
+                capacityModelVersion = CurrentCapacityModelVersion;
+            }
             dataVersion = 1;
             fishingDurationFactor = Mathf.Clamp(fishingDurationFactor, 0.1f, 1f);
             globalMutationRate = Mathf.Clamp01(globalMutationRate);
@@ -283,9 +298,9 @@ namespace AquacultureFishing
             float y = rect.y + 42f;
             DrawSettingToggle(rect, ref y, "Research Progression", "Require aquaculture research for pond construction, management, diagnostics, breeding controls, and automation.", ref Settings.enableResearchProgression);
             DrawSettingToggle(rect, ref y, "Pond Alerts", "Show alerts when a pond has starving fish, incompatible water, dangerous temperatures, or overcrowding.", ref Settings.showPondAlerts);
-            DrawSettingSlider(rect, ref y, "Fishing Duration", ref Settings.fishingDurationFactor, 0.1f, 1f, value => value.ToStringPercent());
+            DrawSettingSlider(rect, ref y, "Wait/Reel Duration", ref Settings.fishingDurationFactor, 0.1f, 1f, value => value.ToStringPercent());
             DrawSettingSlider(rect, ref y, "Anima Fish Per Tree", ref Settings.animaFishPerTree, 1, 100, value => Mathf.RoundToInt(value).ToString());
-            Widgets.Label(new Rect(rect.x, y + 8f, rect.width, 66f), "Progression can be disabled for sandbox play. Fishing still produces one fish per completed catch. Existing ponds continue to simulate when progression is enabled later.");
+            Widgets.Label(new Rect(rect.x, y + 8f, rect.width, 66f), "Cast is fixed. This setting scales Wait and Reel only. Progression can be disabled for sandbox play; fishing still produces one fish per completed catch.");
             if (Widgets.ButtonText(new Rect(rect.x, rect.yMax - 44f, 170f, 34f), "Reset General"))
             {
                 Settings.enableResearchProgression = true;
@@ -300,10 +315,10 @@ namespace AquacultureFishing
             Text.Font = GameFont.Medium;
             Widgets.Label(new Rect(rect.x, rect.y, rect.width, 34f), "Species Expertise Requirements");
             Text.Font = GameFont.Small;
-            Widgets.Label(new Rect(rect.x, rect.y + 38f, rect.width, 44f),
-                "Fish above a colonist's current expertise will not bite. Untrained preserves existing behavior.");
+            Widgets.Label(new Rect(rect.x, rect.y + 38f, rect.width, 66f),
+                "A fish must be present in the shared natural-water population and meet the colonist's minimum expertise before it can bite. Novice is the default requirement. Lures and species knowledge weight attraction; Animals skill affects escape.");
             List<ThingDef> fish = DefDatabase<ThingDef>.AllDefs.Where(FishUtility.IsFish).OrderBy(def => def.label).ToList();
-            Rect outRect = new Rect(rect.x, rect.y + 88f, rect.width, rect.height - 88f);
+            Rect outRect = new Rect(rect.x, rect.y + 110f, rect.width, rect.height - 110f);
             Rect view = new Rect(0f, 0f, outRect.width - 16f, Mathf.Max(outRect.height, fish.Count * 44f));
             Widgets.BeginScrollView(outRect, ref fishingScroll, view);
             for (int i = 0; i < fish.Count; i++)
@@ -359,10 +374,33 @@ namespace AquacultureFishing
             DrawSettingSlider(rect, ref y, "Starvation Time", ref Settings.starvationHours, 6f, 600f, value => Mathf.RoundToInt(value) + " h");
             DrawSettingSlider(rect, ref y, "Wrong Water Survival", ref Settings.waterStressHours, 1f, 240f, value => Mathf.RoundToInt(value) + " h");
             DrawSettingSlider(rect, ref y, "Temperature Survival", ref Settings.temperatureStressHours, 1f, 240f, value => Mathf.RoundToInt(value) + " h");
-            DrawSettingSlider(rect, ref y, "Capacity Per Pond Cell", ref Settings.fishCapacityPerCell, 0.25f, 10f, value => value.ToString("0.00"));
+            DrawSettingSlider(rect, ref y, "AquacultureFishing.PondBaseCapacitySetting".Translate().ToString(),
+                ref Settings.fishCapacityPerCell, 0.25f, 10f, value => value.ToString("0.00"));
+            TooltipHandler.TipRegion(new Rect(rect.x, y - 38f, rect.width, 38f),
+                "AquacultureFishing.PondCapacityBaselineTooltip".Translate(PondCapacityRules.DefaultCapacityPerCell,
+                    PondCapacityRules.PoweredAeratorCapacity).ToString());
+            if (Settings.capacityTransitionWarning)
+            {
+                Widgets.DrawHighlight(new Rect(rect.x, y, rect.width, 68f));
+                GUI.color = new Color(1f, 0.78f, 0.35f);
+                Widgets.Label(new Rect(rect.x + 8f, y + 4f, rect.width - 16f, 30f),
+                    "AquacultureFishing.PondCapacityTransitionWarning".Translate(Settings.fishCapacityPerCell.ToString("0.##"),
+                        PondCapacityRules.DefaultCapacityPerCell.ToString("0.##")).ToString());
+                GUI.color = Color.white;
+                if (Widgets.ButtonText(new Rect(rect.x + 8f, y + 36f, 150f, 28f),
+                    "AquacultureFishing.PondCapacityUseNewBaseline".Translate().ToString()))
+                {
+                    Settings.fishCapacityPerCell = PondCapacityRules.DefaultCapacityPerCell;
+                    Settings.capacityTransitionWarning = false;
+                }
+                if (Widgets.ButtonText(new Rect(rect.x + 166f, y + 36f, 150f, 28f),
+                    "AquacultureFishing.PondCapacityKeepExisting".Translate().ToString()))
+                    Settings.capacityTransitionWarning = false;
+                y += 76f;
+            }
             DrawSettingSlider(rect, ref y, "Feed Value Per Unit", ref Settings.feedValuePerUnit, 0.005f, 0.25f, value => value.ToString("0.000"));
             DrawSettingSlider(rect, ref y, "Automatic Feeder Range", ref Settings.feederRange, 1f, 30f, value => Mathf.RoundToInt(value) + " cells");
-            DrawSettingToggle(rect, ref y, "Predation", "Carnivorous fish can consume smaller pond fish when no other food satisfies them.", ref Settings.predationEnabled);
+            DrawSettingToggle(rect, ref y, "Global Predation", "Allows predation unless a pond's own predation policy disables it. Carnivorous fish consume smaller pond fish when no other food satisfies them.", ref Settings.predationEnabled);
             if (Widgets.ButtonText(new Rect(rect.x, rect.yMax - 44f, 170f, 34f), "Reset Ecology"))
             {
                 Settings.ecologyIntervalHours = 1f;
@@ -371,7 +409,9 @@ namespace AquacultureFishing
                 Settings.starvationHours = 96f;
                 Settings.waterStressHours = 12f;
                 Settings.temperatureStressHours = 48f;
-                Settings.fishCapacityPerCell = 2f;
+                Settings.fishCapacityPerCell = PondCapacityRules.DefaultCapacityPerCell;
+                Settings.capacityTransitionWarning = false;
+                Settings.capacityModelVersion = AquacultureSettings.CurrentCapacityModelVersion;
                 Settings.predationEnabled = true;
                 Settings.feedValuePerUnit = 0.05f;
                 Settings.feederRange = 6f;

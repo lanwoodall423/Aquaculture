@@ -7,6 +7,7 @@ $swimming = Get-Content -Raw (Join-Path $Root 'Source\PondSwimming.cs')
 $life = Get-Content -Raw (Join-Path $Root 'Source\FishLifeCycle.cs')
 $ecology = Get-Content -Raw (Join-Path $Root 'Source\FishEcology.cs')
 $core = Get-Content -Raw (Join-Path $Root 'Source\AquacultureCore.cs')
+$habitats = Get-Content -Raw (Join-Path $Root 'Source\PondHabitats.cs')
 $names = @('Delicious','Beautiful','Nutritious','Healing','Playful','Calming','Energizing','Cleansing','Aromatic','Cooling','Warming','Curious','Therapeutic','Luxurious','Sparkling','Friendly','Grazer','Fertilizing','Oxygenator','Anima','Lunar')
 
 $checks = [ordered]@{
@@ -27,7 +28,8 @@ $checks = [ordered]@{
     'pond ecology traits' = $life -match 'PondTraitBeauty' -and $ecology -match 'ApplyPondTraitEcology'
     'fertilizing cached crop hook' = $swimming -match 'PlantGrowthRatePondTraitPatch' -and
         $life -match 'cropGrowthByCell' -and $swimming -match 'PondCropGrowthBonusAt\(IntVec3 cell\) => cropGrowthByCell\.TryGetValue'
-    'oxygenator capacity hook' = $life -match 'PondTraitCapacityBonus'
+    'oxygenator capacity hook' = $habitats -match 'PondTraitCapacityBonus' -and
+        $habitats -match 'PoweredAeratorCapacity'
     'oxygenator health hook' = $swimming -match 'detritusReductionPerHour' -and $traits -match '<detritusReductionPerHour>'
     'night beauty refresh' = $life -match 'RefreshTimedPondTraitEffects' -and $swimming -match 'lastPondTraitNight'
     'existing inheritance retained' = $life -match 'BuildInheritance' -and $life -match 'inheritedTraits'

@@ -185,7 +185,12 @@ namespace AquacultureFishing
             Text.Font = GameFont.Small;
 
             float y = inner.y + 40f;
-            DrawGauge(inner, ref y, "Population", data.totalFish, data.capacity, new Color(0.32f, 0.72f, 0.96f));
+            DrawGauge(inner, ref y, "AquacultureFishing.PondPlannerPhysical".Translate().ToString(), data.totalFish,
+                data.physicalCapacity, new Color(0.32f, 0.72f, 0.96f));
+            DrawGauge(inner, ref y, "AquacultureFishing.PondPlannerSustainable".Translate().ToString(), data.totalFish,
+                data.sustainableCapacity, new Color(0.38f, 0.82f, 0.44f));
+            DrawGauge(inner, ref y, "AquacultureFishing.PondPlannerIndustrial".Translate().ToString(), data.totalFish,
+                data.industrialCapacity, new Color(0.78f, 0.58f, 0.28f));
             DrawGauge(inner, ref y, "Daily Algae Demand", data.algaeDemand, Mathf.Max(0.001f, data.sustainableAlgae), new Color(0.38f, 0.82f, 0.44f));
             y += 4f;
             DrawForecastCard(inner, ref y, "Food Demand", data.dailyDemand.ToString("0.000") + " / day",
@@ -223,8 +228,14 @@ namespace AquacultureFishing
             float demandMultiplier = AquacultureMod.Settings?.foodDemandMultiplier ?? 1f;
             float algaeMultiplier = AquacultureMod.Settings?.algaeGrowthMultiplier ?? 1f;
             PondMovementUtility.PondInfo pondInfo = PondMovementUtility.InfoAt(pond.Map, pond.Position);
-            float algaeCapacity = Mathf.Max(0.1f, (pondInfo?.cells.Count ?? 1) * 0.25f);
-            var data = new Forecast { capacity = snapshot.capacity };
+            var data = new Forecast
+            {
+                capacity = snapshot.capacity,
+                physicalCapacity = snapshot.physicalCapacity > 0 ? snapshot.physicalCapacity : snapshot.capacity,
+                industrialCapacity = snapshot.industrialCapacity > 0 ? snapshot.industrialCapacity : snapshot.capacity,
+                habitatSupportedCapacity = snapshot.habitatSupportedCapacity > 0
+                    ? snapshot.habitatSupportedCapacity : snapshot.capacity
+            };
             float temperature = snapshot.temperature;
 
             foreach (KeyValuePair<ThingDef, int> pair in plan)
@@ -253,12 +264,28 @@ namespace AquacultureFishing
                         profile.maximumTemperature.ToString("0.#") + " C range.");
             }
 
-            data.sustainableAlgae = 0.0045f * algaeCapacity * algaeMultiplier * 24f;
+            data.sustainableAlgae = snapshot.habitat?.naturalFoodPerDay ??
+                PondCapacityRules.EstimatedNaturalFoodPerDay(pondInfo?.cells.Count ?? 1, 0, algaeMultiplier);
             float naturalSupport = Mathf.Min(data.algaeDemand, data.sustainableAlgae);
             data.feedNeeded = Mathf.Max(0f, data.dailyDemand - naturalSupport);
+            float dailyDemandPerFish = data.totalFish > 0 ? data.dailyDemand / data.totalFish :
+                0.0025f * demandMultiplier * 24f;
+            data.foodSupportedCapacity = PondCapacityRules.FoodSupportedPopulation(data.sustainableAlgae,
+                dailyDemandPerFish, data.industrialCapacity);
+            data.sustainableCapacity = Mathf.Min(data.industrialCapacity,
+                Mathf.Min(data.foodSupportedCapacity, data.habitatSupportedCapacity));
             data.predationRisk = data.predators + data.omnivores > 0 && plan.Count(pair => pair.Value > 0) > 1;
-            if (data.totalFish > data.capacity)
-                data.warnings.Insert(0, "Population exceeds carrying capacity by " + (data.totalFish - data.capacity) + " fish.");
+            if (data.totalFish > data.physicalCapacity)
+                data.warnings.Insert(0, "AquacultureFishing.PondPlannerOverPhysical".Translate(
+                    data.totalFish - data.physicalCapacity).ToString());
+            else if (data.totalFish > data.industrialCapacity)
+                data.warnings.Insert(0, "AquacultureFishing.PondPlannerOverIndustrial".Translate(
+                    data.totalFish - data.industrialCapacity).ToString());
+            else if (data.totalFish > data.sustainableCapacity)
+                data.warnings.Insert(0, "AquacultureFishing.PondPlannerUnsupported".Translate(
+                    data.foodSupportedCapacity <= data.habitatSupportedCapacity ?
+                        "AquacultureFishing.PondConstraintFood".Translate().ToString() :
+                        "AquacultureFishing.PondConstraintHabitat".Translate().ToString()).ToString());
             if (data.algaeDemand > data.sustainableAlgae * 1.1f)
                 data.warnings.Add("Plant-food demand exceeds sustainable algae growth.");
             if (data.preyDemand > 0f && !data.predationRisk)
@@ -266,7 +293,7 @@ namespace AquacultureFishing
             else if (data.predationRisk)
                 data.warnings.Add("Predators may consume smaller pond fish; the forecast cannot guarantee species ratios.");
             if (data.totalFish == 0) data.warnings.Add("Add fish to create a stocking plan.");
-            data.danger = data.totalFish > data.capacity || data.warnings.Any(message => message.Contains("requires") || message.Contains("outside"));
+            data.danger = data.totalFish > data.physicalCapacity || data.warnings.Any(message => message.Contains("requires") || message.Contains("outside"));
             return data;
         }
 
@@ -384,6 +411,11 @@ namespace AquacultureFishing
         {
             public int totalFish;
             public int capacity;
+            public int physicalCapacity;
+            public int sustainableCapacity;
+            public int industrialCapacity;
+            public int foodSupportedCapacity;
+            public int habitatSupportedCapacity;
             public int plantEaters;
             public int omnivores;
             public int predators;

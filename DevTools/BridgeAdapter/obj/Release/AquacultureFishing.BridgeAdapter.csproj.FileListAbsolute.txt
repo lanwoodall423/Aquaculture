@@ -3,4 +3,4 @@ C:\Games\Steam\steamapps\common\RimWorld\Mods\AquacultureFishing\DevTools\Bridge
 C:\Games\Steam\steamapps\common\RimWorld\Mods\AquacultureFishing\DevTools\BridgeAdapter\obj\Release\AquacultureFishing.BridgeAdapter.csproj.CoreCompileInputs.cache
 C:\Games\Steam\steamapps\common\RimWorld\Mods\AquacultureFishing\DevTools\BridgeAdapter\bin\Release\AquacultureFishing.BridgeAdapter.dll
 C:\Games\Steam\steamapps\common\RimWorld\Mods\AquacultureFishing\DevTools\BridgeAdapter\Build\AquacultureFishing.BridgeAdapter.20260731150541092.dll
-C:\Games\Steam\steamapps\common\RimWorld\Mods\AquacultureFishing\DevTools\BridgeAdapter\obj\Release\AquacultureFishing.BridgeAdapter.20260731150541092.dll
+C:\Games\Steam\steamapps\common\RimWorld\Mods\AquacultureFishing\DevTools\BridgeAdapter\obj\Release\AquacultureFishing.BridgeAdapter.dll

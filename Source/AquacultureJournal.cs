@@ -57,6 +57,8 @@ namespace AquacultureFishing
         public int births;
         public int matchingBirths;
         public int highestGeneration;
+        public int commissionsCompleted;
+        public int lastCommissionTick = -1;
         public bool masteryAnnounced;
         public List<string> lineage = new List<string>();
         public ThingDef FishDef => DefDatabase<ThingDef>.GetNamedSilentFail(fishDefName);
@@ -78,6 +80,8 @@ namespace AquacultureFishing
             Scribe_Values.Look(ref births, "births");
             Scribe_Values.Look(ref matchingBirths, "matchingBirths");
             Scribe_Values.Look(ref highestGeneration, "highestGeneration");
+            Scribe_Values.Look(ref commissionsCompleted, "commissionsCompleted");
+            Scribe_Values.Look(ref lastCommissionTick, "lastCommissionTick", -1);
             Scribe_Values.Look(ref masteryAnnounced, "masteryAnnounced");
             Scribe_Collections.Look(ref lineage, "lineage", LookMode.Value);
             if (traitDefNames == null) traitDefNames = new List<string>();
@@ -317,6 +321,7 @@ namespace AquacultureFishing
                 cohort[i].NotifyTraitsChanged();
             }
             Messages.Message("Registered fish breed: " + breedRecord.name + ".", MessageTypeDefOf.PositiveEvent, false);
+            AquacultureCommissionManager.NotifyBreedRegistered(breedRecord);
             return breedRecord;
         }
 
@@ -778,6 +783,7 @@ namespace AquacultureFishing
             Text.Font = GameFont.Small;
             y += 38f;
             DrawRecord(view, ref y, "Largest size", record.largestSize.ToStringPercent());
+            DrawRecord(view, ref y, "Largest size yield", FishProcessingYield.SizeYieldFactor(record.largestSize).ToString("0.00") + "x normal");
             DrawRecord(view, ref y, "Highest beauty", record.highestBeauty.ToString("0.#"));
             DrawRecord(view, ref y, "Highest nutrition", record.highestNutrition.ToStringPercent());
             DrawRecord(view, ref y, "Rarest trait combination", record.rarestTraitScore.ToString("0.00") + " rarity");
@@ -960,7 +966,8 @@ namespace AquacultureFishing
                 GUI.color = Color.gray;
                 Widgets.Label(new Rect(58f, y + 30f, view.width - 68f, 22f),
                     record.Milestones + " / 4 milestones   Largest " + record.largestSize.ToStringPercent() +
-                    "   Longest lived " + record.longestLivedTicks.ToStringTicksToPeriod());
+                    "   Size yield " + FishProcessingYield.SizeYieldFactor(record.largestSize).ToString("0.00") + "x   Longest lived " +
+                    record.longestLivedTicks.ToStringTicksToPeriod());
                 GUI.color = Color.white;
                 y += 70f;
             }
@@ -1011,7 +1018,7 @@ namespace AquacultureFishing
                 Widgets.Label(rect, "Registered breeds preserve selected traits and become more reliable over successive generations.");
                 return;
             }
-            Rect view = new Rect(0f, 0f, rect.width - 16f, Mathf.Max(rect.height, 570f + breed.lineage.Count * 28f));
+            Rect view = new Rect(0f, 0f, rect.width - 16f, Mathf.Max(rect.height, 760f + breed.lineage.Count * 28f));
             Widgets.BeginScrollView(rect, ref detailScroll, view);
             if (breed.FishDef != null) Widgets.ThingIcon(new Rect(0f, 0f, 72f, 72f), breed.FishDef);
             Text.Font = GameFont.Medium;
@@ -1050,8 +1057,10 @@ namespace AquacultureFishing
             DrawRecord(view, ref y, "Highest generation", breed.highestGeneration.ToString());
             DrawRecord(view, ref y, "Market value", breed.MarketValueFactor.ToStringPercent() + " of base");
             DrawRecord(view, ref y, "Pond beauty", "+" + breed.BeautyBonus.ToString("0.##") + " per pond fish");
+            DrawRecord(view, ref y, "AquacultureFishing.CommissionCompletedRecord".Translate().ToString(), breed.commissionsCompleted.ToString());
             if (!breed.registeredBy.NullOrEmpty()) DrawRecord(view, ref y, "Registered by", breed.registeredBy);
             DrawRecord(view, ref y, "Registered", DayLabel(breed.registeredTick));
+            AquacultureCommissionUi.DrawBreedSection(view, ref y, breed);
             y += 12f;
             Text.Font = GameFont.Medium;
             Widgets.Label(new Rect(0f, y, view.width, 30f), "Lineage History");

@@ -191,7 +191,7 @@ namespace AquacultureFishing
             float knowledge = progress?.KnowledgeFor(fishDef) ?? 0f;
             float expertise = (int)(progress?.ExpertiseLevel ?? KnowledgeRank.Novice) / 3f;
             float baseEscape = Mathf.Clamp(0.55f - animals * 0.25f - knowledge * 0.20f - expertise * 0.15f, 0.05f, 0.80f);
-            float catchFactor = FishingRodUtility.EquippedRod(pawn)?.CatchChanceFactor ?? 1f;
+            float catchFactor = FishingRodUtility.ActiveRod(pawn)?.CatchChanceFactor ?? 1f;
             return Mathf.Clamp01(1f - (1f - baseEscape) * catchFactor);
         }
 
@@ -290,10 +290,11 @@ namespace AquacultureFishing
         {
             if (attempt == null || attempt.biteDecided) return;
             KnowledgeRank level = ProgressFor(attempt.pawn, false)?.ExpertiseLevel ?? KnowledgeRank.Novice;
+            NaturalFishPopulationMapComponent populations = attempt.pawn.Map.GetComponent<NaturalFishPopulationMapComponent>();
             List<ThingDef> eligible = presentSpecies?.Where(FishUtility.IsFish).Distinct()
                 .Where(fish => (AquacultureMod.Settings?.MinimumExpertiseFor(fish) ?? KnowledgeRank.Novice) <= level)
+                .Where(fish => populations?.Contains(attempt.waterCell, fish) == true)
                 .ToList() ?? new List<ThingDef>();
-            NaturalFishPopulationMapComponent populations = attempt.pawn.Map.GetComponent<NaturalFishPopulationMapComponent>();
             ThingDef selected = eligible.Count == 0 ? null : eligible.RandomElementByWeight(fish => Mathf.Max(0.01f,
                 (attraction?.Invoke(fish) ?? 1f) * (populations?.LocalWeight(attempt.waterCell, fish) ?? 1f)));
             bool fishBit = selected != null && Rand.Chance(FishingProgressionUtility.BiteChance(attempt.pawn, selected));
@@ -302,6 +303,9 @@ namespace AquacultureFishing
             attempt.fishBit = fishBit;
             attempt.biteTick = Find.TickManager?.TicksGame ?? 0;
             attempt.CaptureHookedFish();
+            if (fishBit)
+                attempt.pawn.Map?.GetComponent<NaturalFishPopulationMapComponent>()?
+                    .WarnIfCatchLikelyCrossesBreedingFloor(attempt.waterCell, selected);
             AquacultureEventRouter.FishHooked(attempt);
         }
 
@@ -311,7 +315,7 @@ namespace AquacultureFishing
         {
             attempt = AttemptFor(pawn, framework);
             if (attempt == null) return false;
-            CompFishingRodTackle rod = FishingRodUtility.EquippedRod(pawn);
+            CompFishingRodTackle rod = FishingRodUtility.ActiveRod(pawn);
             bool allowed = rod != null && attempt.biteDecided && attempt.fishBit && stillAvailable?.Invoke(attempt) == true &&
                 (AquacultureMod.Settings?.MinimumExpertiseFor(attempt.FishDef) ?? KnowledgeRank.Novice) <=
                 (ProgressFor(pawn, false)?.ExpertiseLevel ?? KnowledgeRank.Novice);
@@ -376,7 +380,7 @@ namespace AquacultureFishing
             IntVec3 cell = WaterCellFor(driver);
             IEnumerable<ThingDef> frameworkSpecies = VfeSpecies(zone);
             IEnumerable<ThingDef> species = pawn?.Map?.GetComponent<NaturalFishPopulationMapComponent>()?
-                .SpeciesAt(cell, frameworkSpecies) ?? frameworkSpecies;
+                .SpeciesAt(cell, frameworkSpecies) ?? Enumerable.Empty<ThingDef>();
             FishingAttemptRecord attempt = FishingProgressionComponent.Current?.Pair(pawn, WaterCellFor(driver), VfeFramework,
                 species, fish => FishingRodUtility.AttractionFor(pawn, fish));
             AccessTools.Field(driver?.GetType(), "fishCaught")?.SetValue(driver, attempt?.FishDef);
@@ -392,7 +396,7 @@ namespace AquacultureFishing
             IntVec3 cell = WaterCellFor(driver);
             IEnumerable<ThingDef> frameworkSpecies = VfeSpecies(zone);
             IEnumerable<ThingDef> species = pawn?.Map?.GetComponent<NaturalFishPopulationMapComponent>()?
-                .SpeciesAt(cell, frameworkSpecies) ?? frameworkSpecies;
+                .SpeciesAt(cell, frameworkSpecies) ?? Enumerable.Empty<ThingDef>();
             FishingAttemptRecord attempt = FishingProgressionComponent.Current?.ProgressWait(pawn, VfeFramework, species,
                 fish => FishingRodUtility.AttractionFor(pawn, fish), elapsedTicks, waitDuration);
             if (attempt?.biteDecided == true)
@@ -424,20 +428,16 @@ namespace AquacultureFishing
         {
             WaterBody body = pawn?.Map == null ? null : FishingUtility.GetWaterBody(cell, pawn.Map);
             NaturalFishPopulationMapComponent populations = pawn?.Map?.GetComponent<NaturalFishPopulationMapComponent>();
-            IEnumerable<ThingDef> species = populations?.SpeciesAtOdyssey(cell, body);
-            if (species != null) return species;
-            return body?.HasFish == true && body.Population > 0f
-                ? body.CommonFishIncludingExtras.Concat(body.UncommonFish).Where(FishUtility.IsFish).Distinct()
-                : Enumerable.Empty<ThingDef>();
+            return populations?.SpeciesAtOdyssey(cell, body) ?? Enumerable.Empty<ThingDef>();
         }
 
         public static bool VfeStillAvailable(object driver, FishingAttemptRecord attempt)
         {
             Pawn pawn = PawnFor(driver);
             Zone zone = VfeZoneFor(driver) as Zone;
+            NaturalFishPopulationMapComponent populations = pawn?.Map?.GetComponent<NaturalFishPopulationMapComponent>();
             return pawn?.Map != null && zone?.Map == pawn.Map && attempt.waterCell.GetZone(pawn.Map) == zone &&
-                (pawn.Map.GetComponent<NaturalFishPopulationMapComponent>()?.Contains(attempt.waterCell, attempt.FishDef) == true ||
-                    VfeSpecies(zone).Contains(attempt.FishDef));
+                populations?.Contains(attempt.waterCell, attempt.FishDef) == true;
         }
 
         public static bool OdysseyStillAvailable(Pawn pawn, FishingAttemptRecord attempt)
@@ -464,11 +464,13 @@ namespace AquacultureFishing
 
         public static IEnumerable<Toil> VfeMakeNewToilsPostfix(IEnumerable<Toil> __result, object __instance)
         {
+            foreach (Toil toil in FishingRodWorkflow.PreparationToils(__instance)) yield return toil;
             foreach (Toil toil in ReplaceFishingDelay(__result, __instance, VfeFramework)) yield return toil;
         }
 
         public static IEnumerable<Toil> OdysseyMakeNewToilsPostfix(IEnumerable<Toil> __result, object __instance)
         {
+            foreach (Toil toil in FishingRodWorkflow.PreparationToils(__instance)) yield return toil;
             foreach (Toil toil in ReplaceFishingDelay(__result, __instance, OdysseyFramework)) yield return toil;
         }
 

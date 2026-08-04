@@ -497,7 +497,7 @@ namespace AquacultureFishing
             AllocateOrganismRole(pond, PondOrganismRole.Detritivore, false);
             float zooplanktonConsumed = AllocateOrganismRole(pond, PondOrganismRole.Zooplankton, true) +
                 AllocateOrganismRole(pond, PondOrganismRole.FilterFeeder, true);
-            if (AquacultureMod.Settings?.predationEnabled != false)
+            if (AquacultureMod.Settings?.predationEnabled != false && pond.ecology.predationEnabled)
                 AllocatePredation(pond, Mathf.Max(0f, preyDemand - zooplanktonConsumed));
             float remainingDemand = 0f;
             for (int i = 0; i < pond.fish.Count; i++) if (pond.fish[i].ecologyWaterCompatible) remainingDemand += Mathf.Max(0f, pond.fish[i].ecologyDemand - pond.fish[i].ecologyReceived);

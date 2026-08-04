@@ -60,8 +60,8 @@ $checks = [ordered]@{
     'faulty generated saves receive one-time diversity repair' = $population -match 'CurrentGenerationVersion = 1' -and
         $population -match 'UpgradePopulationGeneration' -and $population -match 'generationVersion < NaturalWaterPopulation\.CurrentGenerationVersion'
     'catch depletes shared record' = $integration -match 'NaturalFishPopulationMapComponent' -and $integration -match 'ConsumeCatch'
-    'rivers coasts and oceans migrate naturally' = $population -match 'habitat == NaturalWaterHabitat\.River \|\| habitat == NaturalWaterHabitat\.Coastal' -and
-        $population -match 'habitat == NaturalWaterHabitat\.Ocean' -and $population -match 'if \(AllowsNaturalMigration\(record\.habitat\)\)'
+    'rivers coasts and oceans migrate naturally' = $population -match 'NaturalFishMigrationRules\.IsOpen' -and
+        $population -match 'if \(AllowsNaturalMigration\(record\.habitat\)\)'
     'closed water extinction persists as tombstone' = $population -match 'item\.population >= habitatDef\.minimumBreedingPopulation' -and $population -match '!AllowsNaturalMigration\(record\.habitat\)' -and $population -match 'population < 0\.5f\) record\.species\[i\]\.population = 0f' -and $population -notmatch 'species\.RemoveAll\(item => item\.population'
     'explicit compatible stocking can restore extinction' = $population -match 'bool IntroduceFish' -and $population -match '!Suitable\(fishDef' -and $population -match 'item\.population \+= amount'
     'breeding requires viable population' = $population -match 'minimumBreedingPopulation' -and $population -match 'breedingPerDay' -and $population -match 'ApplyBreeding'
@@ -74,7 +74,8 @@ $checks = [ordered]@{
         $population -match 'TryGetPreparedSummary\(cell' -and $population -match 'summary\.readoutText'
     'fishing tab lists authoritative species estimates' = $population -match 'NaturalFishPopulationFishingTabPatch' -and
         $population -match 'PreparedCommonSpecies' -and $population -match 'summary\.DisplayLabel\(fish\)'
-    'framework fallback retained' = $integration -match 'VfeSpecies' -and $integration -match 'OdysseySpecies'
+    'framework lists seed authoritative ledger' = $integration -match 'VfeSpecies' -and $integration -match 'OdysseySpecies' -and
+        $integration -match 'Enumerable\.Empty<ThingDef>' -and $integration -notmatch 'VfeSpecies\(zone\)\.Contains'
     'architecture compatibility contract' = $architecture -match 'Old saves without population records' -and $architecture -match 'initialize lazily'
 }
 $failed = @($checks.GetEnumerator() | Where-Object { -not $_.Value } | ForEach-Object Key)

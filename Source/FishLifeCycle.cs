@@ -72,6 +72,20 @@ namespace AquacultureFishing
         public float nutritionMultiplier = 1f;
         public bool delicious;
 
+        public static CompFishFoodTraits EnsureOn(Thing thing)
+        {
+            ThingWithComps owner = thing as ThingWithComps;
+            if (owner == null) return null;
+            CompFishFoodTraits existing = owner.GetComp<CompFishFoodTraits>();
+            if (existing != null) return existing;
+            if (owner.AllComps == null) return null;
+            CompFishFoodTraits added = new CompFishFoodTraits();
+            added.parent = owner;
+            added.Initialize(new CompProperties_FishFoodTraits());
+            owner.AllComps.Add(added);
+            return added;
+        }
+
         public override void PostExposeData()
         {
             Scribe_Values.Look(ref nutritionMultiplier, "nutritionMultiplier", 1f);
@@ -88,7 +102,7 @@ namespace AquacultureFishing
 
         public override void PostSplitOff(Thing piece)
         {
-            CompFishFoodTraits split = piece?.TryGetComp<CompFishFoodTraits>();
+            CompFishFoodTraits split = EnsureOn(piece);
             if (split == null) return;
             split.nutritionMultiplier = nutritionMultiplier;
             split.delicious = delicious;
@@ -109,6 +123,133 @@ namespace AquacultureFishing
     }
 
     public sealed class CompFishMeatTraits : CompFishFoodTraits { }
+
+    internal static class FishFoodSaveCompatibility
+    {
+        private static readonly List<KeyValuePair<ThingDef, CompProperties>> TemporarilyAdded =
+            new List<KeyValuePair<ThingDef, CompProperties>>();
+        private static bool active;
+
+        public static void BeginLoad()
+        {
+            if (active) return;
+            active = true;
+            TemporarilyAdded.Clear();
+            int count = 0;
+            foreach (ThingDef def in DefDatabase<ThingDef>.AllDefsListForReading)
+            {
+                if (def?.ingestible == null || HasFoodComp(def)) continue;
+                if (def.comps == null) def.comps = new List<CompProperties>();
+                CompProperties properties = new CompProperties_FishFoodTraits();
+                def.comps.Add(properties);
+                TemporarilyAdded.Add(new KeyValuePair<ThingDef, CompProperties>(def, properties));
+                count++;
+            }
+            if (count > 0)
+                Log.Message("[Aquaculture - Fishing] Temporarily restored food provenance components for " +
+                    count + " ingestible Defs while loading an existing save.");
+        }
+
+        public static void EndLoad()
+        {
+            if (!active) return;
+            for (int i = 0; i < TemporarilyAdded.Count; i++)
+            {
+                KeyValuePair<ThingDef, CompProperties> entry = TemporarilyAdded[i];
+                entry.Key?.comps?.Remove(entry.Value);
+            }
+            TemporarilyAdded.Clear();
+            active = false;
+        }
+
+        private static bool HasFoodComp(ThingDef def)
+        {
+            return def.comps != null && def.comps.Any(comp => comp?.compClass != null &&
+                typeof(CompFishFoodTraits).IsAssignableFrom(comp.compClass));
+        }
+    }
+
+    [HarmonyPatch(typeof(Game), nameof(Game.LoadGame))]
+    public static class FishFoodSaveCompatibilityPatch
+    {
+        public static void Prefix() => FishFoodSaveCompatibility.BeginLoad();
+
+        public static Exception Finalizer(Exception __exception)
+        {
+            FishFoodSaveCompatibility.EndLoad();
+            return __exception;
+        }
+    }
+
+    public static class FishProcessingYield
+    {
+        public const string ProcessRecipeDefName = "AF_ProcessDeadFish";
+        public const string MeatDefName = "AF_FishMeat";
+        public const float MinimumSizeFactor = 0.25f;
+        public const float MaximumSizeFactor = 2f;
+        public const float MinimumSizeYieldFactor = 0.60f;
+        public const float MaximumSizeYieldFactor = 1.50f;
+        public const float SizeCurveExponent = 0.75f;
+        private const int FallbackBaseMeatCount = 5;
+
+        public static float SizeYieldFactor(float sizeFactor)
+        {
+            if (float.IsNaN(sizeFactor) || float.IsInfinity(sizeFactor)) sizeFactor = 1f;
+            float boundedSize = Mathf.Clamp(sizeFactor, MinimumSizeFactor, MaximumSizeFactor);
+            return Mathf.Clamp(Mathf.Pow(boundedSize, SizeCurveExponent), MinimumSizeYieldFactor, MaximumSizeYieldFactor);
+        }
+
+        public static float TotalYieldFactor(CompFishTraits fish)
+        {
+            if (fish == null) return 1f;
+            float meatYield = fish.MeatYield;
+            if (float.IsNaN(meatYield) || float.IsInfinity(meatYield)) meatYield = 1f;
+            return Mathf.Max(0.01f, meatYield) * SizeYieldFactor(fish.SizeFactor);
+        }
+
+        public static int BaseMeatCount()
+        {
+            RecipeDef recipe = DefDatabase<RecipeDef>.GetNamedSilentFail(ProcessRecipeDefName);
+            ThingDefCountClass product = recipe?.products?.FirstOrDefault(item => item?.thingDef?.defName == MeatDefName);
+            return Mathf.Max(1, Mathf.RoundToInt(product?.count ?? FallbackBaseMeatCount));
+        }
+
+        public static int ExpectedMeatCount(CompFishTraits fish)
+        {
+            return Mathf.Max(1, Mathf.RoundToInt(BaseMeatCount() * TotalYieldFactor(fish)));
+        }
+    }
+
+    public static class PondBreedingRules
+    {
+        public static bool CanBreed(CompFishTraits fish, int now, Map map)
+        {
+            return CanBreedIgnoringCooldown(fish, map) && now >= fish.nextBreedTick;
+        }
+
+        public static bool CanBreedIgnoringCooldown(CompFishTraits fish, Map map)
+        {
+            return fish?.IsAlive == true
+                && fish.IsAdult
+                && !fish.sterilized
+                && fish.foodReserve >= 0.35f
+                && fish.starvationProgress <= 0f
+                && fish.waterStress < 0.1f
+                && fish.temperatureStress < 0.1f
+                && fish.habitatStress < 0.75f
+                && IsBreedingSeason(fish, map);
+        }
+
+        public static bool IsBreedingSeason(CompFishTraits fish, Map map)
+        {
+            Season required = fish?.BreedingSeason ?? Season.Undefined;
+            if (required == Season.Undefined || map == null) return true;
+            Season current = GenLocalDate.Season(map);
+            if (current == Season.PermanentSummer) current = Season.Summer;
+            if (current == Season.PermanentWinter) current = Season.Winter;
+            return current == required;
+        }
+    }
 
     public sealed partial class FishPondMapComponent : MapComponent
     {
@@ -178,12 +319,12 @@ namespace AquacultureFishing
                     for (int femaleIndex = 0; femaleIndex < members.Count; femaleIndex++)
                     {
                         CompFishTraits female = members[femaleIndex];
-                        if (!CanBreed(female, now) || !female.IsFemale) continue;
+                        if (!PondBreedingRules.CanBreed(female, now, map) || !female.IsFemale) continue;
                         CompFishTraits male = null;
                         for (int maleIndex = 0; maleIndex < members.Count; maleIndex++)
                         {
                             CompFishTraits candidate = members[maleIndex];
-                            if (candidate != female && CanBreed(candidate, now) && !candidate.IsFemale) { male = candidate; break; }
+                            if (candidate != female && PondBreedingRules.CanBreed(candidate, now, map) && !candidate.IsFemale) { male = candidate; break; }
                         }
                         if (male == null) continue;
                         float habitatFactor = (female.HabitatBreedingFactor + male.HabitatBreedingFactor) * 0.5f;
@@ -232,30 +373,6 @@ namespace AquacultureFishing
                         : Math.Max(now + 250, Math.Max(femaleDue, maleDue));
                 }
             }
-        }
-
-        private bool CanBreed(CompFishTraits fish, int now)
-        {
-            return fish?.IsAlive == true
-                && fish.IsAdult
-                && !fish.sterilized
-                && now >= fish.nextBreedTick
-                && fish.foodReserve >= 0.35f
-                && fish.starvationProgress <= 0f
-                && fish.waterStress < 0.1f
-                && fish.temperatureStress < 0.1f
-                && fish.habitatStress < 0.75f
-                && CanBreedThisSeason(fish);
-        }
-
-        private bool CanBreedThisSeason(CompFishTraits fish)
-        {
-            Season required = fish.BreedingSeason;
-            if (required == Season.Undefined) return true;
-            Season current = GenLocalDate.Season(map);
-            if (current == Season.PermanentSummer) current = Season.Summer;
-            if (current == Season.PermanentWinter) current = Season.Winter;
-            return current == required;
         }
 
         private void SpawnLiveFry(CompFishTraits first, CompFishTraits second)
@@ -343,10 +460,8 @@ namespace AquacultureFishing
         private int EffectivePopulationLimit(PondState pond)
         {
             if (pond?.ecology == null) return 0;
-            if (pond.ecology.populationLimit > 0) return pond.ecology.populationLimit;
-            int baseCapacity = Mathf.Max(1, Mathf.FloorToInt(pond.info.cells.Count *
-                (AquacultureMod.Settings?.fishCapacityPerCell ?? 2f)));
-            return baseCapacity + EnsureHabitat(pond).activeAerators * 8 + Mathf.FloorToInt(PondTraitCapacityBonus(pond));
+            PondHabitatSnapshot habitat = EnsureHabitat(pond);
+            return habitat?.effectiveCapacity ?? pond.ecology.populationLimit;
         }
 
         private void RebuildBeautyIfDirty()
@@ -451,7 +566,10 @@ namespace AquacultureFishing
                 delicious |= source.delicious;
             }
             if (dead == null && nutrition <= 1.001f && !delicious) return;
-            __result = InheritFoodTraits(__result, recipeDef.defName == "AF_ProcessDeadFish" ? dead?.MeatYield ?? 1f : 1f,
+            bool isSupportedFishProcessing = recipeDef.defName == FishProcessingYield.ProcessRecipeDefName &&
+                dead?.parent?.def != null && FishUtility.IsRuntimeFish(dead.parent.def);
+            float yieldFactor = isSupportedFishProcessing ? FishProcessingYield.TotalYieldFactor(dead) : 1f;
+            __result = InheritFoodTraits(__result, yieldFactor,
                 nutrition, delicious);
         }
 
@@ -460,8 +578,10 @@ namespace AquacultureFishing
         {
             foreach (Thing product in products)
             {
-                if (product.def.defName == "AF_FishMeat") product.stackCount = Mathf.Max(1, Mathf.RoundToInt(product.stackCount * yieldFactor));
-                CompFishFoodTraits comp = product.TryGetComp<CompFishFoodTraits>();
+                if (product.def.defName == FishProcessingYield.MeatDefName) product.stackCount = Mathf.Max(1, Mathf.RoundToInt(product.stackCount * yieldFactor));
+                CompFishFoodTraits comp = nutritionMultiplier > 1.001f || delicious
+                    ? CompFishFoodTraits.EnsureOn(product)
+                    : product.TryGetComp<CompFishFoodTraits>();
                 if (comp != null)
                 {
                     comp.nutritionMultiplier = Mathf.Max(comp.nutritionMultiplier, nutritionMultiplier);

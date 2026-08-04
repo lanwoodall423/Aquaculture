@@ -15,6 +15,85 @@ namespace AquacultureFishing
         Current
     }
 
+    public enum PondCapacityConstraint
+    {
+        None,
+        Food,
+        Habitat,
+        Industrial,
+        Management
+    }
+
+    public static class PondCapacityRules
+    {
+        public const float DefaultCapacityPerCell = 0.75f;
+        public const int PoweredAeratorCapacity = 8;
+
+        public static int PhysicalMaximum(int cellCount)
+        {
+            return Mathf.Max(1, Mathf.Max(0, cellCount));
+        }
+
+        public static int BaseCapacity(int cellCount, float capacityPerCell)
+        {
+            return Mathf.Max(1, Mathf.FloorToInt(Mathf.Max(0, cellCount) * capacityPerCell));
+        }
+
+        public static int IndustrialCapacity(int cellCount, float capacityPerCell, int activeAerators, float traitBonus)
+        {
+            int physicalMaximum = PhysicalMaximum(cellCount);
+            return Mathf.Min(physicalMaximum, BaseCapacity(cellCount, capacityPerCell) +
+                activeAerators * PoweredAeratorCapacity + Mathf.FloorToInt(traitBonus));
+        }
+
+        public static int BiologicalCapacity(int cellCount, float capacityPerCell, int activeAerators, float traitBonus) =>
+            IndustrialCapacity(cellCount, capacityPerCell, activeAerators, traitBonus);
+
+        public static float EstimatedNaturalFoodPerDay(int cellCount, int plantStructures, float algaeGrowthMultiplier)
+        {
+            float algaeCapacity = Mathf.Max(0.1f, Mathf.Max(0, cellCount) * 0.25f);
+            float plantedGrowth = 1f + Mathf.Min(0.25f, Mathf.Max(0, plantStructures) * 0.03f);
+            return Mathf.Max(0f, 0.0045f * algaeCapacity * Mathf.Max(0f, algaeGrowthMultiplier) * plantedGrowth * 24f);
+        }
+
+        public static int FoodSupportedPopulation(float naturalFoodPerDay, float dailyDemandPerFish, int industrialMaximum)
+        {
+            if (dailyDemandPerFish <= 0.0001f) return industrialMaximum;
+            return Mathf.Clamp(Mathf.FloorToInt(Mathf.Max(0f, naturalFoodPerDay) / dailyDemandPerFish), 0, industrialMaximum);
+        }
+
+        public static int HabitatSupportedPopulation(PondHabitatSnapshot habitat, int currentPopulation, int industrialMaximum)
+        {
+            if (habitat == null || currentPopulation <= 0) return industrialMaximum;
+            float supportRatio = 1f;
+            ApplySupportRatio(habitat.plantSupply, habitat.plantDemand, ref supportRatio);
+            ApplySupportRatio(habitat.shelterSupply, habitat.shelterDemand, ref supportRatio);
+            ApplySupportRatio(habitat.substrateSupply, habitat.substrateDemand, ref supportRatio);
+            ApplySupportRatio(habitat.currentSupply, habitat.currentDemand, ref supportRatio);
+            ApplySupportRatio(habitat.openWaterSupply, habitat.openWaterDemand, ref supportRatio);
+            return Mathf.Clamp(Mathf.FloorToInt(currentPopulation * supportRatio), 0, industrialMaximum);
+        }
+
+        public static PondCapacityConstraint LimitingConstraint(int currentPopulation, int sustainablePopulation,
+            int industrialMaximum, int managementLimit, int foodSupportedPopulation, int habitatSupportedPopulation)
+        {
+            if (managementLimit > 0 && managementLimit < industrialMaximum && currentPopulation > managementLimit)
+                return PondCapacityConstraint.Management;
+            if (currentPopulation > industrialMaximum) return PondCapacityConstraint.Industrial;
+            if (currentPopulation <= sustainablePopulation) return PondCapacityConstraint.None;
+            return foodSupportedPopulation <= habitatSupportedPopulation
+                ? PondCapacityConstraint.Food : PondCapacityConstraint.Habitat;
+        }
+
+        public static string ConstraintLabel(PondCapacityConstraint constraint) =>
+            ("AquacultureFishing.PondCapacityConstraint" + constraint).Translate().ToString();
+
+        private static void ApplySupportRatio(float supply, float demand, ref float ratio)
+        {
+            if (demand > 0.001f) ratio = Mathf.Min(ratio, Mathf.Clamp01(supply / demand));
+        }
+    }
+
     public sealed class CompProperties_PondHabitat : CompProperties
     {
         public PondHabitatKind kind;
@@ -104,7 +183,19 @@ namespace AquacultureFishing
         public int stressedFish;
         public float beauty;
         public int naturalCapacity;
+        public int biologicalCapacity;
+        public int baseBiologicalCapacity;
         public int effectiveCapacity;
+        public int managementLimit;
+        public int physicalMaximum;
+        public int sustainablePopulation;
+        public int industrialMaximum;
+        public int foodSupportedPopulation;
+        public int habitatSupportedPopulation;
+        public float dailyFoodDemand;
+        public float naturalFoodPerDay;
+        public PondCapacityConstraint limitingConstraint;
+        public bool hasManagementLimit;
         public string developmentPath;
         public readonly List<IntVec3> plantCells = new List<IntVec3>();
         public readonly List<IntVec3> shelterCells = new List<IntVec3>();
@@ -194,9 +285,18 @@ namespace AquacultureFishing
                 }
             }
             habitat.openWaterSupply = Mathf.Max(0f, pond.info.cells.Count - occupiedCells) * 2f;
-            habitat.naturalCapacity = Mathf.Max(1, Mathf.FloorToInt(pond.info.cells.Count *
-                (AquacultureMod.Settings?.fishCapacityPerCell ?? 2f)));
-            habitat.effectiveCapacity = habitat.naturalCapacity + habitat.activeAerators * 8;
+            float capacityPerCell = AquacultureMod.Settings?.fishCapacityPerCell ?? PondCapacityRules.DefaultCapacityPerCell;
+            habitat.physicalMaximum = PondCapacityRules.PhysicalMaximum(pond.info.cells.Count);
+            habitat.baseBiologicalCapacity = PondCapacityRules.BaseCapacity(pond.info.cells.Count, capacityPerCell);
+            habitat.industrialMaximum = PondCapacityRules.IndustrialCapacity(pond.info.cells.Count, capacityPerCell,
+                habitat.activeAerators, PondTraitCapacityBonus(pond));
+            habitat.naturalCapacity = habitat.physicalMaximum;
+            habitat.biologicalCapacity = habitat.industrialMaximum;
+            habitat.hasManagementLimit = pond.ecology.populationLimit > 0;
+            habitat.managementLimit = pond.ecology.populationLimit;
+            habitat.effectiveCapacity = habitat.hasManagementLimit
+                ? Mathf.Min(pond.ecology.populationLimit, habitat.industrialMaximum)
+                : habitat.industrialMaximum;
             habitat.developmentPath = habitat.activeAerators > 0 && pond.ecology.automaticFeeding
                 ? "Intensive aquaculture"
                 : habitat.activeAerators > 0 || pond.ecology.preparedFeed > 0.01f
@@ -204,6 +304,30 @@ namespace AquacultureFishing
                     : "Natural ecosystem";
             for (int i = 0; i < pond.fish.Count; i++)
                 AddHabitatDemand(pond.fish[i], habitat);
+            int livingFish = 0;
+            float dailyFoodDemand = 0f;
+            for (int i = 0; i < pond.fish.Count; i++)
+            {
+                CompFishTraits fish = pond.fish[i];
+                if (fish?.IsAlive != true) continue;
+                dailyFoodDemand += AquaticSpeciesProfile.For(fish.parent.def).hourlyDemand *
+                    Mathf.Max(0.2f, fish.SizeFactor) * (AquacultureMod.Settings?.foodDemandMultiplier ?? 1f) * 24f;
+                livingFish++;
+            }
+            float dailyDemandPerFish = livingFish > 0 ? dailyFoodDemand / livingFish :
+                0.0025f * (AquacultureMod.Settings?.foodDemandMultiplier ?? 1f) * 24f;
+            habitat.dailyFoodDemand = dailyFoodDemand;
+            habitat.naturalFoodPerDay = PondCapacityRules.EstimatedNaturalFoodPerDay(pond.info.cells.Count,
+                habitat.plantStructures, AquacultureMod.Settings?.algaeGrowthMultiplier ?? 1f);
+            habitat.foodSupportedPopulation = PondCapacityRules.FoodSupportedPopulation(habitat.naturalFoodPerDay,
+                dailyDemandPerFish, habitat.industrialMaximum);
+            habitat.habitatSupportedPopulation = PondCapacityRules.HabitatSupportedPopulation(habitat,
+                livingFish, habitat.industrialMaximum);
+            habitat.sustainablePopulation = Mathf.Min(habitat.industrialMaximum,
+                Mathf.Min(habitat.foodSupportedPopulation, habitat.habitatSupportedPopulation));
+            habitat.limitingConstraint = PondCapacityRules.LimitingConstraint(pond.fish.Count,
+                habitat.sustainablePopulation, habitat.industrialMaximum,
+                pond.ecology.populationLimit, habitat.foodSupportedPopulation, habitat.habitatSupportedPopulation);
             float weightedDemand = habitat.plantDemand + habitat.shelterDemand + habitat.substrateDemand +
                 habitat.currentDemand + habitat.openWaterDemand;
             habitat.overallFit = weightedDemand <= 0.001f ? 1f :
@@ -364,20 +488,28 @@ namespace AquacultureFishing
                 Widgets.Label(new Rect(rect.x, rect.y + 44f, rect.width, 30f), "No habitat data is available.");
                 return;
             }
-            Widgets.Label(new Rect(rect.x, rect.y + 42f, rect.width, 28f),
+            string capacity = "AquacultureFishing.PondCapacitySummary".Translate(habitat.physicalMaximum,
+                habitat.sustainablePopulation, habitat.industrialMaximum).ToString();
+            string effective = habitat.hasManagementLimit
+                ? "AquacultureFishing.PondCapacityManagementOverride".Translate(habitat.managementLimit,
+                    habitat.effectiveCapacity, habitat.biologicalCapacity).ToString()
+                : "AquacultureFishing.PondCapacityNoManagementOverride".Translate(habitat.effectiveCapacity).ToString();
+            Widgets.Label(new Rect(rect.x, rect.y + 42f, rect.width, 46f),
                 habitat.developmentPath + "   Fish fit: " + habitat.averageFishFit.ToStringPercent() +
-                "   Capacity: " + habitat.naturalCapacity +
-                (habitat.effectiveCapacity > habitat.naturalCapacity ? " + " +
-                    (habitat.effectiveCapacity - habitat.naturalCapacity) + " aerated" : ""));
+                "\n" + capacity + "\n" + effective);
+            TooltipHandler.TipRegion(new Rect(rect.x, rect.y + 42f, rect.width, 46f),
+                "AquacultureFishing.PondCapacityExplanation".Translate(PondCapacityRules.PoweredAeratorCapacity,
+                    habitat.foodSupportedPopulation, habitat.habitatSupportedPopulation,
+                    PondCapacityRules.ConstraintLabel(habitat.limitingConstraint)).ToString());
             string balance = snapshot == null ? "Unknown" :
                 snapshot.starving > 0 || snapshot.hungry > 0 ? "Food web under pressure" :
                 snapshot.organisms.Count >= 2 && snapshot.algaePercent >= 0.2f ? "Self-renewing food web" :
                 snapshot.population == 0 ? "Unstocked" : "Developing food web";
             GUI.color = balance == "Food web under pressure" ? new Color(1f, 0.62f, 0.40f) : Color.gray;
-            Widgets.Label(new Rect(rect.x, rect.y + 66f, rect.width, 24f),
+            Widgets.Label(new Rect(rect.x, rect.y + 94f, rect.width, 24f),
                 "Natural balance: " + balance + "   Stressed fish: " + habitat.stressedFish);
             GUI.color = Color.white;
-            Rect outRect = new Rect(rect.x, rect.y + 94f, rect.width, rect.height - 94f);
+            Rect outRect = new Rect(rect.x, rect.y + 122f, rect.width, rect.height - 122f);
             float contentHeight = 5f * 72f + 118f + (snapshot?.organisms?.Count ?? 0) * 23f;
             Rect view = new Rect(0f, 0f, outRect.width - 16f, Mathf.Max(outRect.height, contentHeight));
             Widgets.BeginScrollView(outRect, ref scrollPosition, view);

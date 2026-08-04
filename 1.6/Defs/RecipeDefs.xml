@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Defs>
   <RecipeDef>
-    <defName>AF_ProcessDeadFish</defName><label>process dead fish</label><description>Process a dead fish into generic fish meat.</description><jobString>Processing fish.</jobString>
+    <defName>AF_ProcessDeadFish</defName><label>process dead fish</label><description>Process a dead fish into generic fish meat. Larger specimens produce more meat and unusually small specimens produce less. Species and body yield traits apply once.</description><jobString>Processing fish.</jobString>
     <workAmount>250</workAmount><workSkill>Cooking</workSkill><effectWorking>Cook</effectWorking><soundWorking>Recipe_ButcherCorpseFlesh</soundWorking>
     <ingredients><li><filter><categories><li>VCEF_RawFishCategory</li></categories></filter><count>1</count></li></ingredients>
     <fixedIngredientFilter><categories><li>VCEF_RawFishCategory</li></categories></fixedIngredientFilter>

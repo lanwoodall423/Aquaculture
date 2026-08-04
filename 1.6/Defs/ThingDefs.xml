@@ -10,7 +10,7 @@
     <thingCategories><li>Manufactured</li></thingCategories>
   </ThingDef>
   <ThingDef ParentName="OrganicProductBase">
-    <defName>AF_FishMeat</defName><label>fish meat</label><description>Cleaned meat processed from a dead fish.</description>
+    <defName>AF_FishMeat</defName><label>fish meat</label><description>Cleaned meat processed from a dead fish. Processing yield follows the source fish's bounded size factor and existing species/body yield.</description>
     <graphicData><texPath>Things/Item/Resource/VCEF_Cod</texPath><graphicClass>Graphic_StackCount</graphicClass></graphicData>
     <statBases><MarketValue>2</MarketValue><Mass>0.03</Mass><Nutrition>0.05</Nutrition><FoodPoisonChanceFixedHuman>0.02</FoodPoisonChanceFixedHuman></statBases>
     <ingestible><foodType>Meat</foodType><preferability>RawBad</preferability><ingestEffect>EatMeat</ingestEffect><ingestSound>RawMeat_Eat</ingestSound><tasteThought>AteRawFood</tasteThought></ingestible>
@@ -253,7 +253,7 @@
   <ThingDef ParentName="BuildingBase">
     <defName>AF_PondAerator</defName>
     <label>pond aerator</label>
-    <description>A powered waterproof circulation unit. Its current supports filter-feeders, improves water movement, and raises pond capacity by eight fish. One active aerator supports about twenty fish worth of current demand.</description>
+    <description>A powered waterproof circulation unit. Its current supports filter-feeders, improves water movement, and adds eight industrial-support fish before the pond's physical-space cap. One active aerator supports about twenty fish worth of current demand.</description>
     <graphicData><texPath>Things/Building/Misc/TempControl/Vent</texPath><graphicClass>Graphic_Multi</graphicClass><drawSize>(0.68,0.68)</drawSize><color>(0.55,0.72,0.78)</color></graphicData>
     <size>(1,1)</size><altitudeLayer>Building</altitudeLayer><passability>PassThroughOnly</passability><fillPercent>0.16</fillPercent><pathCost>8</pathCost>
     <designationCategory>Misc</designationCategory><researchPrerequisites><li>AF_IndustrialAquaculture</li></researchPrerequisites>

@@ -586,22 +586,16 @@ namespace AquacultureFishing
 
         private void PopulateOverview(PondState pond, PondMenuSnapshot snapshot)
         {
-            int capacity = EffectivePopulationLimit(pond);
+            PondHabitatSnapshot habitat = EnsureHabitat(pond);
+            int capacity = habitat.effectiveCapacity;
             float algaeCapacity = Mathf.Max(0.1f, pond.info.cells.Count * 0.25f);
-            int wrongWater = 0;
-            int hungry = 0;
-            int starving = 0;
-            int temperatureStressed = 0;
-            float hourlyDemand = 0f;
-            for (int i = 0; i < pond.fish.Count; i++)
-            {
-                CompFishTraits fish = pond.fish[i];
-                if (!AquaticSpeciesProfile.WaterCompatible(fish.WaterKind, pond.ecology.waterKind)) wrongWater++;
-                if (fish.foodReserve < 0.25f) hungry++;
-                if (fish.starvationProgress > 0f) starving++;
-                if (fish.temperatureStress > 0f) temperatureStressed++;
-                hourlyDemand += AquaticSpeciesProfile.For(fish.parent.def).hourlyDemand * Mathf.Max(0.2f, fish.SizeFactor) * (AquacultureMod.Settings?.foodDemandMultiplier ?? 1f);
-            }
+            PondCausalSummary causal = PondCausalSummaryBuilder.Build(pond.ecology, habitat, pond.fish, map,
+                pond.fish.Count, Find.TickManager?.TicksGame ?? 0);
+            int wrongWater = causal.wrongWater;
+            int hungry = causal.hungry;
+            int starving = causal.starving;
+            int temperatureStressed = causal.temperatureStressed;
+            float hourlyDemand = causal.hourlyDemand;
             int eggs = 0;
             ThingDef eggDef = DefDatabase<ThingDef>.GetNamedSilentFail("AF_FishEgg");
             if (eggDef != null)
@@ -609,8 +603,6 @@ namespace AquacultureFishing
                 List<Thing> allEggs = map.listerThings.ThingsOfDef(eggDef);
                 for (int i = 0; i < allEggs.Count; i++) if (pond.info.cellSet.Contains(allEggs[i].Position)) eggs++;
             }
-            float feedHours = hourlyDemand > 0f ? pond.ecology.preparedFeed / hourlyDemand : 0f;
-            float temperature = GenTemperature.GetTemperatureForCell(pond.info.anchor, map);
             int pendingHarvest = 0;
             int pendingSterilization = 0;
             int eligibleHarvest = 0;
@@ -632,6 +624,12 @@ namespace AquacultureFishing
             }
             snapshot.population = pond.fish.Count;
             snapshot.capacity = capacity;
+            snapshot.physicalCapacity = habitat.physicalMaximum;
+            snapshot.sustainableCapacity = habitat.sustainablePopulation;
+            snapshot.industrialCapacity = habitat.industrialMaximum;
+            snapshot.foodSupportedCapacity = habitat.foodSupportedPopulation;
+            snapshot.habitatSupportedCapacity = habitat.habitatSupportedPopulation;
+            snapshot.capacityConstraint = habitat.limitingConstraint;
             snapshot.eggs = eggs;
             snapshot.eligibleHarvest = eligibleHarvest;
             snapshot.pendingHarvest = pendingHarvest;
@@ -643,10 +641,11 @@ namespace AquacultureFishing
             snapshot.temperatureStressed = temperatureStressed;
             snapshot.algaePercent = pond.ecology.algae / algaeCapacity;
             snapshot.detritusPercent = pond.ecology.detritus / algaeCapacity;
-            snapshot.feedHours = feedHours;
-            snapshot.temperature = temperature;
+            snapshot.feedHours = causal.feedHours;
+            snapshot.temperature = causal.temperature;
             snapshot.feederStatus = AutomaticFeederStatusAt(pond.info.anchor);
-            snapshot.habitat = EnsureHabitat(pond);
+            snapshot.habitat = habitat;
+            snapshot.causalSummary = causal;
             if (pond.ecology.organisms != null)
                 for (int i = 0; i < pond.ecology.organisms.Count; i++)
                 {
@@ -666,40 +665,58 @@ namespace AquacultureFishing
             snapshot.organisms.Sort((a, b) => string.Compare(a.label, b.label, StringComparison.OrdinalIgnoreCase));
             PopulateBlueprint(pond, snapshot, wrongWater, temperatureStressed, starving);
             snapshot.overview =
-                "Area: " + pond.info.cells.Count + " cells\n" +
-                "Population: " + pond.fish.Count + " / " + capacity + " fish\n" +
-                "Eggs: " + eggs + "\n" +
-                "Water: " + WaterLabel(pond.ecology.waterKind) + " at " + temperature.ToString("0.#") + " C\n" +
-                "Algae: " + (pond.ecology.algae / algaeCapacity).ToStringPercent() + "\n" +
-                "Detritus: " + (pond.ecology.detritus / algaeCapacity).ToStringPercent() + "\n" +
-                "Prepared feed: " + pond.ecology.preparedFeed.ToString("0.000") + (hourlyDemand > 0f ? " (" + feedHours.ToString("0.#") + " fish-hours)" : "") + "\n" +
-                "Harvest reserve: " + pond.ecology.minimumHarvestPopulation + " fish" +
-                    (pond.ecology.protectBreedingFemales ? "; breeding females protected" : "") + "\n" +
-                "Management target: " + (pond.ecology.managementPopulationTarget <= 0 ? "None" : pond.ecology.managementPopulationTarget + " fish") + "\n" +
-                "Breeding: " + (AquacultureProgression.IsAvailable("AF_SelectiveBreeding") ? pond.ecology.breedingMode.ToString() : "Natural (uncontrolled)") + "\n" +
-                "Automatic feeding: " + (pond.ecology.automaticFeeding ? "Enabled; " + pond.ecology.targetFeedDays.ToString("0.##") + " day reserve" : "Paused") + "\n" +
-                "Predation: Natural\n" +
-                "Habitat path: " + snapshot.habitat.developmentPath + "\n" +
-                "Habitat fit: " + snapshot.habitat.averageFishFit.ToStringPercent() + "\n" +
-                "Pond organisms: " + snapshot.organisms.Count;
+                "AquacultureFishing.PondArea".Translate(pond.info.cells.Count).ToString() + "\n" +
+                "AquacultureFishing.PondPopulation".Translate(pond.fish.Count).ToString() + "\n" +
+                "AquacultureFishing.PondPhysicalSpace".Translate(habitat.physicalMaximum).ToString() + "\n" +
+                "AquacultureFishing.PondSustainableCapacity".Translate(habitat.sustainablePopulation).ToString() + "\n" +
+                "AquacultureFishing.PondIndustrialCapacity".Translate(habitat.industrialMaximum).ToString() + "\n" +
+                "AquacultureFishing.PondEffectiveCapacity".Translate(capacity).ToString() + "\n" +
+                (habitat.hasManagementLimit ? "AquacultureFishing.PondManagementCapacity".Translate(pond.ecology.populationLimit).ToString() + "\n" : "") +
+                "AquacultureFishing.PondLimitingFactor".Translate(PondCapacityRules.ConstraintLabel(habitat.limitingConstraint)).ToString() + "\n" +
+                "AquacultureFishing.PondEggs".Translate(eggs).ToString() + "\n" +
+                "AquacultureFishing.PondWaterTemperature".Translate(WaterLabel(pond.ecology.waterKind), causal.temperature.ToString("0.#")).ToString() + "\n" +
+                "AquacultureFishing.PondAlgae".Translate((pond.ecology.algae / algaeCapacity).ToStringPercent()).ToString() + "\n" +
+                "AquacultureFishing.PondDetritus".Translate((pond.ecology.detritus / algaeCapacity).ToStringPercent()).ToString() + "\n" +
+                "AquacultureFishing.PondPreparedFeed".Translate(pond.ecology.preparedFeed,
+                    hourlyDemand > 0f ? causal.feedHours : 0f).ToString() + "\n" +
+                "AquacultureFishing.PondHarvestReserve".Translate(pond.ecology.minimumHarvestPopulation,
+                    (pond.ecology.protectBreedingFemales ? "AquacultureFishing.PondYes" : "AquacultureFishing.PondNo").Translate()).ToString() + "\n" +
+                "AquacultureFishing.PondManagementTarget".Translate(pond.ecology.managementPopulationTarget).ToString() + "\n" +
+                "AquacultureFishing.PondBreedingMode".Translate(pond.ecology.breedingMode.ToString()).ToString() + "\n" +
+                "AquacultureFishing.PondAutomaticFeeding".Translate((pond.ecology.automaticFeeding ? "AquacultureFishing.PondYes" : "AquacultureFishing.PondNo").Translate(),
+                    pond.ecology.targetFeedDays).ToString() + "\n" +
+                "AquacultureFishing.PondPredation".Translate(AquacultureMod.Settings?.predationEnabled == false
+                    ? "AquacultureFishing.PondPredationGlobalDisabled".Translate().ToString()
+                    : pond.ecology.predationEnabled ? "AquacultureFishing.PondPredationNatural".Translate().ToString()
+                    : "AquacultureFishing.PondPredationPondDisabled".Translate().ToString()).ToString() + "\n" +
+                "AquacultureFishing.PondHabitatPath".Translate(snapshot.habitat.developmentPath,
+                    snapshot.habitat.averageFishFit.ToStringPercent()).ToString() + "\n" +
+                "AquacultureFishing.PondOrganisms".Translate(snapshot.organisms.Count).ToString();
             if (snapshot.blueprintTarget > 0)
-                snapshot.overview += "\nBlueprint: " + snapshot.blueprintStatus + " (" + snapshot.blueprintFit.ToStringPercent() +
-                    " fit; " + snapshot.blueprintDeficit + " missing; " + snapshot.blueprintSurplus + " surplus)";
+                snapshot.overview += "\n" + "AquacultureFishing.PondBlueprintStatus".Translate(snapshot.blueprintStatus,
+                    snapshot.blueprintFit.ToStringPercent(), snapshot.blueprintDeficit, snapshot.blueprintSurplus).ToString();
 
-            if (pond.fish.Count > capacity) snapshot.warnings.Add("Over capacity: breeding is paused until the population falls below " + capacity + ".");
-            if (wrongWater > 0) snapshot.warnings.Add(wrongWater + " fish are incompatible with this water type.");
-            if (temperatureStressed > 0) snapshot.warnings.Add(temperatureStressed + " fish are outside their livable temperature range.");
-            if (starving > 0) snapshot.warnings.Add(starving + " fish are starving.");
-            else if (hungry > 0) snapshot.warnings.Add(hungry + " fish have low food reserves.");
+            if (pond.fish.Count > capacity && habitat.hasManagementLimit &&
+                habitat.managementLimit < habitat.industrialMaximum && pond.fish.Count > habitat.managementLimit)
+                snapshot.warnings.Add("AquacultureFishing.PondOverManagementCapacity".Translate(habitat.managementLimit).ToString());
+            if (pond.fish.Count > habitat.industrialMaximum)
+                snapshot.warnings.Add("AquacultureFishing.PondOverIndustrialCapacity".Translate(pond.fish.Count - habitat.industrialMaximum).ToString());
+            else if (pond.fish.Count > habitat.sustainablePopulation)
+                snapshot.warnings.Add("AquacultureFishing.PondEcologicallyUnsupported".Translate(
+                    PondCapacityRules.ConstraintLabel(habitat.limitingConstraint)).ToString());
+            if (wrongWater > 0) snapshot.warnings.Add("AquacultureFishing.PondCausalWaterRisk".Translate(wrongWater).ToString());
+            if (temperatureStressed > 0) snapshot.warnings.Add("AquacultureFishing.PondCausalTemperatureRisk".Translate(temperatureStressed).ToString());
+            if (starving > 0) snapshot.warnings.Add("AquacultureFishing.PondCausalStarvation".Translate(starving).ToString());
+            else if (hungry > 0) snapshot.warnings.Add("AquacultureFishing.PondCausalHunger".Translate(hungry).ToString());
             if (pendingHarvest + pendingEggRemoval + pendingSterilization > 0)
-                snapshot.warnings.Add((pendingHarvest + pendingEggRemoval + pendingSterilization) + " pond management job" +
-                    (pendingHarvest + pendingEggRemoval + pendingSterilization == 1 ? " is" : "s are") + " awaiting handler labor.");
+                    snapshot.warnings.Add("AquacultureFishing.PondPendingLabor".Translate(
+                        pendingHarvest + pendingEggRemoval + pendingSterilization).ToString());
             if (pond.fish.Count > 0 && pond.ecology.automaticFeeding && snapshot.feederStatus.StartsWith("No automatic", StringComparison.Ordinal))
-                snapshot.warnings.Add("Automatic feeding is enabled but no automatic feeder is in range.");
+                snapshot.warnings.Add("AquacultureFishing.PondMissingAutomaticFeeder".Translate().ToString());
             if (pendingSterilization > 0 && !map.listerThings.AllThings.Any(thing => thing.def.IsMedicine))
-                snapshot.warnings.Add("Sterilization is waiting for medicine.");
+                snapshot.warnings.Add("AquacultureFishing.PondMissingSterilizationMedicine".Translate().ToString());
             if (snapshot.habitat.stressedFish > 0)
-                snapshot.warnings.Add(snapshot.habitat.stressedFish + " fish are stressed by insufficient habitat.");
+                snapshot.warnings.Add("AquacultureFishing.PondCausalHabitatDeficit".Translate(snapshot.habitat.stressedFish).ToString());
         }
 
         private static void PopulateBlueprint(PondState pond, PondMenuSnapshot snapshot, int wrongWater, int temperatureStressed, int starving)
@@ -708,7 +725,7 @@ namespace AquacultureFishing
                 .Where(target => target?.Species != null && target.targetCount > 0).ToList();
             if (targets == null || targets.Count == 0)
             {
-                snapshot.blueprintStatus = "No blueprint";
+                snapshot.blueprintStatus = "AquacultureFishing.PondNoBlueprint".Translate().ToString();
                 return;
             }
             Dictionary<ThingDef, int> actual = pond.fish.GroupBy(fish => fish.parent.def)
@@ -736,10 +753,10 @@ namespace AquacultureFishing
             snapshot.blueprintSurplus = surplus;
             snapshot.blueprintFit = Mathf.Clamp01(stockFit * waterFactor - healthPenalty * 0.25f);
             snapshot.blueprintStatus = snapshot.blueprintFit >= 0.999f && deficit == 0 && surplus == 0
-                ? "Balanced"
+                ? "AquacultureFishing.PondBlueprintBalanced".Translate().ToString()
                 : wrongWater + temperatureStressed + starving > 0 || pond.ecology.waterKind != pond.ecology.blueprintWater
-                    ? "At risk"
-                    : "Establishing";
+                    ? "AquacultureFishing.PondBlueprintAtRisk".Translate().ToString()
+                    : "AquacultureFishing.PondBlueprintEstablishing".Translate().ToString();
         }
 
         public List<Thing> CriticalPondProxies()
@@ -758,7 +775,7 @@ namespace AquacultureFishing
 
     public sealed class ITab_PondOverview : ITab
     {
-        public ITab_PondOverview() { size = new Vector2(520f, 430f); labelKey = "AF_PondOverviewTab"; }
+        public ITab_PondOverview() { size = new Vector2(520f, 760f); labelKey = "AF_PondOverviewTab"; }
         public override bool IsVisible => SelThing is PondProxyThing && AquacultureProgression.IsAvailable("AF_IndustrialAquaculture");
 
         protected override void FillTab()
@@ -767,20 +784,22 @@ namespace AquacultureFishing
             PondMenuSnapshot snapshot = pond?.Map?.GetComponent<FishPondMapComponent>()?.MenuSnapshotAt(pond.Position);
             Rect rect = new Rect(0f, 0f, size.x, size.y).ContractedBy(14f);
             Text.Font = GameFont.Medium;
-            Widgets.Label(new Rect(rect.x, rect.y, rect.width, 34f), "Pond Overview");
+            Widgets.Label(new Rect(rect.x, rect.y, rect.width, 34f), "AquacultureFishing.PondOverviewTitle".Translate());
             Text.Font = GameFont.Small;
-            Widgets.Label(new Rect(rect.x, rect.y + 42f, rect.width, 250f), snapshot?.overview ?? "No pond data is available.");
+            if (snapshot?.causalSummary != null)
+                PondCausalUi.DrawSummary(new Rect(rect.x, rect.y + 42f, rect.width, 286f), snapshot, null);
+            Widgets.Label(new Rect(rect.x, rect.y + 336f, rect.width, 250f), snapshot?.overview ?? "AquacultureFishing.PondNoData".Translate());
             if (snapshot?.warnings == null || snapshot.warnings.Count == 0)
             {
                 GUI.color = new Color(0.58f, 0.86f, 0.64f);
-                Widgets.Label(new Rect(rect.x, rect.y + 292f, rect.width, 30f), "No ecosystem warnings.");
+                Widgets.Label(new Rect(rect.x, rect.y + 594f, rect.width, 30f), "AquacultureFishing.PondNoActiveWarnings".Translate());
                 GUI.color = Color.white;
                 return;
             }
             GUI.color = new Color(1f, 0.62f, 0.40f);
-            Widgets.Label(new Rect(rect.x, rect.y + 292f, rect.width, 28f), "Warnings");
+            Widgets.Label(new Rect(rect.x, rect.y + 594f, rect.width, 28f), "AquacultureFishing.PondWarnings".Translate());
             GUI.color = Color.white;
-            Widgets.Label(new Rect(rect.x, rect.y + 322f, rect.width, rect.height - 322f), string.Join("\n", snapshot.warnings.Select(warning => "- " + warning)));
+            Widgets.Label(new Rect(rect.x, rect.y + 624f, rect.width, rect.height - 624f), string.Join("\n", snapshot.warnings.Select(warning => "- " + warning)));
         }
     }
 
@@ -788,7 +807,7 @@ namespace AquacultureFishing
     {
         private int page;
 
-        public ITab_PondManagement() { size = new Vector2(720f, 590f); labelKey = "AF_PondManagementTab"; }
+        public ITab_PondManagement() { size = new Vector2(720f, 800f); labelKey = "AF_PondManagementTab"; }
         public override bool IsVisible => SelThing is PondProxyThing && AquacultureProgression.IsAvailable("AF_ManagedAquaculture");
 
         protected override void FillTab()
@@ -798,18 +817,18 @@ namespace AquacultureFishing
             if (component == null) return;
             Rect rect = new Rect(0f, 0f, size.x, size.y).ContractedBy(14f);
             Text.Font = GameFont.Medium;
-            Widgets.Label(new Rect(rect.x, rect.y, rect.width, 34f), "Pond Management");
+            Widgets.Label(new Rect(rect.x, rect.y, rect.width, 34f), "AquacultureFishing.PondManagementTitle".Translate());
             Text.Font = GameFont.Small;
             float tabY = rect.y + 40f;
             float tabWidth = (rect.width - 12f) / 4f;
-            DrawPageButton(new Rect(rect.x, tabY, tabWidth, 34f), 0, "Basic");
-            DrawPageButton(new Rect(rect.x + tabWidth + 4f, tabY, tabWidth, 34f), 1, "Advanced");
-            DrawPageButton(new Rect(rect.x + (tabWidth + 4f) * 2f, tabY, tabWidth, 34f), 2, "Breeding");
-            DrawPageButton(new Rect(rect.x + (tabWidth + 4f) * 3f, tabY, tabWidth, 34f), 3, "Planner");
+            DrawPageButton(new Rect(rect.x, tabY, tabWidth, 34f), 0, "AquacultureFishing.PondPageBasic".Translate().ToString());
+            DrawPageButton(new Rect(rect.x + tabWidth + 4f, tabY, tabWidth, 34f), 1, "AquacultureFishing.PondPageAdvanced".Translate().ToString());
+            DrawPageButton(new Rect(rect.x + (tabWidth + 4f) * 2f, tabY, tabWidth, 34f), 2, "AquacultureFishing.PondPageBreeding".Translate().ToString());
+            DrawPageButton(new Rect(rect.x + (tabWidth + 4f) * 3f, tabY, tabWidth, 34f), 3, "AquacultureFishing.PondPagePlanner".Translate().ToString());
 
             PondMenuSnapshot snapshot = component.MenuSnapshotAt(pond.Position) ?? new PondMenuSnapshot();
             Rect content = new Rect(rect.x, tabY + 44f, rect.width, rect.height - 84f);
-            if (page == 0) DrawBasicPage(content, pond, component, snapshot);
+            if (page == 0) DrawBasicPage(content, pond, component, snapshot, selectedPage => page = selectedPage);
             else if (page == 1) DrawAdvancedPage(content, pond, component, snapshot);
             else if (page == 2) DrawBreedingPage(content, pond, component, snapshot);
             else DrawPlannerPage(content, pond, component, snapshot);
@@ -823,44 +842,52 @@ namespace AquacultureFishing
             GUI.color = old;
         }
 
-        private static void DrawBasicPage(Rect rect, PondProxyThing pond, FishPondMapComponent component, PondMenuSnapshot snapshot)
+        private static void DrawBasicPage(Rect rect, PondProxyThing pond, FishPondMapComponent component,
+            PondMenuSnapshot snapshot, Action<int> navigate)
         {
             DrawMetrics(rect, new[]
             {
-                new Metric(TexCommand.SelectCarriedThing, "Population", snapshot.population + " / " + snapshot.capacity,
-                    snapshot.population > snapshot.capacity ? new Color(1f, 0.55f, 0.35f) : Color.white),
-                new Metric(TexCommand.Attack, "Harvestable", snapshot.eligibleHarvest + " fish", Color.white),
-                new Metric(TexCommand.ForbidOff, "Pending Work", (snapshot.pendingHarvest + snapshot.pendingEggRemoval + snapshot.pendingSterilization).ToString(),
-                    snapshot.pendingHarvest + snapshot.pendingEggRemoval + snapshot.pendingSterilization > 0 ? new Color(1f, 0.82f, 0.35f) : Color.white),
-                new Metric(TexCommand.DesirePower, "Pond Water", WaterLabel(component.WaterKindAt(pond.Position)), Color.white)
+                new Metric(TexCommand.SelectCarriedThing, "AquacultureFishing.PondPhysicalSpaceShort".Translate().ToString(),
+                    snapshot.population + " / " + snapshot.physicalCapacity,
+                    snapshot.population > snapshot.physicalCapacity ? new Color(1f, 0.55f, 0.35f) : Color.white),
+                new Metric(TexCommand.DesirePower, "AquacultureFishing.PondSustainableShort".Translate().ToString(),
+                    "~" + snapshot.sustainableCapacity,
+                    snapshot.population > snapshot.sustainableCapacity ? new Color(1f, 0.78f, 0.35f) : Color.white),
+                new Metric(TexCommand.Attack, "AquacultureFishing.PondIndustrialShort".Translate().ToString(),
+                    snapshot.industrialCapacity.ToString(),
+                    snapshot.population > snapshot.industrialCapacity ? new Color(1f, 0.55f, 0.35f) : Color.white),
+                new Metric(TexCommand.ForbidOff, "AquacultureFishing.PondWorkShort".Translate().ToString(),
+                    snapshot.eligibleHarvest + " / " + (snapshot.pendingHarvest + snapshot.pendingEggRemoval + snapshot.pendingSterilization),
+                    snapshot.pendingHarvest + snapshot.pendingEggRemoval + snapshot.pendingSterilization > 0 ? new Color(1f, 0.82f, 0.35f) : Color.white)
             });
-            float y = rect.y + 86f;
+            PondCausalUi.DrawSummary(new Rect(rect.x, rect.y + 78f, rect.width, 286f), snapshot, navigate);
+            float y = rect.y + 378f;
             bool canChangeWater = component.CanChangeWaterAt(pond.Position);
-            Widgets.Label(new Rect(rect.x, y, 250f, 30f), "Pond Water");
+            Widgets.Label(new Rect(rect.x, y, 250f, 30f), "AquacultureFishing.PondWaterLabel".Translate());
             if (Widgets.ButtonText(new Rect(rect.x + 260f, y, 210f, 30f), WaterLabel(component.WaterKindAt(pond.Position))))
             {
-                if (!canChangeWater) Messages.Message("Remove all fish and eggs before refilling the pond.",
+                if (!canChangeWater) Messages.Message("AquacultureFishing.PondWaterLockedMessage".Translate(),
                     MessageTypeDefOf.RejectInput, false);
                 else Find.WindowStack.Add(new FloatMenu(Enum.GetValues(typeof(PondWaterKind)).Cast<PondWaterKind>()
                     .Select(kind => new FloatMenuOption(WaterLabel(kind), () => component.SetPondWater(pond.Position, kind))).ToList()));
             }
             TooltipHandler.TipRegion(new Rect(rect.x, y, rect.width, 30f), canChangeWater
-                ? "Choose how this empty pond is filled before stocking it. Incompatible established pond organisms will be lost."
-                : "Water type is locked while fish or eggs are present.");
+                ? "AquacultureFishing.PondWaterChooseTooltip".Translate().ToString()
+                : "AquacultureFishing.PondWaterLockedTooltip".Translate().ToString());
             y += 48f;
-            DrawSubheading(rect, ref y, "Harvest Policy");
+            DrawSubheading(rect, ref y, "AquacultureFishing.PondHarvestPolicy".Translate().ToString());
             int reserve = component.MinimumHarvestPopulationAt(pond.Position);
-            DrawIntSlider(rect, ref y, "Minimum Breeding Stock", reserve, 0, 50,
+            DrawIntSlider(rect, ref y, "AquacultureFishing.PondMinimumBreedingStock".Translate().ToString(), reserve, 0, 50,
                 value => component.SetMinimumHarvestPopulation(pond.Position, value),
-                "Handlers cannot harvest below this living population.");
+                "AquacultureFishing.PondMinimumBreedingStockTooltip".Translate().ToString());
             bool adultsOnly = component.HarvestAdultsOnlyAt(pond.Position);
             bool oldAdultsOnly = adultsOnly;
-            Widgets.CheckboxLabeled(new Rect(rect.x, y, rect.width, 30f), "Harvest Adults And Elders Only", ref adultsOnly);
+            Widgets.CheckboxLabeled(new Rect(rect.x, y, rect.width, 30f), "AquacultureFishing.PondHarvestAdultsOnly".Translate(), ref adultsOnly);
             if (adultsOnly != oldAdultsOnly) component.SetHarvestAdultsOnly(pond.Position, adultsOnly);
             y += 38f;
             bool protectFemales = component.ProtectBreedingFemalesAt(pond.Position);
             bool oldProtectFemales = protectFemales;
-            Widgets.CheckboxLabeled(new Rect(rect.x, y, rect.width, 30f), "Protect Adult Breeding Females", ref protectFemales);
+            Widgets.CheckboxLabeled(new Rect(rect.x, y, rect.width, 30f), "AquacultureFishing.PondProtectBreedingFemales".Translate(), ref protectFemales);
             if (protectFemales != oldProtectFemales) component.SetProtectBreedingFemales(pond.Position, protectFemales);
             y += 48f;
             DrawPendingWork(rect, y, snapshot);
@@ -906,12 +933,21 @@ namespace AquacultureFishing
             Widgets.Label(new Rect(rect.xMax - 60f, y, 60f, 30f), changed.ToString("0.##") + " d");
             if (!Mathf.Approximately(changed, feedDays)) component.SetTargetFeedDays(pond.Position, changed);
             y += 42f;
+            bool pondPredation = component.PredationEnabledAt(pond.Position);
+            bool oldPondPredation = pondPredation;
+            Widgets.CheckboxLabeled(new Rect(rect.x, y, rect.width, 30f), "Allow Natural Predation", ref pondPredation);
+            if (pondPredation != oldPondPredation) component.SetPredationEnabled(pond.Position, pondPredation);
+            y += 38f;
             Color old = GUI.color;
             GUI.color = new Color(0.72f, 0.72f, 0.72f);
             Widgets.Label(new Rect(rect.x, y, rect.width, 52f), snapshot.feederStatus ?? "No feeder data.");
             GUI.color = old;
             y += 58f;
-            Widgets.Label(new Rect(rect.x, y, rect.width, 46f), "Predation is natural. Separate incompatible species or harvest predators to control losses.");
+            Widgets.Label(new Rect(rect.x, y, rect.width, 46f), AquacultureMod.Settings?.predationEnabled == false
+                ? "Predation is disabled globally. Enable it in mod settings before allowing it in this pond."
+                : pondPredation
+                    ? "Predation is enabled for this pond. Separate incompatible species or harvest predators to control losses."
+                    : "Predation is disabled for this pond.");
         }
 
         private static void DrawBreedingPage(Rect rect, PondProxyThing pond, FishPondMapComponent component, PondMenuSnapshot snapshot)

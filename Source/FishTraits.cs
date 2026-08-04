@@ -166,8 +166,13 @@ namespace AquacultureFishing
             string result = "No effect";
             if (trait.kind == FishTraitKind.Color) result = "Whole-fish tint: RGB " + Mathf.RoundToInt(trait.tint.r * 255f) + ", " + Mathf.RoundToInt(trait.tint.g * 255f) + ", " + Mathf.RoundToInt(trait.tint.b * 255f);
             else if (trait.kind == FishTraitKind.Variegated) result = trait.pattern + " pattern within the matching texture mask";
-            else if (trait.kind == FishTraitKind.Scale || trait.kind == FishTraitKind.Age) result = "Visual size: " + trait.drawScale.ToStringPercent();
-            else if (trait.kind == FishTraitKind.NumericSize) result = value > 0f ? "Visual size: +" + Mathf.RoundToInt(value) + "%" : "Random visual size: +" + trait.minPercent + "% to +" + trait.maxPercent + "%";
+            else if (trait.kind == FishTraitKind.Scale || trait.kind == FishTraitKind.Age)
+                result = "Visual size: " + trait.drawScale.ToStringPercent() + "; " + ProcessingYieldText(FishProcessingYield.SizeYieldFactor(trait.drawScale));
+            else if (trait.kind == FishTraitKind.NumericSize)
+                result = value > 0f
+                    ? "Visual size: +" + Mathf.RoundToInt(value) + "%; " + ProcessingYieldText(FishProcessingYield.SizeYieldFactor(1f + value / 100f))
+                    : "Random visual size: +" + trait.minPercent + "% to +" + trait.maxPercent + "%; " +
+                      ProcessingYieldRange(1f + trait.minPercent / 100f, 1f + trait.maxPercent / 100f);
             else if (trait.kind == FishTraitKind.Nutritious) result = value > 0f ? "Nutrition: +" + Mathf.RoundToInt(value) + "%" : "Random nutrition: +" + trait.minPercent + "% to +" + trait.maxPercent + "%";
             else if (trait.kind == FishTraitKind.Sex) result = "Used for pond breeding";
             else if (trait.kind == FishTraitKind.Diet) result = "Feeds as a " + trait.diet.ToString().ToLowerInvariant().Replace("filterfeeder", "filter feeder");
@@ -185,6 +190,17 @@ namespace AquacultureFishing
             else if (trait.pondEffect != null) result = trait.pondEffect.summary.NullOrEmpty() ? "Affects pawns swimming in its pond" : trait.pondEffect.summary;
             if (!Mathf.Approximately(trait.beautyOffset, 0f)) result += "; beauty: " + (trait.beautyOffset > 0f ? "+" : "") + trait.beautyOffset.ToString("0.#");
             return result;
+        }
+
+        private static string ProcessingYieldText(float factor)
+        {
+            return "Processing yield: " + factor.ToString("0.00") + "x of normal size yield";
+        }
+
+        private static string ProcessingYieldRange(float minimumSize, float maximumSize)
+        {
+            return "Processing yield: " + FishProcessingYield.SizeYieldFactor(minimumSize).ToString("0.00") +
+                "x to " + FishProcessingYield.SizeYieldFactor(maximumSize).ToString("0.00") + "x of normal size yield";
         }
     }
 }

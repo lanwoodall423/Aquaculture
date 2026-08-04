@@ -112,7 +112,9 @@ namespace AquacultureFishing
                     continue;
                 }
                 result.Add("pond=id:" + proxy.thingIDNumber + " cell:" + Cell(proxy.Position) +
-                    " water:" + component.WaterKindAt(proxy.Position) + " fish:" + snapshot.population + "/" + snapshot.capacity +
+                    " water:" + component.WaterKindAt(proxy.Position) + " fish:" + snapshot.population +
+                    " physical:" + snapshot.physicalCapacity + " sustainable:" + snapshot.sustainableCapacity +
+                    " industrial:" + snapshot.industrialCapacity + " effective:" + snapshot.capacity +
                     " eggs:" + snapshot.eggs + " schools:" + snapshot.schools.Count + " algae:" + snapshot.algaePercent.ToStringPercent() +
                     "% feed:" + snapshot.feedHours.ToString("0.0") + "h warnings:" + snapshot.warnings.Count);
             }
@@ -132,7 +134,9 @@ namespace AquacultureFishing
             var result = new List<string>
             {
                 "pond=id:" + proxy.thingIDNumber + " cell:" + Cell(proxy.Position) + " water:" + component.WaterKindAt(proxy.Position),
-                "population=" + snapshot.population + "/" + snapshot.capacity + " eggs=" + snapshot.eggs + " harvestable=" + snapshot.eligibleHarvest +
+                "population=" + snapshot.population + " physical=" + snapshot.physicalCapacity +
+                    " sustainable=" + snapshot.sustainableCapacity + " industrial=" + snapshot.industrialCapacity +
+                    " effective=" + snapshot.capacity + " eggs=" + snapshot.eggs + " harvestable=" + snapshot.eligibleHarvest +
                     " schools=" + snapshot.schools.Count + " beauty=" + component.PondBeautyAt(proxy.Position).ToString("0.0"),
                 "ecology=algae:" + snapshot.algaePercent.ToStringPercent() + " detritus:" + snapshot.detritusPercent.ToStringPercent() +
                     "% feed:" + snapshot.feedHours.ToString("0.0") + "h organisms:" + snapshot.organisms.Count +
@@ -179,8 +183,9 @@ namespace AquacultureFishing
             var result = new List<string>
             {
                 "pond=id:" + proxy.thingIDNumber + " cell:" + Cell(proxy.Position),
-                "path=" + Clean(habitat.developmentPath) + " capacity:natural:" + habitat.naturalCapacity +
-                    " effective:" + habitat.effectiveCapacity,
+                    "path=" + Clean(habitat.developmentPath) + " capacity:physical:" + habitat.physicalMaximum +
+                    " sustainable:" + habitat.sustainablePopulation + " industrial:" + habitat.industrialMaximum +
+                    " effective:" + habitat.effectiveCapacity + " constraint:" + habitat.limitingConstraint,
                 "fit=fish:" + habitat.averageFishFit.ToStringPercent() + " supply:" + habitat.overallFit.ToStringPercent() +
                     " stressed:" + habitat.stressedFish + " beauty:" + habitat.beauty.ToString("0.0"),
                 HabitatLine("plant", habitat.plantStructures, habitat.plantSupply, habitat.plantDemand, habitat.PlantFit),
@@ -416,7 +421,8 @@ namespace AquacultureFishing
                 "ecology=interval:" + settings.ecologyIntervalHours.ToString("0.00") + "h food:" + settings.foodDemandMultiplier.ToString("0.00") +
                     " algae:" + settings.algaeGrowthMultiplier.ToString("0.00") + " starvation:" + settings.starvationHours.ToString("0.0") + "h",
                 "stress=water:" + settings.waterStressHours.ToString("0.0") + "h temperature:" + settings.temperatureStressHours.ToString("0.0") + "h",
-                "capacity=" + settings.fishCapacityPerCell.ToString("0.00") + "/cell predation:" + settings.predationEnabled +
+                "capacity=base:" + settings.fishCapacityPerCell.ToString("0.00") + "/cell aerator:" + PondCapacityRules.PoweredAeratorCapacity +
+                    " predation:" + settings.predationEnabled +
                     " feedValue:" + settings.feedValuePerUnit.ToString("0.000") + " feederRange:" + settings.feederRange.ToString("0.0"),
                 "visuals=enhanced:" + settings.enhancedPondVisuals + " surface:" + settings.surfaceOverlay + " tint:" + settings.underwaterFishTint +
                     " depth:" + settings.pseudoDepth + " caustics:" + settings.caustics + " ripples:" + settings.pondRipples,
@@ -459,7 +465,7 @@ namespace AquacultureFishing
                 warnings += snapshot.warnings.Count;
                 PondHabitatSnapshot habitat = component?.HabitatAt(ponds[i].Position);
                 habitatStressed += habitat?.stressedFish ?? 0;
-                cells += Mathf.CeilToInt(snapshot.capacity / Mathf.Max(0.1f, AquacultureMod.Settings?.fishCapacityPerCell ?? 2f));
+                cells += snapshot.physicalCapacity > 0 ? snapshot.physicalCapacity : snapshot.capacity;
             }
             watch.Stop();
             float ecologyHours = AquacultureMod.Settings?.ecologyIntervalHours ?? 1f;

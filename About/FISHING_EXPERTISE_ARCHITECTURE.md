@@ -12,9 +12,10 @@
 
 - Fishing progression is stored in an additive `GameComponent`, separately from pawns and fish definitions.
 - Each pawn record contains expertise experience and species knowledge keyed by fish `defName`.
-- Fishing uses the shared four expertise states: Novice, Adept, Expert, and Master. The serialized enum values remain numeric and settings default to Novice, so existing untrained/default entries remain catchable.
+- Fishing uses the shared four expertise states: Novice, Adept, Expert, and Master. Legacy setting values remain readable, but both old zero/unset values map to the Novice default.
 - Only a successful catch increases species knowledge and expertise experience.
-- Animals skill, species knowledge, and expertise all contribute to catch duration and escape chance.
+- Cast is fixed at 180 ticks. Wait uses rod Wait Time, expertise, and the global duration setting; Reel uses non-Rod Reel Time, expertise, and the same duration setting.
+- Lure attraction and species knowledge weight eligible species and affect bite chance. Species access requires ledger presence and the configured minimum expertise. Animals skill, species knowledge, expertise, and rod Catch Chance affect escape resolution; Max Fish Mass is a separate catch limit.
 - `KnowledgeFramework.dll` owns the single pawn Bio panel. Aquaculture adapts the existing `aquacultureFishingProgression` records directly, and clicking its row opens the existing Fish Journal Expertise page.
 
 ## Compatibility invariants
@@ -22,7 +23,7 @@
 - No existing save key is renamed or removed.
 - Missing pawn, fish, or framework records are ignored safely after load.
 - Fish discovery continues to use `FishUtility.IsFish`; no built-in species list is introduced.
-- VFE and Odyssey species lists seed a natural-water record only during initialization, then both frameworks query the same connected-body population. Later lists cannot bypass closed-water extinction or open-water migration limits.
+- VFE and Odyssey species lists seed a natural-water record only during initialization, then both frameworks query the same connected-body population. Later lists cannot bypass closed-water extinction, same-category migration limits, or depleted species access.
 - Per-species settings are keyed by `ThingDef.defName`, tolerate removed definitions, and lazily cover newly added fish packs.
 - The Field Journal keeps its existing Species and Breeds content. Breeds navigation and breed counts are absent until Selective Fish Breeding is available.
 

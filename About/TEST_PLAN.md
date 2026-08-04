@@ -26,6 +26,9 @@ Use a new colony with Harmony, Vanilla Fishing Expanded, its Fishing Treasures a
 10. Breed two members of the same breed. Confirm matching offspring retain the breed and increase its generation/stability, while offspring missing defining traits do not receive the breed name.
 11. Reach 90% inheritance stability and confirm the breed becomes Mastered.
 12. Confirm registered fish receive the journal's displayed market-value and pond-beauty bonuses and that all journal/breed data survives save/load.
+13. Register a healthy breed with a living specimen and confirm a base-game collector letter appears with species, breed, stability, generation, defining trait, size, deadline, delivery, and reward requirements.
+14. Open the breed record and deliver an eligible specimen. Confirm the reward is placed before the living fish is consumed, the breed's completed-commission count increases, and the request survives save/load while active.
+15. Confirm no commission is offered for an extinct breed, an unavailable species, sterile/unhealthy fish, impossible trait/generation/size combinations, or a breed with no eligible living specimen. Complete or expire a request and confirm cooldown and identical-request suppression.
 
 ## Catching And Containers
 
@@ -34,6 +37,8 @@ Use a new colony with Harmony, Vanilla Fishing Expanded, its Fishing Treasures a
 3. Confirm an enabled nearby bucket or barrel receives caught fish.
 4. Confirm fish in containers remain alive and pond fish are never pulled into containers.
 5. Empty a container and confirm exposed living fish die after roughly four in-game hours, become dead fish, and begin normal rot.
+6. Process a normal-size adult fish and confirm the five-meat baseline. Process a fry/juvenile or miniature fish, a +25% size fish, a Giant fish, and outliers below 0.25 or above 2.0 SizeFactor. Confirm the deterministic size-only results are 3, 6, 8, and capped values as documented, and that the specimen inspection shows the expected count.
+7. Repeat with Heavy-Bodied and Slender fish and a modded species with a custom `meatYieldFactor`. Confirm the existing species/body multiplier is applied once, size uses the bounded curve, and no unrelated recipe or non-`AF_FishMeat` product changes.
 
 ## Pond Management
 
@@ -55,6 +60,10 @@ Use a new colony with Harmony, Vanilla Fishing Expanded, its Fishing Treasures a
 16. Reopen the planner after changing actual pond stock. Confirm Current reloads the live population and Clear removes the hypothetical plan without changing the pond.
 17. Save a Living Blueprint with at least three species. Confirm it survives save/load, shows live fit/deficit/surplus metrics, reloads through Blueprint, and sets the management population goal.
 18. Enable surplus harvesting, then exceed one species target while another remains below target. Confirm handlers designate only eligible fish above the overstocked species target and preserve minimum breeding stock.
+19. On the primary Management page, confirm the causal summary is visible before advanced research and shows population versus physical/sustainable capacity, prepared-feed reserve, water, temperature, habitat, breeding state, and only an honest next-breeding estimate.
+20. Test an empty pond, healthy pond, mixed-species water incompatibility, no adult male, no adult female, juvenile-only population, sterile fish, wrong water, temperature emergency, no food, habitat deficits, and a large population. Confirm each identical cause is combined with an affected-fish count and issues appear in lethal, hunger, stress, reproduction, then advice order.
+21. Select Details for a causal issue and confirm it opens the relevant Management/Breeding page or selects a spawned affected fish. Confirm status icons and text remain understandable without color.
+22. Change food, water, temperature, habitat structures, breeding mode, feeder power, fish traits, and population through ecology events. Confirm the cached summary refreshes after the existing pond invalidation events rather than scanning every UI frame.
 
 ## Living Habitats
 
@@ -63,7 +72,7 @@ Use a new colony with Harmony, Vanilla Fishing Expanded, its Fishing Treasures a
 3. Add fry, juveniles, herbivores, livebearers, solitary fish, predators, bottom-dwellers, filter-feeders, schooling fish, and large fish. Confirm the Habitat tab reports sensible demand categories without clipped text.
 4. Add habitat structures and wait one ecology interval. Confirm weighted fit improves, stressed-fish count falls over time, and individual Traits tabs show updated Habitat Fit.
 5. Confirm plant cover improves algae regeneration and substantially reduces predation on fry and juveniles.
-6. Confirm substrate restores detritus and powered aerators add current support and four pond-capacity units each. Turn off aerator power and confirm both effects disappear after the next ecology interval.
+6. Confirm substrate restores detritus and powered aerators add current support and eight industrial-support units each, capped by physical space. Turn off aerator power and confirm both effects disappear after the next habitat refresh.
 7. Compare well-fitted and poorly fitted breeding pairs. Confirm habitat modifies breeding cadence, with severe sustained stress preventing breeding.
 8. Watch fish movement. Confirm young/herbivorous fish prefer plants, solitary/predatory fish prefer shelters, bottom-dwellers prefer substrate, and filter-feeders prefer active aerators without erratic per-fish movement.
 9. Save and reload a populated decorated pond. Confirm structures, habitat fit, stress, and movement preferences survive correctly.
@@ -71,7 +80,10 @@ Use a new colony with Harmony, Vanilla Fishing Expanded, its Fishing Treasures a
 11. Gather and seed duckweed/daphnia/snails/freshwater mussels into freshwater, and sea lettuce/brine shrimp/blue mussels into saltwater. Confirm incompatible cultures are rejected and brackish ponds accept both sets.
 12. Watch multiple ecology intervals. Confirm named biomass populations grow from their required resource, are consumed by relevant fish diets, can collapse under excessive predation or insufficient food, and survive in a balanced pond.
 13. Confirm the Habitat tab lists each species and biomass/capacity, reports natural balance, and identifies Natural Ecosystem, Managed Hybrid, and Intensive Aquaculture states correctly.
-14. Compare a diverse conservative natural pond against a fed, aerated high-density pond. Confirm both are viable while the industrial pond supports eight additional fish per powered aerator and consumes ongoing resources and power.
+14. Compare a diverse conservative natural pond against a fed, aerated high-density pond. Confirm Habitat, Management, and the Stocking Planner distinguish physical space, approximate sustainable support, industrial support, and management limits. Confirm each powered aerator contributes eight industrial-support units without creating space beyond one fish per valid cell.
+15. With the default 0.75 fish-per-cell baseline, verify the approximate no-trait examples: 5x5 has physical 25, industrial 18, sustainable about 11; one aerator reaches industrial 25; 10x10 has physical 100, industrial 75, sustainable about 45; one aerator reaches 83. Several aerators cap industrial support at physical space.
+16. Request a stocking plan below physical space but above sustainable support. Confirm the planner warns that the plan is ecologically unsupported and identifies food or habitat as the limiting factor without treating it as an invalid physical plan.
+17. Load a save created with the former default or a player-set fish-per-cell value above 0.75. Confirm the serialized setting is preserved, a one-time transition notice appears, no fish die solely from the lower default, and the player can keep the old setting or adopt the new baseline.
 15. Run `AQUA_HABITAT <pond>` and confirm bridge values and organism populations match the Habitat tab.
 
 ## Ecology And Breeding
@@ -100,7 +112,7 @@ Use a new colony with Harmony, Vanilla Fishing Expanded, its Fishing Treasures a
 4. Confirm Healing, Calming, Energizing, Aromatic, Cooling, Warming, Therapeutic, Anima, and nighttime Lunar update one **Spent Time in Pond** hediff rather than creating duplicate Health-tab entries.
 5. Confirm Cleansing removes carried filth/blood and only very slightly reduces Toxic Buildup. Confirm Luxurious grants **Enjoyed Luxury Pond**, and Sparkling grants its mood memory only at night.
 6. Compare one, four, nine, and sixteen matching fish. Confirm effects follow diminishing returns and stop at each trait's configured cap; dead, despawned, and removed fish do not contribute.
-7. Confirm Beautiful and Sparkling add capped pond beauty, Sparkling is stronger after nightfall, Grazer reduces algae, Fertilizing modestly improves nearby crop growth, and Oxygenator reduces detritus and raises sustainable capacity.
+7. Confirm Beautiful and Sparkling add capped pond beauty, Sparkling is stronger after nightfall, Grazer reduces algae, Fertilizing modestly improves nearby crop growth, and Oxygenator raises industrial support while food or habitat may remain the sustainable limit.
 8. Process Delicious and Nutritious fish into fish meat and then another prepared food. Confirm Delicious mood provenance remains and nutrition uses the strongest inherited multiplier without multiplying again at each recipe.
 9. Breed effect-trait fish through eggs and live birth. Confirm inherited trait names and numeric Nutritious values survive save/load and produce the same pond/food effects in offspring.
 
@@ -110,16 +122,20 @@ Use a new colony with Harmony, Vanilla Fishing Expanded, its Fishing Treasures a
 2. Put a trait-bearing fish in an aquarium and confirm its visual material remains visible.
 3. Save and reload with populated ponds, eggs, containers, feeder fuel, water types, pond toggles, masks, and modified settings.
 4. Interrupt harvest, egg-removal, and sterilization jobs by drafting the handler, removing the target, and saving mid-job. Confirm reservations and designations recover without stuck work.
+5. Run `Test-DefMutationScope.ps1`. Confirm vanilla food and a non-fish modded ingestible receive no Aquaculture Def component, recognized fish retain only required individual-state changes, unsupported fish-like items remain untouched, and only relevant fish-recipe output Things receive food provenance.
+6. Process fish at ButcherSpot/TableButcher, split and stack the output, cook it through an unrelated recipe, store it, trade it, save/reload it, and ingest it. Confirm nutrition/Delicious provenance survives without changing unrelated products, storage, or trade behavior.
+7. Load a save created with the former component on a generic ingestible. Confirm the temporary load compatibility path restores the data, removes temporary Def additions after loading, and does not add the component to newly created vanilla or third-party foods.
+8. Supply a supported fish with explicit stack, drawer, Beauty, or Mass values and an unsupported fish-like item with similar naming. Confirm explicit compatible values are preserved, conflicts produce one concise diagnostic per Def, and only the supported fish receives fish state.
 
 ## Fishing Expertise
 
 1. Start fishing in water with multiple species and confirm the attempt remains paired with one species until completion.
 2. Raise every present species above the fisher's expertise and confirm the fishing reservation is rejected rather than selecting a locked species.
 3. Remove the paired species, its fishing zone, or the water body's available population during the attempt and confirm no fish is produced.
-4. Compare low and high Animals skill, species knowledge, and expertise. Confirm each independently reduces catch time and escape chance.
+4. Compare low and high Animals skill, species knowledge, and expertise. Confirm expertise reduces Wait/Reel time; species knowledge affects attraction, bite, and escape; Animals skill affects escape but not phase duration.
 5. Confirm an escaped fish grants no progression and a successful catch increases both species knowledge and expertise.
 6. Save during an active attempt and after several catches, reload, and confirm the pair and progression persist.
-7. Add a fish content pack and confirm every recognized fish appears in settings and the Expertise tab with an Untrained default requirement.
+7. Add a fish content pack and confirm every recognized fish appears in settings and the Expertise tab with a Novice default requirement.
 8. Before Selective Fish Breeding, confirm no Breeds tab or breed summary appears; complete the research and confirm both appear.
 
 ## Natural Fish Populations
@@ -134,15 +150,20 @@ Use a new colony with Harmony, Vanilla Fishing Expanded, its Fishing Treasures a
 8. Load an established save with VFE zones or Odyssey fish population. Confirm listed species and population seed the new record, no established species is abruptly deleted, and any over-cap total decreases gradually over subsequent days.
 9. Change a water connection through terrain editing. Confirm split/merged bodies rebuild their connected-cell records safely and merged species populations are retained.
 10. Deplete a pond/lake species below its breeding floor and then to zero. Confirm it neither breeds nor naturally returns over repeated lifecycle updates; restock it explicitly and confirm breeding resumes only after the viable breeding threshold is reached.
-11. Observe river, coastal, and ocean records below and near capacity across many lifecycle updates. Confirm compatible species migrate gradually, regional open-water abundance biases the mix, population pressure limits inward movement and permits outward movement, and no update exceeds the configured maximum migration.
-12. Change season or temperature so a candidate becomes unsuitable. Confirm it is neither introduced by migration nor breeds until conditions become suitable again.
-13. Modify `FishPopulationHabitatDef` density, capacity, diversity curve, viable/breeding floors, lifecycle interval, mortality, breeding, migration, local variation, and rebalance fields. Confirm bodies follow the def values without code changes.
-14. Select an Odyssey Fishing zone on a body with at least four present species. Confirm the Fishing tab shows the shared total/capacity and one estimated-count row for every species shown by the water readout. Catch or explicitly stock a fish and confirm both surfaces update without reopening the map.
-15. Profile with a large lake and the Fishing tab or water tooltip open. Confirm UI frames perform prepared dictionary reads only, connected-body discovery occurs only at initialization or a debounced water-terrain change, and lifecycle work runs at the habitat interval rather than every tick or every 2,500 ticks.
+11. Observe river, coastal, and ocean records below and near capacity across many lifecycle updates. Confirm River-to-River, Coastal-to-Coastal, and Ocean-to-Ocean migration only; confirm regional abundance biases only the matching category, population pressure limits inward movement and permits outward movement, and no update exceeds the configured maximum migration.
+12. Exercise every regional pairing: Pond-Pond, Lake-Lake, Marsh-Marsh, River-River, Coastal-Coastal, and Ocean-Ocean, plus every distinct cross-category pairing. Confirm only the three same-category open-water pairings contribute regional pressure; all closed and cross-category pairings contribute zero.
+13. Change season or temperature so a candidate becomes unsuitable. Confirm it is neither introduced by migration nor breeds until conditions become suitable again.
+14. Modify `FishPopulationHabitatDef` density, capacity, diversity curve, viable/breeding floors, lifecycle interval, mortality, breeding, migration, local variation, and rebalance fields. Confirm bodies follow the def values without code changes.
+15. Select an Odyssey Fishing zone on a body with at least four present species. Confirm the Fishing tab shows the shared total/capacity and one estimated-count row for every species shown by the water readout. Catch or explicitly stock a fish and confirm both surfaces update without reopening the map.
+16. Profile with a large lake and the Fishing tab or water tooltip open. Confirm UI frames perform prepared dictionary reads only, connected-body discovery occurs only at initialization or a debounced water-terrain change, and lifecycle work runs at the habitat interval rather than every tick or every 2,500 ticks.
+17. In a closed pond, test exactly at the breeding floor, one fish above it, below it, and at zero. Confirm the row shows approximate population, floor, breeding state, direction, extinction, and local-breeding/stocking recovery context.
+18. Repeat the same cases in a River, Coastal body, and Ocean. Confirm the tooltip distinguishes a compatible recorded migration source from an open category with no recorded source, and never suggests cross-category recovery.
+19. Fish at exactly the floor and one fish above the floor. Confirm a risky selection produces one caution message before the catch is committed, then repeated sustainable catches do not produce repetitive messages while the risk state is unchanged.
+20. Cause births, deaths, migration, stocking, extinction, a successful catch, a load, and a water-terrain split/merge. Confirm cached status and tooltips update without reopening the map or requiring a full UI redraw scan.
 
 ## Fishing Rods And Phases
 
-1. Attempt VFE and Odyssey fishing without a rod, with a rod on the ground, and with a rod equipped. Confirm only the equipped case starts.
+1. Attempt VFE and Odyssey fishing without a rod, with a rod in forbidden or inaccessible storage, with a rod in valid storage, with a rod in direct inventory, and with a rod equipped. Confirm valid inventory/storage/equipped cases start, invalid cases expose a clear workgiver rejection, and ordinary ground rods are not silently taken.
 2. Observe Cast, Wait, and Reel in the pawn job label and progress bar. Confirm Cast is shortest, Wait longest, and Reel second-longest.
 3. Equip default tackle and compare timing/catch behavior with the prior release. Confirm neutral defaults apart from the new phase split and rod requirement.
 4. Compare every Handle, Rod, Reel, Line, and Lure option. Confirm the Tackle window aligns Name, Effects, and Cost; effects use labels such as `-6% Reel Time`; Rod never changes Reel Time; and both Rod and Line change Max Fish Mass.
@@ -152,3 +173,8 @@ Use a new colony with Harmony, Vanilla Fishing Expanded, its Fishing Treasures a
 8. Try to queue another change on the same rod. Confirm duplicate work is rejected; cancel the bill and confirm another can then be queued. With missing materials, confirm normal tick rate remains stable and the pending request waits without repeated jobs or log spam.
 9. Save with installed parts and with a pending upgrade, reload, and confirm both remain on that exact rod. Confirm inspection text and stats update after installation.
 10. Add a custom `FishingTacklePartDef`, lure, rod extension, and fish extension. Confirm they are discovered without code changes or shared-def mutation.
+11. Start fishing with a combat weapon equipped and a better rod in valid storage. Confirm the combat weapon is preserved, the upgraded rod is selected, and the combat weapon returns after success.
+12. Repeat with multiple fishers competing for two rods. Confirm each fisher reserves a distinct reachable rod and no rod is duplicated or taken from another pawn.
+13. Interrupt during acquisition, Cast, Wait, and Reel by drafting, danger, job cancellation, pawn despawn, and a raid. Confirm the previous weapon is restored and the rod remains in inventory or the world.
+14. Destroy the selected rod during each phase. Confirm the previous weapon is restored without creating a replacement rod or losing the previous weapon.
+15. Save and reload before acquisition, while hauling a map rod, after temporary equip, and during Cast, Wait, and Reel. Confirm the session resumes or cleans up exactly once.

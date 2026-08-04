@@ -32,9 +32,9 @@ Replace framework-local species selection with one deterministic habitat populat
 - Initial records import established Odyssey population/species and VFE zone species where available, then add compatible species toward the habitat diversity target.
 - Imported entries count toward that target only when they are compatible and currently present. Remaining slots are filled deterministically, and capacity is divided across the selected set with a breeding-viable floor.
 - Capacity and diversity scale from connected cell count through habitat defs, never map size. Diversity is also capped by the number of viable species populations the carrying capacity can support.
-- Pond, lake, marsh, and coastal records are closed populations after initialization. They receive no automatic species additions or migration; only surviving populations at or above the breeding floor reproduce, and zero-valued extinction tombstones prevent stale framework lists from silently restoring a lost species.
+- Pond, lake, and marsh records are closed populations after initialization. Coastal records are open and migrate only with other coastal records. Closed habitats receive no automatic species additions or migration; only surviving populations at or above the breeding floor reproduce, and zero-valued extinction tombstones prevent stale framework lists from silently restoring a lost species.
 - Connected-body membership and formatted population summaries are cached by the map component. Terrain changes debounce a topology rebuild; catches, explicit stocking, generation, breeding, mortality, and migration refresh only the affected summary. Lifecycle work wakes at the next record-specific interval rather than polling every 2,500 ticks.
-- River and ocean records receive bounded migration during the same infrequent lifecycle pass. Compatibility remains authoritative, pressure controls direction and magnitude, and matching open-water populations on the map bias the incoming species mix.
+- River, coastal, and ocean records receive bounded same-category migration during the same infrequent lifecycle pass. Compatibility remains authoritative, pressure controls direction and magnitude, and matching populations in the same open-water category bias the incoming species mix.
 - Natural mortality represents aging/death. Breeding is capacity-limited, habitat/biome/temperature/season constrained, and cannot restart a nonviable population. Over-cap totals decline gradually.
 - Records from existing saves are additive. Missing records initialize lazily; retained species survive changed defs, seasons, temperatures, and reclassification.
 - A successful catch removes one unit from the selected species and total population. Failed catches do not deplete the body.
@@ -44,7 +44,7 @@ Replace framework-local species selection with one deterministic habitat populat
 - Old saves without population records load with an empty list and initialize lazily.
 - Missing fish defs are pruned only from serialized natural-water records after load.
 - Existing VFE zone lists and Odyssey body populations seed initial records rather than being overwritten first. Once a closed-water record is initialized, repeated framework lists cannot reintroduce an extinct species.
-- Framework integration falls back to the framework species lists only if no connected natural-water record can be resolved.
+- Framework species lists seed a resolved natural-water record during initialization; after that, the natural-water ledger is authoritative for species access.
 
 ## Knowledge and expertise interface
 

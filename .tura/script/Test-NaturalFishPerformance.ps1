@@ -7,14 +7,15 @@ $checks = [ordered]@{
     'cached population lookup avoids topology validation' = $source -match 'if \(populationByCell\.TryGetValue\(cell, out NaturalWaterPopulation cached\)\)' -and
         $source -match 'return cached;'
     'ui reads prepared summaries' = $source -match 'PreparedSummaryFor\(WaterBody body\)' -and
-        $source -match 'TryGetPreparedSummary\(body\.rootCell'
+        $source -match 'TryGetPreparedSummary\(body\.rootCell' -and
+        $source -match 'TryGetConservationSummary\(body\.rootCell'
     'ui does not resolve populations' = $source -notmatch 'DrawPopulationReadout[\s\S]{0,700}PopulationAt\(cell\)'
     'fishing tab uses authoritative species' = $source -match 'NaturalFishPopulationFishingTabPatch' -and
         $source -match 'PreparedCommonSpecies' -and $source -match 'PreparedUncommonSpecies'
     'fishing rows show estimated counts' = $source -match 'NaturalFishPopulationFishingRowPatch' -and
         $source -match 'DisplayLabel\(fish\)'
     'fishing tab grows for complete species list' = $source -match 'public static void Prefix\(ITab_Fishing __instance\)' -and
-        $source -match 'activeSummary\?\.presentSpecies\.Count \?\? -1'
+        $source -match 'activeSummary\?\.trackedSpecies\.Count \?\? -1'
     'fishing threshold skips scalar tracker when prepared' = $source -match 'NaturalFishPopulationFishingThresholdPatch' -and
         $source -match '__result = summary\.totalPopulation' -and $source -match 'return false;'
     'tab formatting and sizing are event prepared' = $source -match 'summary\.displayLabels\[fish\] = displayLabel' -and

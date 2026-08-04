@@ -139,6 +139,12 @@ namespace AquacultureFishing
         public string overview;
         public int population;
         public int capacity;
+        public int physicalCapacity;
+        public int sustainableCapacity;
+        public int industrialCapacity;
+        public int foodSupportedCapacity;
+        public int habitatSupportedCapacity;
+        public PondCapacityConstraint capacityConstraint;
         public int eggs;
         public int eligibleHarvest;
         public int pendingHarvest;
@@ -161,6 +167,7 @@ namespace AquacultureFishing
         public float blueprintFit;
         public string blueprintStatus;
         public PondHabitatSnapshot habitat;
+        public PondCausalSummary causalSummary;
         public readonly List<string> warnings = new List<string>();
         public readonly List<FishMenuEntry> fish = new List<FishMenuEntry>();
         public readonly List<FishSchoolSnapshot> schools = new List<FishSchoolSnapshot>();

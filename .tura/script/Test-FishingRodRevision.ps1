@@ -24,7 +24,7 @@ $checks = [ordered]@{
         @($linePartNodes | Where-Object { $_.maximumFishMassOffset }).Count -eq $linePartNodes.Count
     'default lure is None' = $parts -match '<defName>AF_Lure_Freshwater</defName><label>None</label><slot>Lure</slot><isDefault>true</isDefault>'
     'actual fish mass uses size traits' = $life -match 'stat == StatDefOf\.Mass' -and $life -match 'fish\.MassFactor' -and
-        $core -match 'new StatModifier \{ stat = StatDefOf\.Mass, value = 0\.1f \}'
+        $core -match 'EnsureFishStat\(def, StatDefOf\.Mass, 0\.1f\)'
     'attempt stores hooked mass' = $expertise -match 'hookedFishMass' -and $expertise -match 'Scribe_Values\.Look\(ref hookedFishMass'
     'VFE transfer always clears' = $expertise -match 'VceCatchFinalizer' -and $expertise -match 'CaughtFishTraitTransfer\.Clear\(\)'
     'over-mass catch fails' = $expertise -match 'attempt\.HookedFishMass <= rod\.MaxFishMass'
