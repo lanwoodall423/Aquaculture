@@ -126,19 +126,22 @@ namespace AquacultureFishing
 
         public override string CompInspectStringExtra()
         {
-            string status = HabitatProps.kind == PondHabitatKind.Current && !Active ? "Inactive: no power" : "Active";
-            return HabitatLabel(HabitatProps.kind) + "\nSupport: " + HabitatProps.capacity.ToString("0.#") +
-                " fish\n" + status;
+            string status = HabitatProps.kind == PondHabitatKind.Current && !Active
+                ? "AquacultureFishing.PondHabitatInactive".Translate().ToString()
+                : "AquacultureFishing.PondHabitatActive".Translate().ToString();
+            return HabitatLabel(HabitatProps.kind) + "\n" +
+                "AquacultureFishing.PondHabitatSupport".Translate(HabitatProps.capacity.ToString("0.#")) +
+                "\n" + status;
         }
 
         public static string HabitatLabel(PondHabitatKind kind)
         {
             switch (kind)
             {
-                case PondHabitatKind.PlantCover: return "Plant cover";
-                case PondHabitatKind.RockShelter: return "Rock shelter";
-                case PondHabitatKind.Substrate: return "Prepared substrate";
-                default: return "Water current";
+                case PondHabitatKind.PlantCover: return "AquacultureFishing.PondHabitatPlantCover".Translate().ToString();
+                case PondHabitatKind.RockShelter: return "AquacultureFishing.PondHabitatRockShelter".Translate().ToString();
+                case PondHabitatKind.Substrate: return "AquacultureFishing.PondHabitatSubstrate".Translate().ToString();
+                default: return "AquacultureFishing.PondHabitatCurrent".Translate().ToString();
             }
         }
     }
@@ -152,10 +155,10 @@ namespace AquacultureFishing
             foreach (IntVec3 cell in rect)
             {
                 if (!cell.InBounds(map) || map.terrainGrid.TerrainAt(cell).defName != "AF_Pond")
-                    return "Must be built inside a constructed pond.";
+                    return "AquacultureFishing.PondHabitatMustBeInPond".Translate().ToString();
                 if (cell.GetThingList(map).Any(existing => existing != thingToIgnore &&
                     existing.TryGetComp<CompPondHabitat>() != null))
-                    return "Only one habitat structure can occupy a pond cell.";
+                    return "AquacultureFishing.PondHabitatOnePerCell".Translate().ToString();
             }
             return true;
         }
@@ -298,10 +301,10 @@ namespace AquacultureFishing
                 ? Mathf.Min(pond.ecology.populationLimit, habitat.industrialMaximum)
                 : habitat.industrialMaximum;
             habitat.developmentPath = habitat.activeAerators > 0 && pond.ecology.automaticFeeding
-                ? "Intensive aquaculture"
+                ? "AquacultureFishing.PondDevelopmentIntensive".Translate().ToString()
                 : habitat.activeAerators > 0 || pond.ecology.preparedFeed > 0.01f
-                    ? "Managed hybrid"
-                    : "Natural ecosystem";
+                    ? "AquacultureFishing.PondDevelopmentManaged".Translate().ToString()
+                    : "AquacultureFishing.PondDevelopmentNatural".Translate().ToString();
             for (int i = 0; i < pond.fish.Count; i++)
                 AddHabitatDemand(pond.fish[i], habitat);
             int livingFish = 0;
@@ -481,62 +484,69 @@ namespace AquacultureFishing
             PondMenuSnapshot snapshot = component?.MenuSnapshotAt(pond.Position);
             Rect rect = new Rect(0f, 0f, size.x, size.y).ContractedBy(14f);
             Text.Font = GameFont.Medium;
-            Widgets.Label(new Rect(rect.x, rect.y, rect.width, 34f), "Living Habitat");
+            Widgets.Label(new Rect(rect.x, rect.y, rect.width, 34f), "AquacultureFishing.PondHabitatTitle".Translate());
             Text.Font = GameFont.Small;
             if (habitat == null)
             {
-                Widgets.Label(new Rect(rect.x, rect.y + 44f, rect.width, 30f), "No habitat data is available.");
+                Widgets.Label(new Rect(rect.x, rect.y + 44f, rect.width, 30f), "AquacultureFishing.PondNoData".Translate());
                 return;
             }
+            float safetyHeight = PondCausalUi.DrawSafetySummary(
+                new Rect(rect.x, rect.y + 38f, rect.width,
+                    Mathf.Max(68f, 42f + Mathf.Min(3, snapshot?.causalSummary?.issues?.Count ?? 0) * 26f)), snapshot);
+            float detailTop = rect.y + 46f + safetyHeight;
             string capacity = "AquacultureFishing.PondCapacitySummary".Translate(habitat.physicalMaximum,
                 habitat.sustainablePopulation, habitat.industrialMaximum).ToString();
             string effective = habitat.hasManagementLimit
                 ? "AquacultureFishing.PondCapacityManagementOverride".Translate(habitat.managementLimit,
                     habitat.effectiveCapacity, habitat.biologicalCapacity).ToString()
                 : "AquacultureFishing.PondCapacityNoManagementOverride".Translate(habitat.effectiveCapacity).ToString();
-            Widgets.Label(new Rect(rect.x, rect.y + 42f, rect.width, 46f),
-                habitat.developmentPath + "   Fish fit: " + habitat.averageFishFit.ToStringPercent() +
+            Widgets.Label(new Rect(rect.x, detailTop, rect.width, 46f),
+                "AquacultureFishing.PondHabitatPath".Translate(habitat.developmentPath,
+                    habitat.averageFishFit.ToStringPercent()).ToString() +
                 "\n" + capacity + "\n" + effective);
-            TooltipHandler.TipRegion(new Rect(rect.x, rect.y + 42f, rect.width, 46f),
+            TooltipHandler.TipRegion(new Rect(rect.x, detailTop, rect.width, 46f),
                 "AquacultureFishing.PondCapacityExplanation".Translate(PondCapacityRules.PoweredAeratorCapacity,
                     habitat.foodSupportedPopulation, habitat.habitatSupportedPopulation,
                     PondCapacityRules.ConstraintLabel(habitat.limitingConstraint)).ToString());
-            string balance = snapshot == null ? "Unknown" :
-                snapshot.starving > 0 || snapshot.hungry > 0 ? "Food web under pressure" :
-                snapshot.organisms.Count >= 2 && snapshot.algaePercent >= 0.2f ? "Self-renewing food web" :
-                snapshot.population == 0 ? "Unstocked" : "Developing food web";
-            GUI.color = balance == "Food web under pressure" ? new Color(1f, 0.62f, 0.40f) : Color.gray;
-            Widgets.Label(new Rect(rect.x, rect.y + 94f, rect.width, 24f),
-                "Natural balance: " + balance + "   Stressed fish: " + habitat.stressedFish);
+            string balance = snapshot == null ? "AquacultureFishing.PondBalanceUnknown".Translate().ToString() :
+                snapshot.starving > 0 || snapshot.hungry > 0 ? "AquacultureFishing.PondBalancePressure".Translate().ToString() :
+                snapshot.organisms.Count >= 2 && snapshot.algaePercent >= 0.2f ? "AquacultureFishing.PondBalanceRenewing".Translate().ToString() :
+                snapshot.population == 0 ? "AquacultureFishing.PondBalanceUnstocked".Translate().ToString() :
+                "AquacultureFishing.PondBalanceDeveloping".Translate().ToString();
+            GUI.color = snapshot?.starving > 0 || snapshot?.hungry > 0 ? new Color(1f, 0.62f, 0.40f) : Color.gray;
+            Widgets.Label(new Rect(rect.x, detailTop + 52f, rect.width, 24f),
+                "AquacultureFishing.PondNaturalBalance".Translate(balance, habitat.stressedFish));
             GUI.color = Color.white;
-            Rect outRect = new Rect(rect.x, rect.y + 122f, rect.width, rect.height - 122f);
+            float contentTop = detailTop + 80f;
+            Rect outRect = new Rect(rect.x, contentTop, rect.width, rect.height - (contentTop - rect.y));
             float contentHeight = 5f * 72f + 118f + (snapshot?.organisms?.Count ?? 0) * 23f;
             Rect view = new Rect(0f, 0f, outRect.width - 16f, Mathf.Max(outRect.height, contentHeight));
             Widgets.BeginScrollView(outRect, ref scrollPosition, view);
             Rect content = new Rect(0f, 0f, view.width, view.height);
             float y = 0f;
-            DrawHabitatRow(content, ref y, "Plant Cover", habitat.plantStructures, habitat.plantSupply,
-                habitat.plantDemand, habitat.PlantFit, "Fry, juveniles, livebearers, and herbivores");
-            DrawHabitatRow(content, ref y, "Rock Shelter", habitat.shelterStructures, habitat.shelterSupply,
-                habitat.shelterDemand, habitat.ShelterFit, "Solitary fish, ambush predators, eels, and crustaceans");
-            DrawHabitatRow(content, ref y, "Prepared Substrate", habitat.substrateStructures, habitat.substrateSupply,
-                habitat.substrateDemand, habitat.SubstrateFit, "Detritivores and bottom-dwelling species");
-            DrawHabitatRow(content, ref y, "Powered Current", habitat.activeAerators, habitat.currentSupply,
-                habitat.currentDemand, habitat.CurrentFit, "Filter-feeders; inactive aerators provide no current");
-            DrawHabitatRow(content, ref y, "Open Water", 0, habitat.openWaterSupply,
-                habitat.openWaterDemand, habitat.OpenWaterFit, "Schooling and large-bodied fish");
+            DrawHabitatRow(content, ref y, "AquacultureFishing.PondHabitatPlantCover", habitat.plantStructures, habitat.plantSupply,
+                habitat.plantDemand, habitat.PlantFit, "AquacultureFishing.PondHabitatPlantCoverDesc");
+            DrawHabitatRow(content, ref y, "AquacultureFishing.PondHabitatRockShelter", habitat.shelterStructures, habitat.shelterSupply,
+                habitat.shelterDemand, habitat.ShelterFit, "AquacultureFishing.PondHabitatRockShelterDesc");
+            DrawHabitatRow(content, ref y, "AquacultureFishing.PondHabitatSubstrate", habitat.substrateStructures, habitat.substrateSupply,
+                habitat.substrateDemand, habitat.SubstrateFit, "AquacultureFishing.PondHabitatSubstrateDesc");
+            DrawHabitatRow(content, ref y, "AquacultureFishing.PondHabitatCurrent", habitat.activeAerators, habitat.currentSupply,
+                habitat.currentDemand, habitat.CurrentFit, "AquacultureFishing.PondHabitatCurrentDesc");
+            DrawHabitatRow(content, ref y, "AquacultureFishing.PondHabitatOpenWater", 0, habitat.openWaterSupply,
+                habitat.openWaterDemand, habitat.OpenWaterFit, "AquacultureFishing.PondHabitatOpenWaterDesc");
             y += 2f;
             Widgets.DrawLineHorizontal(content.x, y, content.width);
             y += 8f;
             Text.Font = GameFont.Medium;
-            Widgets.Label(new Rect(content.x, y, content.width, 28f), "Living Community");
+            Widgets.Label(new Rect(content.x, y, content.width, 28f), "AquacultureFishing.PondLivingCommunity".Translate());
             Text.Font = GameFont.Small;
             y += 30f;
             if (snapshot?.organisms == null || snapshot.organisms.Count == 0)
             {
                 GUI.color = Color.gray;
                 Widgets.Label(new Rect(content.x, y, content.width, 24f),
-                    "No gathered pond plants or invertebrates have been established.");
+                    "AquacultureFishing.PondNoOrganisms".Translate());
                 GUI.color = Color.white;
                 y += 26f;
             }
@@ -558,19 +568,20 @@ namespace AquacultureFishing
             y += 4f;
             GUI.color = Color.gray;
             Widgets.Label(new Rect(content.x, y, content.width, 48f),
-                "Natural ponds sustain conservative stocking through plants, invertebrates, cover, and balanced diets. Powered aeration and prepared feed support higher industrial stocking.");
+                "AquacultureFishing.PondHabitatGuidance".Translate());
             GUI.color = Color.white;
             Widgets.EndScrollView();
         }
 
-        private static void DrawHabitatRow(Rect rect, ref float y, string label, int structures,
-            float supply, float demand, float fit, string description)
+        private static void DrawHabitatRow(Rect rect, ref float y, string labelKey, int structures,
+            float supply, float demand, float fit, string descriptionKey)
         {
             Rect row = new Rect(rect.x, y, rect.width, 64f);
             Widgets.DrawMenuSection(row);
-            Widgets.Label(new Rect(row.x + 10f, row.y + 7f, 190f, 26f), label);
-            string amount = demand <= 0.001f ? supply.ToString("0.#") + " supplied / no demand"
-                : supply.ToString("0.#") + " / " + demand.ToString("0.#") + " fish";
+            Widgets.Label(new Rect(row.x + 10f, row.y + 7f, 190f, 26f), labelKey.Translate());
+            string amount = demand <= 0.001f
+                ? "AquacultureFishing.PondHabitatSupplyNoDemand".Translate(supply.ToString("0.#"))
+                : "AquacultureFishing.PondHabitatSupplyDemand".Translate(supply.ToString("0.#"), demand.ToString("0.#"));
             Text.Anchor = TextAnchor.UpperRight;
             GUI.color = fit < 0.55f ? new Color(1f, 0.55f, 0.35f) :
                 fit < 0.999f ? new Color(1f, 0.80f, 0.35f) : new Color(0.55f, 0.92f, 0.62f);
@@ -579,7 +590,8 @@ namespace AquacultureFishing
             Text.Anchor = TextAnchor.UpperLeft;
             GUI.color = Color.gray;
             Widgets.Label(new Rect(row.x + 10f, row.y + 35f, row.width - 20f, 22f),
-                (structures > 0 ? structures + " structure" + (structures == 1 ? "" : "s") + ". " : "") + description);
+                (structures > 0 ? "AquacultureFishing.PondHabitatStructures".Translate(structures).ToString() + " " : "") +
+                descriptionKey.Translate().ToString());
             GUI.color = Color.white;
             y += 72f;
         }

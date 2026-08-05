@@ -1,12 +1,13 @@
 param(
-    [string]$BridgeRoot = 'C:\Games\Steam\steamapps\common\RimWorld\Mods\RimWorldDevBridge'
+    [string]$Destination = (Join-Path $PSScriptRoot 'BridgeAdapters'),
+    [string]$PublisherPath = (Join-Path $PSScriptRoot '..\..\RimWorldDevBridge\DevTools\Publish-RimWorldBridgeAdapter.ps1')
 )
 
 $ErrorActionPreference = 'Stop'
 $project = Join-Path $PSScriptRoot 'BridgeAdapter\AquacultureFishing.BridgeAdapter.csproj'
 $build = Join-Path $PSScriptRoot 'BridgeAdapter\Build'
-$destination = Join-Path $BridgeRoot 'DevTools\HotAdapters'
-$publisher = Join-Path $BridgeRoot 'DevTools\Publish-RimWorldBridgeAdapter.ps1'
+$destination = [IO.Path]::GetFullPath($Destination)
+$publisher = [IO.Path]::GetFullPath($PublisherPath)
 $source = Join-Path $PSScriptRoot 'BridgeAdapter\AquacultureBridgeAdapter.cs'
 $stamp = Get-Date -Format 'yyyyMMddHHmmssfff'
 $assemblyName = "AquacultureFishing.BridgeAdapter.$stamp"
@@ -20,6 +21,11 @@ $built = Join-Path $build ($assemblyName + '.dll')
 $text = [IO.File]::ReadAllText($source)
 $specs = @([regex]::Matches($text, '"(?<spec>[A-Z][A-Z0-9_]*\|[RW]\|[^"\r\n]+)"') |
     ForEach-Object { $_.Groups['spec'].Value })
+# Aquaculture owns one deployable generation. Remove stale generations before
+# publishing so the runtime cannot load an older adapter beside the new one.
+Get-ChildItem -LiteralPath $destination -File -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -match '^AquacultureFishing(\.BridgeAdapter)?\..+\.(dll|manifest\.json)$' } |
+    Remove-Item -Force
 & $publisher -AssemblyPath $built -Destination $destination -AdapterId 'AquacultureFishing' `
     -DisplayName 'Aquaculture Fishing' -Version '1.6.0' -Generation $stamp `
     -ProviderType 'AquacultureFishing.AquacultureBridgeAdapter' -CommandSpecs $specs `

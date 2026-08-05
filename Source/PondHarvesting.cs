@@ -292,6 +292,7 @@ namespace AquacultureFishing
                 }
                 medicine.SplitOff(1).Destroy(DestroyMode.Vanish);
                 fish.sterilized = true;
+                AquacultureCommissionManager.NotifyFishChanged(fish);
                 fish.parent.Map?.GetComponent<FishPondMapComponent>()?.NotifyFishChanged(fish);
                 designation?.Delete();
             };

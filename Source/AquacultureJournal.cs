@@ -46,6 +46,7 @@ namespace AquacultureFishing
 
     public sealed class FishBreedRecord : IExposable
     {
+        public const int CurrentStabilityModelVersion = 1;
         public string id;
         public string name;
         public string fishDefName;
@@ -54,21 +55,31 @@ namespace AquacultureFishing
         public int registeredTick;
         public string registeredBy;
         public int founderCount;
+        // births remains serialized for older saves and mirrors qualifyingBirths in new saves.
         public int births;
         public int matchingBirths;
+        public int qualifyingBirths;
         public int highestGeneration;
         public int commissionsCompleted;
         public int lastCommissionTick = -1;
+        public int commissionsFailed;
+        public int lastCommissionFailureTick = -1;
         public bool masteryAnnounced;
+        public int stabilityModelVersion;
+        public float legacyStabilityFloor;
         public List<string> lineage = new List<string>();
         public ThingDef FishDef => DefDatabase<ThingDef>.GetNamedSilentFail(fishDefName);
-        public float Stability => Mathf.Clamp(0.70f + matchingBirths * 0.03f + Mathf.Max(0, highestGeneration - 1) * 0.02f, 0.70f, 0.98f);
+        public float SuccessRate => TraitBreedingRules.SuccessRate(matchingBirths, qualifyingBirths);
+        public float GenerationContribution => TraitBreedingRules.GenerationContribution(highestGeneration);
+        public float Stability => Mathf.Max(SafeLegacyFloor(),
+            TraitBreedingRules.ResultingStability(matchingBirths, qualifyingBirths, highestGeneration));
         public float MarketValueFactor => 1.15f + Stability * 0.35f;
         public float BeautyBonus => Stability * 0.75f;
         public bool Mastered => Stability >= 0.90f;
 
         public void ExposeData()
         {
+            if (Scribe.mode == LoadSaveMode.Saving) stabilityModelVersion = CurrentStabilityModelVersion;
             Scribe_Values.Look(ref id, "id");
             Scribe_Values.Look(ref name, "name");
             Scribe_Values.Look(ref fishDefName, "fishDefName");
@@ -79,15 +90,58 @@ namespace AquacultureFishing
             Scribe_Values.Look(ref founderCount, "founderCount");
             Scribe_Values.Look(ref births, "births");
             Scribe_Values.Look(ref matchingBirths, "matchingBirths");
+            Scribe_Values.Look(ref qualifyingBirths, "qualifyingBirths");
             Scribe_Values.Look(ref highestGeneration, "highestGeneration");
             Scribe_Values.Look(ref commissionsCompleted, "commissionsCompleted");
             Scribe_Values.Look(ref lastCommissionTick, "lastCommissionTick", -1);
+            Scribe_Values.Look(ref commissionsFailed, "commissionsFailed");
+            Scribe_Values.Look(ref lastCommissionFailureTick, "lastCommissionFailureTick", -1);
             Scribe_Values.Look(ref masteryAnnounced, "masteryAnnounced");
+            Scribe_Values.Look(ref stabilityModelVersion, "stabilityModelVersion");
+            Scribe_Values.Look(ref legacyStabilityFloor, "legacyStabilityFloor");
             Scribe_Collections.Look(ref lineage, "lineage", LookMode.Value);
             if (traitDefNames == null) traitDefNames = new List<string>();
             if (traitValues == null) traitValues = new Dictionary<string, float>();
             if (lineage == null) lineage = new List<string>();
+            if (float.IsNaN(legacyStabilityFloor) || float.IsInfinity(legacyStabilityFloor)) legacyStabilityFloor = 0f;
+            legacyStabilityFloor = Mathf.Clamp(legacyStabilityFloor, 0f, TraitBreedingRules.MaximumStability);
+            if (Scribe.mode == LoadSaveMode.PostLoadInit && stabilityModelVersion < CurrentStabilityModelVersion)
+            {
+                qualifyingBirths = TraitBreedingRules.QualifyingBirthsFromLegacy(births, matchingBirths);
+                legacyStabilityFloor = Mathf.Max(legacyStabilityFloor,
+                    TraitBreedingRules.LegacyStability(matchingBirths, highestGeneration));
+                stabilityModelVersion = CurrentStabilityModelVersion;
+            }
+            matchingBirths = Mathf.Max(0, matchingBirths);
+            qualifyingBirths = Mathf.Max(matchingBirths, qualifyingBirths);
+            births = Mathf.Max(births, qualifyingBirths);
+            highestGeneration = Mathf.Max(0, highestGeneration);
         }
+
+        public void RecordQualifyingBirth(bool matched, int generation)
+        {
+            qualifyingBirths = Mathf.Max(0, qualifyingBirths) + 1;
+            births = qualifyingBirths;
+            if (!matched) return;
+            matchingBirths = Mathf.Min(qualifyingBirths, Mathf.Max(0, matchingBirths) + 1);
+            if (generation <= highestGeneration) return;
+            highestGeneration = generation;
+            if (lineage == null) lineage = new List<string>();
+            lineage.Add("AquacultureFishing.GenerationEstablished".Translate(highestGeneration, DayLabel(CurrentTick)).ToString());
+        }
+
+        private float SafeLegacyFloor()
+        {
+            return float.IsNaN(legacyStabilityFloor) || float.IsInfinity(legacyStabilityFloor)
+                ? 0f : Mathf.Clamp(legacyStabilityFloor, 0f, TraitBreedingRules.MaximumStability);
+        }
+
+        private static string DayLabel(int tick)
+        {
+            return "Day " + (Mathf.Max(0, tick) / 60000 + 1);
+        }
+
+        private static int CurrentTick => Find.TickManager?.TicksGame ?? 0;
     }
 
     public sealed class AquacultureJournalComponent : GameComponent
@@ -191,19 +245,23 @@ namespace AquacultureFishing
                 record.bredTick = CurrentTick;
                 Messages.Message("First colony-bred " + fish.parent.def.label + " hatched.", MessageTypeDefOf.PositiveEvent, false);
             }
-            FishBreedRecord breed = BreedById(fish.breedId);
-            if (breed == null || fish.breedBirthRecorded) return;
-            fish.breedBirthRecorded = true;
-            breed.matchingBirths++;
-            if (fish.breedGeneration > breed.highestGeneration)
+            FishBreedRecord breed = BreedById(fish.qualifyingBreedId) ?? BreedById(fish.breedId);
+            if (breed == null || fish.qualifyingBirthRecorded) return;
+            // Old matching children have already incremented matchingBirths. Do not count them again;
+            // their legacy total is preserved by FishBreedRecord migration.
+            if (fish.breedBirthRecorded && fish.qualifyingBreedId.NullOrEmpty())
             {
-                breed.highestGeneration = fish.breedGeneration;
-                breed.lineage.Add("Generation " + breed.highestGeneration + " established on " + DayLabel(CurrentTick) + ".");
+                fish.qualifyingBirthRecorded = true;
+                return;
             }
+            bool matched = fish.breedId == breed.id;
+            fish.qualifyingBirthRecorded = true;
+            if (matched) fish.breedBirthRecorded = true;
+            breed.RecordQualifyingBirth(matched, matched ? fish.breedGeneration : fish.qualifyingBreedGeneration);
             if (breed.Mastered && !breed.masteryAnnounced)
             {
                 breed.masteryAnnounced = true;
-                Messages.Message("Breed mastered: " + breed.name + " now breeds true with high reliability.", MessageTypeDefOf.PositiveEvent, false);
+                Messages.Message("AquacultureFishing.BreedMastered".Translate(breed.name), MessageTypeDefOf.PositiveEvent, false);
             }
         }
 
@@ -271,6 +329,11 @@ namespace AquacultureFishing
                 reason = "A breed needs at least one inheritable trait.";
                 return false;
             }
+            if (!HasCompatibleTraits(signature))
+            {
+                reason = "AquacultureFishing.BreedTraitsConflict".Translate().ToString();
+                return false;
+            }
             FishPondMapComponent component = founder.parent.Map.GetComponent<FishPondMapComponent>();
             cohort = component?.FishInSamePond(founder)
                 .Where(fish => fish.IsAlive && fish.IsAdult && fish.parent.def == founder.parent.def
@@ -305,7 +368,8 @@ namespace AquacultureFishing
                 registeredTick = CurrentTick,
                 registeredBy = registrar?.LabelShortCap,
                 founderCount = cohort.Count,
-                highestGeneration = Mathf.Max(1, cohort.Max(fish => fish.breedGeneration))
+                highestGeneration = Mathf.Max(1, cohort.Max(fish => fish.breedGeneration)),
+                stabilityModelVersion = FishBreedRecord.CurrentStabilityModelVersion
             };
             breedRecord.lineage.Add("Founding population registered on " + DayLabel(CurrentTick) + ".");
             foreach (string traitName in breedRecord.traitDefNames)
@@ -325,48 +389,74 @@ namespace AquacultureFishing
             return breedRecord;
         }
 
+        public FishBreedRecord BreedForParents(CompFishTraits first, CompFishTraits second)
+        {
+            if (first?.breedId.NullOrEmpty() != false || first.breedId != second?.breedId) return null;
+            return BreedById(first.breedId);
+        }
+
         public bool ApplyBreedInheritance(CompFishTraits first, CompFishTraits second, List<string> inheritedTraits,
-            Dictionary<string, float> inheritedValues, out string inheritedBreedId, out int inheritedGeneration)
+            Dictionary<string, float> inheritedValues, out string inheritedBreedId, out int inheritedGeneration,
+            out string qualifyingBreedId, out int qualifyingBreedGeneration)
         {
             inheritedBreedId = null;
             inheritedGeneration = 0;
-            if (first?.breedId.NullOrEmpty() != false || first.breedId != second?.breedId) return false;
-            FishBreedRecord breed = BreedById(first.breedId);
+            qualifyingBreedId = null;
+            qualifyingBreedGeneration = 0;
+            if (inheritedTraits == null) inheritedTraits = new List<string>();
+            if (inheritedValues == null) inheritedValues = new Dictionary<string, float>();
+            FishBreedRecord breed = BreedForParents(first, second);
             if (breed == null) return false;
-            breed.births++;
-            var usedGroups = new HashSet<string>(inheritedTraits.Select(name =>
-                FishTraitUtility.ExclusiveGroup(DefDatabase<FishTraitDef>.GetNamedSilentFail(name))));
+            if (breed.traitDefNames == null) breed.traitDefNames = new List<string>();
+            if (breed.traitValues == null) breed.traitValues = new Dictionary<string, float>();
+            qualifyingBreedId = breed.id;
+            qualifyingBreedGeneration = Mathf.Max(first.breedGeneration, second.breedGeneration) + 1;
+            var usedGroups = new HashSet<string>();
             for (int i = 0; i < breed.traitDefNames.Count; i++)
             {
                 string traitName = breed.traitDefNames[i];
                 FishTraitDef trait = DefDatabase<FishTraitDef>.GetNamedSilentFail(traitName);
-                if (trait == null || !Rand.Chance(breed.Stability)) continue;
+                if (trait == null) continue;
                 string group = FishTraitUtility.ExclusiveGroup(trait);
-                inheritedTraits.RemoveAll(name =>
-                    FishTraitUtility.ExclusiveGroup(DefDatabase<FishTraitDef>.GetNamedSilentFail(name)) == group);
-                usedGroups.Add(group);
+                float reliability = TraitBreedingRules.RegisteredBreedDefiningTraitReliability(
+                    breed.Stability, AquacultureMod.Settings?.registeredBreedDefiningTraitReliability ??
+                    AquacultureSettings.DefaultRegisteredBreedDefiningTraitReliability);
+                if (!Rand.Chance(reliability) || !usedGroups.Add(group)) continue;
+                for (int inheritedIndex = inheritedTraits.Count - 1; inheritedIndex >= 0; inheritedIndex--)
+                {
+                    string inheritedName = inheritedTraits[inheritedIndex];
+                    if (FishTraitUtility.ExclusiveGroup(DefDatabase<FishTraitDef>.GetNamedSilentFail(inheritedName)) != group) continue;
+                    inheritedTraits.RemoveAt(inheritedIndex);
+                    inheritedValues.Remove(inheritedName);
+                }
                 if (!inheritedTraits.Contains(traitName)) inheritedTraits.Add(traitName);
                 if (breed.traitValues.TryGetValue(traitName, out float value)) inheritedValues[traitName] = value;
             }
-            int cap = Mathf.Max(0, AquacultureMod.Settings?.maxMutations ?? 2);
-            if (inheritedTraits.Count > cap)
-            {
-                HashSet<string> defining = new HashSet<string>(breed.traitDefNames);
-                inheritedTraits.RemoveAll(name => inheritedTraits.Count > cap && !defining.Contains(name));
-            }
             bool matches = breed.traitDefNames.All(inheritedTraits.Contains);
-            if (!matches) return false;
-            inheritedBreedId = breed.id;
-            inheritedGeneration = Mathf.Max(first.breedGeneration, second.breedGeneration) + 1;
-            return true;
+            if (matches)
+            {
+                inheritedBreedId = breed.id;
+                inheritedGeneration = qualifyingBreedGeneration;
+            }
+            return matches;
         }
 
         public static List<string> InheritableTraits(CompFishTraits fish)
         {
             return fish?.traitDefNames?
-                .Where(name => !name.StartsWith("AF_Age_") && !name.StartsWith("AF_Sex_")
-                    && !name.StartsWith(FishTraitUtility.DietPrefix) && !name.StartsWith(FishTraitUtility.WaterPrefix))
+                .Where(FishTraitUtility.IsInheritableTraitName)
                 .OrderBy(name => name, StringComparer.Ordinal).ToList() ?? new List<string>();
+        }
+
+        private static bool HasCompatibleTraits(IEnumerable<string> names)
+        {
+            var groups = new HashSet<string>();
+            foreach (string name in names ?? Enumerable.Empty<string>())
+            {
+                FishTraitDef trait = DefDatabase<FishTraitDef>.GetNamedSilentFail(name);
+                if (trait == null || !groups.Add(FishTraitUtility.ExclusiveGroup(trait))) return false;
+            }
+            return true;
         }
 
         private static bool SameSignature(CompFishTraits first, CompFishTraits second)
@@ -994,7 +1084,8 @@ namespace AquacultureFishing
                 Widgets.Label(new Rect(54f, row.y + 5f, row.width - 60f, 24f), breed.name);
                 GUI.color = breed.Mastered ? new Color(0.55f, 0.95f, 0.60f) : Color.gray;
                 Widgets.Label(new Rect(54f, row.y + 29f, row.width - 60f, 22f),
-                    (breed.FishDef?.LabelCap ?? "Unknown") + "   " + breed.Stability.ToStringPercent());
+                    (breed.FishDef?.LabelCap ?? "Unknown") + "   " +
+                    "AquacultureFishing.ResultingStability".Translate(breed.Stability.ToStringPercent()));
                 GUI.color = Color.white;
                 if (Widgets.ButtonInvisible(row)) selectedBreed = breed.id;
                 y += 64f;
@@ -1027,11 +1118,12 @@ namespace AquacultureFishing
             Widgets.Label(new Rect(84f, 40f, view.width - 84f, 28f),
                 (breed.FishDef?.LabelCap ?? "Unknown species") + "   Generation " + breed.highestGeneration);
             float y = 92f;
-            DrawProgressBar(new Rect(0f, y, view.width, 30f), breed.Stability, "Inheritance stability " + breed.Stability.ToStringPercent());
+            DrawProgressBar(new Rect(0f, y, view.width, 30f), breed.Stability,
+                "AquacultureFishing.ResultingStability".Translate(breed.Stability.ToStringPercent()).ToString());
             y += 44f;
             Widgets.Label(new Rect(0f, y, view.width, 28f),
-                breed.Mastered ? "Mastered breed: offspring inherit the defining traits with high reliability."
-                    : "Breed toward 90% stability to achieve mastery.");
+                breed.Mastered ? "AquacultureFishing.MasteredBreed".Translate().ToString()
+                    : "AquacultureFishing.BreedMasteryGoal".Translate().ToString());
             y += 40f;
             Text.Font = GameFont.Medium;
             Widgets.Label(new Rect(0f, y, view.width, 30f), "Defining Traits");
@@ -1053,7 +1145,11 @@ namespace AquacultureFishing
             Widgets.DrawLineHorizontal(0f, y, view.width);
             y += 16f;
             DrawRecord(view, ref y, "Founders", breed.founderCount.ToString());
-            DrawRecord(view, ref y, "Breed offspring", breed.matchingBirths.ToString());
+            DrawRecord(view, ref y, "AquacultureFishing.MatchingBirths".Translate().ToString(), breed.matchingBirths.ToString());
+            DrawRecord(view, ref y, "AquacultureFishing.TotalQualifyingBirths".Translate().ToString(), breed.qualifyingBirths.ToString());
+            DrawRecord(view, ref y, "AquacultureFishing.SuccessRate".Translate().ToString(), breed.SuccessRate.ToStringPercent());
+            DrawRecord(view, ref y, "AquacultureFishing.GenerationContribution".Translate().ToString(), breed.GenerationContribution.ToStringPercent());
+            DrawRecord(view, ref y, "AquacultureFishing.ResultingStabilityLabel".Translate().ToString(), breed.Stability.ToStringPercent());
             DrawRecord(view, ref y, "Highest generation", breed.highestGeneration.ToString());
             DrawRecord(view, ref y, "Market value", breed.MarketValueFactor.ToStringPercent() + " of base");
             DrawRecord(view, ref y, "Pond beauty", "+" + breed.BeautyBonus.ToString("0.##") + " per pond fish");

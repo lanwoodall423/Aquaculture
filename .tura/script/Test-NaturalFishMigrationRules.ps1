@@ -1,10 +1,12 @@
 param([string]$Root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path)
 $ErrorActionPreference = 'Stop'
 $populationPath = Join-Path $Root 'Source\NaturalFishPopulations.cs'
+$recoveryPath = Join-Path $Root 'Source\NaturalFishRecoveryRules.cs'
 $architecturePath = Join-Path $Root 'architect.md'
 $guidePath = Join-Path $Root 'About\CONTENT_EXTENSION_GUIDE.md'
 $localizationPath = Join-Path $Root '1.6\Languages\English\Keyed\AquacultureFishing.xml'
 $population = Get-Content -Raw $populationPath
+$recovery = Get-Content -Raw $recoveryPath
 $architecture = Get-Content -Raw $architecturePath
 $guide = Get-Content -Raw $guidePath
 $localization = Get-Content -Raw $localizationPath
@@ -16,9 +18,9 @@ $migrationCompatible = {
     return ($open -contains $from) -and ($from -eq $to)
 }
 $checks = [ordered]@{
-    'explicit migration rule helper' = $population -match 'class NaturalFishMigrationRules' -and
-        $population -match 'IsOpen' -and $population -match 'AreCompatible' -and
-        $population -match 'IsOpen\(first\)\s*&&\s*first\s*==\s*second'
+    'explicit migration rule helper' = $recovery -match 'class NaturalFishMigrationRules' -and
+        $recovery -match 'IsOpen' -and $recovery -match 'AreCompatible' -and
+        $recovery -match 'IsOpen\(first\)\s*&&\s*first\s*==\s*second'
     'closed habitats are documented' = $guide -match 'Pond, lake, and marsh are closed categories' -and
         $architecture -match 'Pond, lake, and marsh records are closed'
     'coastal is documented as open' = $guide -match 'Coastal-to-Coastal' -and

@@ -176,13 +176,14 @@ namespace AquacultureFishing
 
     public sealed class PondProxyThing : Building
     {
-        public override string LabelNoCount => "pond";
+        public override string LabelNoCount => "AquacultureFishing.PondLabel".Translate().ToString();
 
         public override string GetInspectString()
         {
-            if (!AquacultureProgression.IsAvailable("AF_IndustrialAquaculture"))
-                return AquacultureProgression.IsAvailable("AF_ManagedAquaculture") ? "Managed pond" : "Constructed pond";
-            return Map?.GetComponent<FishPondMapComponent>()?.MenuSnapshotAt(Position)?.inspectString ?? "Constructed pond";
+            if (!AquacultureProgression.IsAvailable("AF_Pondkeeping"))
+                return "AquacultureFishing.PondInspectFallback".Translate().ToString();
+            return Map?.GetComponent<FishPondMapComponent>()?.MenuSnapshotAt(Position)?.inspectString ??
+                "AquacultureFishing.PondInspectFallback".Translate().ToString();
         }
 
         public override IEnumerable<Gizmo> GetGizmos()
@@ -193,16 +194,16 @@ namespace AquacultureFishing
             {
                 yield return new Command_Action
                 {
-                    defaultLabel = "Remove Fish",
-                    defaultDesc = "Remove one living fish from the pond and place it on the shore.",
+                    defaultLabel = "AquacultureFishing.PondRemoveFish".Translate().ToString(),
+                    defaultDesc = "AquacultureFishing.PondRemoveFishDesc".Translate().ToString(),
                     icon = TexCommand.SelectCarriedThing,
                     action = () => OpenFishActionMenu(component, false)
                 };
             }
             if (AquacultureProgression.IsAvailable("AF_ManagedAquaculture")) yield return new Command_Action
             {
-                defaultLabel = "Harvest Fish",
-                defaultDesc = "Harvest one eligible fish without reducing the pond below its protected population.",
+                defaultLabel = "AquacultureFishing.PondHarvestFish".Translate().ToString(),
+                defaultDesc = "AquacultureFishing.PondHarvestFishDesc".Translate().ToString(),
                 icon = TexCommand.Attack,
                 action = () => OpenFishActionMenu(component, true)
             };
@@ -213,11 +214,13 @@ namespace AquacultureFishing
             List<ThingDef> species = harvest ? component?.HarvestableFishSpeciesAt(Position) : component?.FishSpeciesAt(Position);
             if (species == null || species.Count == 0)
             {
-                Messages.Message(harvest ? "No fish currently meet this pond's harvest limits." : "This pond contains no living fish.", MessageTypeDefOf.RejectInput, false);
+                Messages.Message((harvest ? "AquacultureFishing.PondNoHarvestableFish" :
+                    "AquacultureFishing.PondNoLivingFish").Translate(), MessageTypeDefOf.RejectInput, false);
                 return;
             }
             Find.WindowStack.Add(new FloatMenu(species.Select(def => new FloatMenuOption(
-                (harvest ? "Harvest " : "Remove ") + def.LabelCap,
+                (harvest ? "AquacultureFishing.PondHarvestSpecies" : "AquacultureFishing.PondRemoveSpecies")
+                    .Translate(def.LabelCap),
                 () =>
                 {
                     if (harvest) OpenHarvestIndividualMenu(component, def);
@@ -230,12 +233,14 @@ namespace AquacultureFishing
             List<CompFishTraits> fish = component.HarvestableFishAt(Position, species);
             if (fish.Count == 0)
             {
-                Messages.Message("No " + species.LabelCap + " currently meet this pond's harvest limits.", MessageTypeDefOf.RejectInput, false);
+                Messages.Message("AquacultureFishing.PondNoHarvestableSpecies".Translate(species.LabelCap),
+                    MessageTypeDefOf.RejectInput, false);
                 return;
             }
             Find.WindowStack.Add(new FloatMenu(fish.Select(candidate =>
             {
-                string details = candidate.TraitSummary.NullOrEmpty() ? "No traits" : candidate.TraitSummary;
+                string details = candidate.TraitSummary.NullOrEmpty()
+                    ? "AquacultureFishing.PondNoTraits".Translate().ToString() : candidate.TraitSummary;
                 return new FloatMenuOption(candidate.parent.LabelCap + " - " + details,
                     () => FishHarvestUtility.Designate(candidate));
             }).ToList()));
@@ -262,7 +267,7 @@ namespace AquacultureFishing
         {
             int count = parent?.Map?.GetComponent<FishPondMapComponent>()?.AnimaFishCountAt(parent.Position) ?? 0;
             int perTree = Mathf.Max(1, AquacultureMod.Settings?.animaFishPerTree ?? 20);
-            yield return "Anima fish: " + count + " (" + perTree + " equal one anima tree)";
+            yield return "AquacultureFishing.PondAnimaFishExplanation".Translate(count, perTree).ToString();
         }
 
         public override IEnumerable<StatDrawEntry> SpecialDisplayStats()
@@ -336,12 +341,14 @@ namespace AquacultureFishing
         {
             pondTopologyDirty = true;
             pondMembershipDirty = true;
+            AquacultureCommissionManager.NotifyMapChanged();
             AquacultureSnapshotCache.Invalidate();
         }
 
         public void NotifyFishChanged(CompFishTraits comp)
         {
             if (comp == null) return;
+            AquacultureCommissionManager.NotifyFishChanged(comp);
             bool isMember = pondByFish.TryGetValue(comp, out PondState state);
             bool shouldBeMember = comp.parent?.Spawned == true && comp.IsSwimmingInPond;
             if (isMember != shouldBeMember)
@@ -716,17 +723,30 @@ namespace AquacultureFishing
             var snapshot = new PondMenuSnapshot();
             float algaeCapacity = Mathf.Max(0.1f, pond.info.cells.Count * 0.25f);
             var inspect = new StringBuilder();
-            inspect.Append("Water: ").Append(pond.ecology.waterKind == PondWaterKind.Brackishwater ? "Brackishwater" : pond.ecology.waterKind.ToString())
-                .Append("\nLiving fish: ").Append(pond.fish.Count).Append("\nSchools: ").Append(pond.schools.Count)
-                .Append("\nPond beauty: ").Append(pond.beauty.ToString("0.#"));
+            string waterLabel = pond.ecology.waterKind == PondWaterKind.Brackishwater ? "Brackishwater" : pond.ecology.waterKind.ToString();
+            inspect.Append("AquacultureFishing.PondInspectWater".Translate(waterLabel))
+                .Append("\n").Append("AquacultureFishing.PondInspectLivingFish".Translate(pond.fish.Count))
+                .Append("\n").Append("AquacultureFishing.PondInspectSchools".Translate(pond.schools.Count))
+                .Append("\n").Append("AquacultureFishing.PondInspectBeauty".Translate(pond.beauty.ToString("0.#")));
             if (pond.animaFishCount > 0)
             {
                 float meditation = 0.28f * pond.animaFishCount / Mathf.Max(1, AquacultureMod.Settings?.animaFishPerTree ?? 20);
-                inspect.Append("\nAnima fish: ").Append(pond.animaFishCount).Append("\nNatural meditation: ").Append(meditation.ToStringPercent()).Append(" / day");
+                inspect.Append("\n").Append("AquacultureFishing.PondInspectAnima".Translate(pond.animaFishCount))
+                    .Append("\n").Append("AquacultureFishing.PondInspectMeditation".Translate(meditation.ToStringPercent()));
             }
-            inspect.Append("\nAlgae: ").Append((pond.ecology.algae / algaeCapacity).ToStringPercent());
+            inspect.Append("\n").Append("AquacultureFishing.PondInspectAlgae".Translate((pond.ecology.algae / algaeCapacity).ToStringPercent()));
             PopulateOverview(pond, snapshot);
-            if (snapshot.warnings.Count > 0) inspect.Append("\nWarnings: ").Append(snapshot.warnings.Count);
+            if (snapshot.warnings.Count > 0)
+                inspect.Append("\n").Append("AquacultureFishing.PondWarningsCount".Translate(snapshot.warnings.Count));
+            if (snapshot.causalSummary?.issues?.Count > 0)
+            {
+                inspect.Append("\n").Append("AquacultureFishing.PondSafetyInspect".Translate(
+                    snapshot.causalSummary.issues[0].text));
+            }
+            else
+            {
+                inspect.Append("\n").Append("AquacultureFishing.PondSafetyHealthy".Translate());
+            }
             snapshot.inspectString = inspect.ToString();
             var sortedFish = new List<CompFishTraits>(pond.fish);
             sortedFish.Sort((a, b) =>
@@ -744,11 +764,10 @@ namespace AquacultureFishing
                     fish = comp,
                     label = comp.parent.LabelCap,
                     traits = comp.TraitSummary,
-                    stats = ecology.diet + " | " + ecology.waterKind + "\nSpeed: " +
-                        (movement.maximumSpeed * comp.MovementSpeed * 60f).ToString("0.00") + " cells/s   Yield: " +
-                        comp.MeatYield.ToStringPercent() + "\nBeauty: " + (1f + comp.BeautyOffset).ToString("0.#") +
-                        "   Fed: " + comp.foodReserve.ToStringPercent() +
-                        "   Habitat: " + comp.habitatFit.ToStringPercent()
+                    stats = "AquacultureFishing.PondFishStats".Translate(ecology.diet.ToString(), ecology.waterKind.ToString(),
+                        (movement.maximumSpeed * comp.MovementSpeed * 60f).ToString("0.00"),
+                        comp.MeatYield.ToStringPercent(), (1f + comp.BeautyOffset).ToString("0.#"),
+                        comp.foodReserve.ToStringPercent(), comp.habitatFit.ToStringPercent()).ToString()
                 });
             }
 
@@ -780,8 +799,12 @@ namespace AquacultureFishing
             return new FishSchoolSnapshot
             {
                 title = school.species.LabelCap + " - " + school.members.Count + " fish",
-                leftStats = "Species-specific schooling\nCruise speed: " + (school.profile.cruiseSpeed * 60f).ToString("0.00") + " cells/s\nPreferred spacing: " + (separation / divisor).ToString("0.00") + " cells",
-                rightStats = "Max speed: " + (maxSpeed / divisor * 60f).ToString("0.00") + " cells/s\nTurn response: " + (turn / divisor).ToString("0.00") + "\nCohesion: " + (cohesion / divisor).ToString("0.00") + "   Alignment: " + (alignment / divisor).ToString("0.00") + "\nSchool tendency: " + (schooling / divisor).ToString("0.00")
+                leftStats = "AquacultureFishing.PondSchoolingLeftStats".Translate(
+                    (school.profile.cruiseSpeed * 60f).ToString("0.00"), (separation / divisor).ToString("0.00")),
+                rightStats = "AquacultureFishing.PondSchoolingRightStats".Translate(
+                    (maxSpeed / divisor * 60f).ToString("0.00"), (turn / divisor).ToString("0.00"),
+                    (cohesion / divisor).ToString("0.00"), (alignment / divisor).ToString("0.00"),
+                    (schooling / divisor).ToString("0.00"))
             };
         }
 
@@ -847,7 +870,8 @@ namespace AquacultureFishing
             int count = fish?.Count ?? 0;
             Rect rect = new Rect(0f, 0f, size.x, size.y).ContractedBy(12f);
             Text.Font = GameFont.Medium;
-            Widgets.Label(new Rect(rect.x, rect.y, rect.width, 34f), "Pond Fish (" + count + ")");
+            Widgets.Label(new Rect(rect.x, rect.y, rect.width, 34f),
+                "AquacultureFishing.PondFishTitle".Translate(count));
             Text.Font = GameFont.Small;
             Rect outRect = new Rect(rect.x, rect.y + 40f, rect.width, rect.height - 40f);
             Rect view = new Rect(0f, 0f, outRect.width - 16f, Mathf.Max(outRect.height, count * 90f));
@@ -885,7 +909,8 @@ namespace AquacultureFishing
             int count = schools?.Count ?? 0;
             Rect rect = new Rect(0f, 0f, size.x, size.y).ContractedBy(12f);
             Text.Font = GameFont.Medium;
-            Widgets.Label(new Rect(rect.x, rect.y, rect.width, 34f), "Schools (" + count + ")");
+            Widgets.Label(new Rect(rect.x, rect.y, rect.width, 34f),
+                "AquacultureFishing.PondSchoolsTitle".Translate(count));
             Text.Font = GameFont.Small;
             Rect outRect = new Rect(rect.x, rect.y + 40f, rect.width, rect.height - 40f);
             Rect view = new Rect(0f, 0f, outRect.width - 16f, Mathf.Max(outRect.height, count * 112f));

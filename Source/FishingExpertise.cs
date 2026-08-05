@@ -297,15 +297,15 @@ namespace AquacultureFishing
                 .ToList() ?? new List<ThingDef>();
             ThingDef selected = eligible.Count == 0 ? null : eligible.RandomElementByWeight(fish => Mathf.Max(0.01f,
                 (attraction?.Invoke(fish) ?? 1f) * (populations?.LocalWeight(attempt.waterCell, fish) ?? 1f)));
+            // Warn as soon as automatic selection identifies a risky species, before bite resolution.
+            attempt.pawn.Map?.GetComponent<NaturalFishPopulationMapComponent>()?
+                .WarnIfCatchLikelyCrossesBreedingFloor(attempt.waterCell, selected);
             bool fishBit = selected != null && Rand.Chance(FishingProgressionUtility.BiteChance(attempt.pawn, selected));
             attempt.fishDefName = selected?.defName;
             attempt.biteDecided = true;
             attempt.fishBit = fishBit;
             attempt.biteTick = Find.TickManager?.TicksGame ?? 0;
             attempt.CaptureHookedFish();
-            if (fishBit)
-                attempt.pawn.Map?.GetComponent<NaturalFishPopulationMapComponent>()?
-                    .WarnIfCatchLikelyCrossesBreedingFloor(attempt.waterCell, selected);
             AquacultureEventRouter.FishHooked(attempt);
         }
 

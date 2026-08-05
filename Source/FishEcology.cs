@@ -324,7 +324,8 @@ namespace AquacultureFishing
             Scribe_Values.Look(ref preparedFeed, "preparedFeed");
             Scribe_Collections.Look(ref organisms, "organisms", LookMode.Deep);
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
-                organisms = organisms?.Where(item => item?.Organism != null && item.biomass > 0f).ToList()
+                organisms = organisms?.Where(item => item?.Organism != null && item.biomass > 0f &&
+                    item.Organism.Compatible(waterKind)).ToList()
                     ?? new List<PondOrganismPopulation>();
             Scribe_Values.Look(ref predationCredit, "predationCredit");
             Scribe_Values.Look(ref breedingEnabled, "breedingEnabled", true);
@@ -390,7 +391,7 @@ namespace AquacultureFishing
             if (!pondByCell.TryGetValue(cell, out PondState pond)) return;
             if (pond.fish.Count > 0 || PondEggCount(pond) > 0)
             {
-                Messages.Message("Remove all fish and eggs before refilling this pond with a different water type.",
+                Messages.Message("AquacultureFishing.PondWaterChangeRequiresEmpty".Translate(),
                     MessageTypeDefOf.RejectInput, false);
                 return;
             }
@@ -398,8 +399,11 @@ namespace AquacultureFishing
             pond.ecology.waterKind = kind;
             pond.beautyDirty = true;
             InvalidatePondSnapshot(pond);
-            Messages.Message("The empty pond will be filled as " + WaterLabel(kind) +
-                (removed > 0 ? "; " + removed + " incompatible pond population" + (removed == 1 ? " was" : "s were") + " lost." : "."),
+            Messages.Message(removed > 0
+                    ? (removed == 1
+                        ? "AquacultureFishing.PondWaterChangedWithSingleLoss".Translate(WaterLabel(kind))
+                        : "AquacultureFishing.PondWaterChangedWithLoss".Translate(WaterLabel(kind), removed))
+                    : "AquacultureFishing.PondWaterChanged".Translate(WaterLabel(kind)),
                 MessageTypeDefOf.TaskCompletion, false);
         }
 
@@ -451,8 +455,11 @@ namespace AquacultureFishing
                 processedAny = true;
             }
             if (processedAny)
+            {
                 AquacultureJournalComponent.Current?.EvaluateStablePopulations(
                     pondStates.Select(pond => (IEnumerable<CompFishTraits>)pond.fish), now);
+                AquacultureCommissionManager.NotifyEligibilityChanged();
+            }
         }
 
         private void SimulateEcology(PondState pond, float hours)

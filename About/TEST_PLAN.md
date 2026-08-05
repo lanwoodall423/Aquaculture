@@ -1,6 +1,6 @@
 # Aquaculture - Fishing: Release Test Plan
 
-Use a new colony with Harmony, Vanilla Fishing Expanded, its Fishing Treasures add-on, Aquaculture - Fishing, and optionally Aquariums enabled in that order.
+Use a new colony with Harmony, Knowledge Framework, Deferred Reality Framework, Vanilla Fishing Expanded, and Aquaculture - Fishing enabled in that order. Fishing Treasures, Odyssey, Aquariums, and additional fish packs are optional configuration variants.
 
 ## Load And Progression
 
@@ -22,13 +22,15 @@ Use a new colony with Harmony, Vanilla Fishing Expanded, its Fishing Treasures a
 6. Confirm size, beauty, nutrition, and longevity records update as better specimens appear or age.
 7. Before Selective Fish Breeding, confirm Register Breed is unavailable.
 8. After research, create an adult male/female cohort with identical inheritable traits and at least one colony-born member. Register it with a blank-by-default naming dialog and confirm Enter saves.
-9. Confirm duplicate or blank breed names cannot be registered, all matching founders receive the breed, and the Traits tab shows breed, generation, and stability.
-10. Breed two members of the same breed. Confirm matching offspring retain the breed and increase its generation/stability, while offspring missing defining traits do not receive the breed name.
-11. Reach 90% inheritance stability and confirm the breed becomes Mastered.
-12. Confirm registered fish receive the journal's displayed market-value and pond-beauty bonuses and that all journal/breed data survives save/load.
-13. Register a healthy breed with a living specimen and confirm a base-game collector letter appears with species, breed, stability, generation, defining trait, size, deadline, delivery, and reward requirements.
-14. Open the breed record and deliver an eligible specimen. Confirm the reward is placed before the living fish is consumed, the breed's completed-commission count increases, and the request survives save/load while active.
-15. Confirm no commission is offered for an extinct breed, an unavailable species, sterile/unhealthy fish, impossible trait/generation/size combinations, or a breed with no eligible living specimen. Complete or expire a request and confirm cooldown and identical-request suppression.
+9. Confirm duplicate or blank breed names cannot be registered, all matching founders receive the breed, and the Traits tab shows breed, generation, and resulting stability.
+10. Breed two ordinary parents and confirm parental-union traits roll independently, dual-parent traits are advantaged, incompatible successes and the inherited cap are resolved after rolls, and offspring mutations use a separate filtered event.
+11. Breed two members of the same breed. Confirm every qualifying birth updates matching/total counts, successful offspring retain the breed, failed offspring remain ordinary, and the UI shows success rate and generation contribution.
+12. Reach 90% resulting stability and confirm the breed becomes Mastered without making low-stability defining traits automatic.
+13. Confirm registered fish receive the journal's displayed market-value and pond-beauty bonuses and that all journal/breed data survives save/load.
+14. Register a healthy breed with a living specimen and confirm a base-game collector letter appears with species, breed, stability, generation, defining trait, size, deadline, delivery, and reward requirements.
+15. Open the breed record and deliver an eligible specimen. Confirm the reward is placed before the living fish is consumed, the breed's completed-commission count increases, and the request survives save/load while active.
+16. Confirm registration does not immediately offer a founder-sale request. With a healthy breeding pair, verify the request contains one defining trait and exactly one reachable generation, size, or stability improvement; confirm a currently eligible fish cannot already satisfy it. Confirm no commission is offered for an extinct breed, an unavailable species, sterile-only stock, incompatible traits, an unreachable deadline, or a breed without a same-pond breeding pair. Complete or expire a request and confirm cooldown, duplicate suppression, completion/failure counters, and bounded rewards.
+17. Change a fish's breed, traits, spawn state, health, sterility, map, and life state; confirm the fish-specific commission index and Journal specimen list update without a map-wide scan every tick. Save and load an active legacy commission and confirm all requirements, deadline, reward, and history remain intact; malformed active records are discarded without clearing history.
 
 ## Catching And Containers
 
@@ -118,7 +120,7 @@ Use a new colony with Harmony, Vanilla Fishing Expanded, its Fishing Treasures a
 
 ## Compatibility
 
-1. Repeat catching, traits, pond placement, and processing with Vanilla Fishing Expanded fish, Odyssey fish where available, Fishing Treasures fish, and Aquariums.
+1. Repeat catching, traits, pond placement, and processing with Vanilla Fishing Expanded fish, Odyssey fish where available, and Aquariums. Repeat once with Fishing Treasures installed and once with it absent; both configurations must load without unresolved Aquaculture references, and any added VFE treasure content must remain VFE-owned.
 2. Put a trait-bearing fish in an aquarium and confirm its visual material remains visible.
 3. Save and reload with populated ponds, eggs, containers, feeder fuel, water types, pond toggles, masks, and modified settings.
 4. Interrupt harvest, egg-removal, and sterilization jobs by drafting the handler, removing the target, and saving mid-job. Confirm reservations and designations recover without stuck work.
@@ -159,7 +161,7 @@ Use a new colony with Harmony, Vanilla Fishing Expanded, its Fishing Treasures a
 17. In a closed pond, test exactly at the breeding floor, one fish above it, below it, and at zero. Confirm the row shows approximate population, floor, breeding state, direction, extinction, and local-breeding/stocking recovery context.
 18. Repeat the same cases in a River, Coastal body, and Ocean. Confirm the tooltip distinguishes a compatible recorded migration source from an open category with no recorded source, and never suggests cross-category recovery.
 19. Fish at exactly the floor and one fish above the floor. Confirm a risky selection produces one caution message before the catch is committed, then repeated sustainable catches do not produce repetitive messages while the risk state is unchanged.
-20. Cause births, deaths, migration, stocking, extinction, a successful catch, a load, and a water-terrain split/merge. Confirm cached status and tooltips update without reopening the map or requiring a full UI redraw scan.
+20. Cause births, deaths, migration, stocking, extinction, a successful catch, a load, and a water-terrain split/merge. Confirm cached status and tooltips update without reopening the map or requiring a full UI redraw scan; source extinction must immediately remove regional recovery context from dependent bodies.
 
 ## Fishing Rods And Phases
 
@@ -178,3 +180,6 @@ Use a new colony with Harmony, Vanilla Fishing Expanded, its Fishing Treasures a
 13. Interrupt during acquisition, Cast, Wait, and Reel by drafting, danger, job cancellation, pawn despawn, and a raid. Confirm the previous weapon is restored and the rod remains in inventory or the world.
 14. Destroy the selected rod during each phase. Confirm the previous weapon is restored without creating a replacement rod or losing the previous weapon.
 15. Save and reload before acquisition, while hauling a map rod, after temporary equip, and during Cast, Wait, and Reel. Confirm the session resumes or cleans up exactly once.
+## Trait Breeding Rules (Executable)
+
+Run `dotnet build DevTools\TraitBreedingRules.Tests.csproj --configuration Release` followed by `dotnet run --project DevTools\TraitBreedingRules.Tests.csproj --configuration Release --no-build`. The dependency-free executable covers zero/full boundary probabilities, independent parental-union rolls, dual-parent advantage, post-roll caps, incompatible and empty pools, separate mutations, outlier weights, registered-breed reliability, matching/failed qualifying-birth success rates, restrained generation contribution, stability, legacy setting migration, legacy stability preservation, and closed/same-category/positive-source recovery rules. Run `DevTools\Test-AquacultureLocalization.ps1` to check duplicate keys and every source-referenced Aquaculture key in each supported language file. RimWorld runtime tests remain required for Def loading, save/load, journal event routing, UI localization, and breeding in an actual pond.

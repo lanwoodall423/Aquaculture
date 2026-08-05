@@ -79,7 +79,7 @@ namespace AquacultureFishing
                     selected.Breed == null
                         ? "Breed: Unregistered"
                         : "Breed: " + selected.Breed.name + "   Generation " + selected.breedGeneration +
-                           "   Stability " + selected.Breed.Stability.ToStringPercent());
+                           "   " + "AquacultureFishing.ResultingStability".Translate(selected.Breed.Stability.ToStringPercent()).ToString());
                 if (selected.IsInPond)
                 {
                     Color old = GUI.color;

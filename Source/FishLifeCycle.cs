@@ -15,6 +15,8 @@ namespace AquacultureFishing
         public Dictionary<string, float> inheritedValues = new Dictionary<string, float>();
         public string inheritedBreedId;
         public int inheritedBreedGeneration;
+        public string qualifyingBreedId;
+        public int qualifyingBreedGeneration;
         public int parentOneThingId;
         public int parentTwoThingId;
         public int hatchTick;
@@ -35,11 +37,20 @@ namespace AquacultureFishing
             Scribe_Collections.Look(ref inheritedValues, "inheritedValues", LookMode.Value, LookMode.Value);
             Scribe_Values.Look(ref inheritedBreedId, "inheritedBreedId");
             Scribe_Values.Look(ref inheritedBreedGeneration, "inheritedBreedGeneration");
+            Scribe_Values.Look(ref qualifyingBreedId, "qualifyingBreedId");
+            Scribe_Values.Look(ref qualifyingBreedGeneration, "qualifyingBreedGeneration");
             Scribe_Values.Look(ref parentOneThingId, "parentOneThingId");
             Scribe_Values.Look(ref parentTwoThingId, "parentTwoThingId");
             Scribe_Values.Look(ref hatchTick, "hatchTick");
             if (inheritedTraits == null) inheritedTraits = new List<string>();
             if (inheritedValues == null) inheritedValues = new Dictionary<string, float>();
+            if (Scribe.mode == LoadSaveMode.PostLoadInit && qualifyingBreedId.NullOrEmpty() && !inheritedBreedId.NullOrEmpty())
+            {
+                // Eggs written before qualifying births were tracked represent an attempt for
+                // the same registered breed, regardless of whether the child later matches.
+                qualifyingBreedId = inheritedBreedId;
+                qualifyingBreedGeneration = inheritedBreedGeneration;
+            }
         }
 
         public void Hatch()
@@ -51,7 +62,8 @@ namespace AquacultureFishing
             Map map = Map;
             Thing fish = ThingMaker.MakeThing(fishDef);
             fish.TryGetComp<CompFishTraits>()?.InitializeFromEgg(inheritedTraits, inheritedValues,
-                inheritedBreedId, inheritedBreedGeneration, parentOneThingId, parentTwoThingId);
+                inheritedBreedId, inheritedBreedGeneration, qualifyingBreedId, qualifyingBreedGeneration,
+                parentOneThingId, parentTwoThingId);
             Destroy();
             GenSpawn.Spawn(fish, cell, map);
         }
@@ -379,9 +391,10 @@ namespace AquacultureFishing
         {
             Thing fish = ThingMaker.MakeThing(first.parent.def);
             BuildInheritance(first, second, out List<string> traits, out Dictionary<string, float> values,
-                out string breedId, out int breedGeneration);
+                out string breedId, out int breedGeneration, out string qualifyingBreedId, out int qualifyingBreedGeneration);
             CompFishTraits child = fish.TryGetComp<CompFishTraits>();
-            child?.InitializeFromEgg(traits, values, breedId, breedGeneration, first.parent.thingIDNumber, second.parent.thingIDNumber);
+            child?.InitializeFromEgg(traits, values, breedId, breedGeneration, qualifyingBreedId, qualifyingBreedGeneration,
+                first.parent.thingIDNumber, second.parent.thingIDNumber);
             AquacultureEventRouter.FishBred(first, second, child);
             GenSpawn.Spawn(fish, first.parent.Position, map);
         }
@@ -393,11 +406,14 @@ namespace AquacultureFishing
             FishEggThing egg = (FishEggThing)ThingMaker.MakeThing(eggDef);
             egg.fishDefName = first.parent.def.defName;
             BuildInheritance(first, second, out List<string> inheritedTraits, out Dictionary<string, float> inheritedValues,
-                out string inheritedBreedId, out int inheritedBreedGeneration);
+                out string inheritedBreedId, out int inheritedBreedGeneration, out string qualifyingBreedId,
+                out int qualifyingBreedGeneration);
             egg.inheritedTraits = inheritedTraits;
             egg.inheritedValues = inheritedValues;
             egg.inheritedBreedId = inheritedBreedId;
             egg.inheritedBreedGeneration = inheritedBreedGeneration;
+            egg.qualifyingBreedId = qualifyingBreedId;
+            egg.qualifyingBreedGeneration = qualifyingBreedGeneration;
             egg.parentOneThingId = first.parent.thingIDNumber;
             egg.parentTwoThingId = second.parent.thingIDNumber;
             egg.hatchTick = now + Mathf.RoundToInt((AquacultureMod.Settings?.eggHatchDays ?? 3f) * 60000f);
@@ -407,34 +423,73 @@ namespace AquacultureFishing
         }
 
         private static void BuildInheritance(CompFishTraits first, CompFishTraits second, out List<string> inheritedTraits,
-            out Dictionary<string, float> inheritedValues, out string inheritedBreedId, out int inheritedBreedGeneration)
+            out Dictionary<string, float> inheritedValues, out string inheritedBreedId, out int inheritedBreedGeneration,
+            out string qualifyingBreedId, out int qualifyingBreedGeneration)
         {
             inheritedTraits = new List<string>();
             inheritedValues = new Dictionary<string, float>();
             inheritedBreedId = null;
             inheritedBreedGeneration = 0;
-            List<string> union = first.traitDefNames.Concat(second.traitDefNames)
-                .Where(name => !name.StartsWith("AF_Age_") && !name.StartsWith("AF_Sex_") && !name.StartsWith(FishTraitUtility.DietPrefix) && !name.StartsWith(FishTraitUtility.WaterPrefix))
-                .Distinct().InRandomOrder().ToList();
-            int cap = Mathf.Min(AquacultureMod.Settings?.maxMutations ?? 2, union.Count);
-            int desired = Rand.RangeInclusive(0, cap);
-            var usedGroups = new HashSet<string>();
-            foreach (string name in union)
+            qualifyingBreedId = null;
+            qualifyingBreedGeneration = 0;
+            AquacultureSettings settings = AquacultureMod.Settings;
+            AquacultureJournalComponent journal = AquacultureJournalComponent.Current;
+            FishBreedRecord registeredBreed = journal?.BreedForParents(first, second);
+            var definingTraits = new HashSet<string>(registeredBreed?.traitDefNames ?? Enumerable.Empty<string>(), StringComparer.Ordinal);
+            List<string> firstNames = first?.traitDefNames ?? new List<string>();
+            List<string> secondNames = second?.traitDefNames ?? new List<string>();
+            List<TraitBreedingRules.Candidate> parentalCandidates = firstNames.Concat(secondNames)
+                .Where(FishTraitUtility.IsInheritableTraitName)
+                .Where(name => !definingTraits.Contains(name))
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(name => name, StringComparer.Ordinal)
+                .Select(name => new TraitBreedingRules.Candidate
+                {
+                    Id = name,
+                    CompatibilityGroup = FishTraitUtility.ExclusiveGroup(DefDatabase<FishTraitDef>.GetNamedSilentFail(name)),
+                    PresentInFirstParent = firstNames.Contains(name),
+                    PresentInSecondParent = secondNames.Contains(name)
+                }).ToList();
+            inheritedTraits = TraitBreedingRules.RollInheritedTraits(parentalCandidates,
+                settings?.parentalTraitInheritanceChance ?? AquacultureSettings.DefaultParentalTraitInheritanceChance,
+                settings?.maxInheritedTraits ?? AquacultureSettings.DefaultMaximumInheritedTraits,
+                () => Rand.Value, RandomIndex);
+            foreach (string name in inheritedTraits)
             {
-                if (inheritedTraits.Count >= desired) break;
-                FishTraitDef trait = DefDatabase<FishTraitDef>.GetNamedSilentFail(name);
-                string group = FishTraitUtility.ExclusiveGroup(trait);
-                if (trait == null || !usedGroups.Add(group)) continue;
-                inheritedTraits.Add(name);
                 float a = first.TraitValue(name);
                 float b = second.TraitValue(name);
                 float value = a > 0f && b > 0f ? (Rand.Bool ? a : b) : Mathf.Max(a, b);
                 if (value > 0f) inheritedValues[name] = value;
             }
-            AquacultureJournalComponent journal = AquacultureJournalComponent.Current;
             if (journal != null)
                 journal.ApplyBreedInheritance(first, second, inheritedTraits, inheritedValues,
-                    out inheritedBreedId, out inheritedBreedGeneration);
+                    out inheritedBreedId, out inheritedBreedGeneration, out qualifyingBreedId, out qualifyingBreedGeneration);
+
+            var excludedTraits = new HashSet<string>(inheritedTraits, StringComparer.Ordinal);
+            var occupiedGroups = new HashSet<string>(inheritedTraits.Select(name =>
+                FishTraitUtility.ExclusiveGroup(DefDatabase<FishTraitDef>.GetNamedSilentFail(name))), StringComparer.Ordinal);
+            foreach (string name in definingTraits)
+            {
+                excludedTraits.Add(name);
+                FishTraitDef trait = DefDatabase<FishTraitDef>.GetNamedSilentFail(name);
+                if (trait != null) occupiedGroups.Add(FishTraitUtility.ExclusiveGroup(trait));
+            }
+            List<string> mutations = TraitBreedingRules.RollNewMutationTraits(
+                FishTraitUtility.EligibleMutationCandidates(settings), excludedTraits, occupiedGroups,
+                settings?.offspringMutationChance ?? AquacultureSettings.DefaultOffspringMutationChance,
+                settings?.maxOffspringMutations ?? AquacultureSettings.DefaultMaximumOffspringMutations,
+                () => Rand.Value, RandomIndex);
+            foreach (string name in mutations)
+            {
+                inheritedTraits.Add(name);
+                FishTraitDef trait = DefDatabase<FishTraitDef>.GetNamedSilentFail(name);
+                if (trait != null && trait.IsNumeric) inheritedValues[name] = FishTraitUtility.RollPercent(trait);
+            }
+        }
+
+        private static int RandomIndex(int minimum, int maximumExclusive)
+        {
+            return maximumExclusive <= minimum ? minimum : Rand.RangeInclusive(minimum, maximumExclusive - 1);
         }
 
         private void ProcessEggs(int now)

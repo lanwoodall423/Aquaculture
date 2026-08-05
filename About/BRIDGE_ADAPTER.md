@@ -22,13 +22,16 @@ Aquaculture exposes optional diagnostics through a standalone, hot-reloadable ad
 
 The adapter does not reference the bridge assembly, mutate game state, or add ticking behavior. Diagnostics only traverse map state when explicitly requested.
 
-## Development
+## Development and packaging
 
-Build and deploy a uniquely versioned adapter while RimWorld is running:
+The adapter is owned and packaged by Aquaculture in `DevTools/BridgeAdapters`.
+Dev Bridge discovers that directory when Aquaculture is loaded; Aquaculture does
+not depend on Dev Bridge at runtime.
 
 ```powershell
 & "C:\Games\Steam\steamapps\common\RimWorld\Mods\AquacultureFishing\DevTools\Build-HotBridgeAdapter.ps1"
-& "C:\Games\Steam\steamapps\common\RimWorld\Mods\RimWorldDevBridge\DevTools\Send-RimWorldBridge.ps1" RELOAD_HOT_ADAPTERS
 ```
 
-Old adapter generations remain in memory until RimWorld restarts. Gameplay changes still require rebuilding and deploying `AquacultureFishing.dll` while RimWorld is closed.
+The helper creates a generation-specific DLL and manifest from the exact build.
+Old generations remain in memory until RimWorld restarts. Gameplay changes still
+require rebuilding and deploying `AquacultureFishing.dll` while RimWorld is closed.

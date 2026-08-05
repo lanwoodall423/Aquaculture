@@ -400,7 +400,8 @@ namespace AquacultureFishing
                     result.Add("breed=" + Clean(Field<string>(breed, "name")) + " species:" + Field<string>(breed, "fishDefName") +
                         " stability:" + stability.ToStringPercent() + " generation:" + Field<int>(breed, "highestGeneration") +
                         " founders:" + Field<int>(breed, "founderCount") + " births:" + Field<int>(breed, "births") +
-                        " matching:" + Field<int>(breed, "matchingBirths") + " mastered:" + isMastered);
+                        " matching:" + Field<int>(breed, "matchingBirths") + " qualifying:" + Field<int>(breed, "qualifyingBirths") +
+                        " mastered:" + isMastered);
                 }
             }
             result.Insert(0, "journal=discovered:" + discovered + " established:" + established + " bred:" + bred +
@@ -414,7 +415,10 @@ namespace AquacultureFishing
             if (settings == null) return new List<string> { "error=settings unavailable" };
             return new List<string>
             {
-                "traits=mutation:" + settings.globalMutationRate.ToStringPercent() + " max:" + settings.maxMutations,
+                "traits=wildChance:" + settings.wildExceptionalTraitChance.ToStringPercent() +
+                    " parentalChance:" + settings.parentalTraitInheritanceChance.ToStringPercent() +
+                    " inheritedMax:" + settings.maxInheritedTraits + " offspringChance:" + settings.offspringMutationChance.ToStringPercent() +
+                    " offspringMax:" + settings.maxOffspringMutations + " breedReliability:" + settings.registeredBreedDefiningTraitReliability.ToStringPercent(),
                 "breeding=enabled:" + settings.globalBreedingEnabled + " interval:" + settings.breedingIntervalDays.ToString("0.0") +
                     "d eggs:" + settings.eggHatchDays.ToString("0.0") + "d offspring:" + settings.minimumOffspring + ".." + settings.maximumOffspring,
                 "lifespan=" + settings.minimumLifespanDays + ".." + settings.maximumLifespanDays + "d",

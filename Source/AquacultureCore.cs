@@ -30,9 +30,12 @@ namespace AquacultureFishing
         public bool colonyBorn;
         public string breedId;
         public int breedGeneration;
+        public string qualifyingBreedId;
+        public int qualifyingBreedGeneration;
         public int parentOneThingId;
         public int parentTwoThingId;
         public bool breedBirthRecorded;
+        public bool qualifyingBirthRecorded;
         public bool breedMasteryAnnounced;
         public float foodReserve = 1f;
         public float starvationProgress;
@@ -232,6 +235,7 @@ namespace AquacultureFishing
             cachedVisualReplacement = null;
             cachedAquariumMaterial = null;
             if (parent?.Spawned == true) AquacultureJournalComponent.Current?.NotifyFishRecord(this);
+            AquacultureCommissionManager.NotifyFishChanged(this);
             if (parent?.Spawned == true) parent.Map.GetComponent<FishPondMapComponent>()?.NotifyFishChanged(this);
         }
 
@@ -247,6 +251,7 @@ namespace AquacultureFishing
             base.PostSpawnSetup(respawningAfterLoad);
             RefreshAgeTrait();
             parent.Map.GetComponent<FishPondMapComponent>().Register(this);
+            AquacultureCommissionManager.NotifyFishSpawned(this);
             if (!respawningAfterLoad)
             {
                 AquacultureJournalComponent journal = AquacultureJournalComponent.Current;
@@ -258,6 +263,7 @@ namespace AquacultureFishing
 
         public override void PostDeSpawn(Map map, DestroyMode mode = DestroyMode.Vanish)
         {
+            AquacultureCommissionManager.NotifyFishDespawned(this);
             map?.GetComponent<FishPondMapComponent>()?.Deregister(this);
             base.PostDeSpawn(map, mode);
         }
@@ -283,7 +289,7 @@ namespace AquacultureFishing
             birthTick = now - Mathf.RoundToInt(lifespanTicks * Rand.Range(0.05f, 0.88f));
             traitDefNames.Add(Rand.Bool ? FishTraitUtility.Male : FishTraitUtility.Female);
             EnsureEcologyTraits();
-            foreach (FishTraitDef trait in FishTraitUtility.SelectMutationTraits(AquacultureMod.Settings?.maxMutations ?? 1)) AddTrait(trait);
+            foreach (FishTraitDef trait in FishTraitUtility.SelectWildExceptionalTraits()) AddTrait(trait);
             RefreshAgeTrait();
             NotifyTraitsChanged();
         }
@@ -297,7 +303,7 @@ namespace AquacultureFishing
                 lifespanTicks = RollSpeciesLifespanTicks();
                 birthTick = now - Mathf.RoundToInt(lifespanTicks * Rand.Range(0.05f, 0.88f));
             }
-            if (!traitDefNames.Any(name => name.StartsWith("AF_Sex_"))) { traitDefNames.Add(Rand.Bool ? FishTraitUtility.Male : FishTraitUtility.Female); NotifyTraitsChanged(); }
+            if (!traitDefNames.Any(name => !name.NullOrEmpty() && name.StartsWith("AF_Sex_"))) { traitDefNames.Add(Rand.Bool ? FishTraitUtility.Male : FishTraitUtility.Female); NotifyTraitsChanged(); }
             EnsureEcologyTraits();
             RefreshAgeTrait();
         }
@@ -316,15 +322,26 @@ namespace AquacultureFishing
         public void InitializeFromEgg(IEnumerable<string> inheritedNames, IDictionary<string, float> inheritedValues,
             string inheritedBreedId, int inheritedBreedGeneration, int parentOneId, int parentTwoId)
         {
+            InitializeFromEgg(inheritedNames, inheritedValues, inheritedBreedId, inheritedBreedGeneration,
+                inheritedBreedId, inheritedBreedGeneration, parentOneId, parentTwoId);
+        }
+
+        public void InitializeFromEgg(IEnumerable<string> inheritedNames, IDictionary<string, float> inheritedValues,
+            string inheritedBreedId, int inheritedBreedGeneration, string qualifyingId, int qualifyingGeneration,
+            int parentOneId, int parentTwoId)
+        {
             initialized = true;
             alive = true;
             sterilized = false;
             colonyBorn = true;
             breedId = inheritedBreedId;
             breedGeneration = inheritedBreedGeneration;
+            qualifyingBreedId = qualifyingId;
+            qualifyingBreedGeneration = qualifyingGeneration;
             parentOneThingId = parentOneId;
             parentTwoThingId = parentTwoId;
             breedBirthRecorded = false;
+            qualifyingBirthRecorded = false;
             breedMasteryAnnounced = false;
             airExposureTicks = 0f;
             traitDefNames.Clear();
@@ -337,7 +354,7 @@ namespace AquacultureFishing
                 if (!traitDefNames.Contains(name)) traitDefNames.Add(name);
             if (inheritedValues != null)
                 foreach (KeyValuePair<string, float> pair in inheritedValues) traitValues[pair.Key] = pair.Value;
-            traitDefNames.RemoveAll(name => name.StartsWith("AF_Age_") || name.StartsWith("AF_Sex_") || name.StartsWith(FishTraitUtility.DietPrefix) || name.StartsWith(FishTraitUtility.WaterPrefix));
+            traitDefNames.RemoveAll(FishTraitUtility.IsDemographicOrEcology);
             traitDefNames.Add(FishTraitUtility.Fry);
             traitDefNames.Add(Rand.Bool ? FishTraitUtility.Male : FishTraitUtility.Female);
             EnsureEcologyTraits();
@@ -355,7 +372,7 @@ namespace AquacultureFishing
         private void EnsureEcologyTraits()
         {
             AquaticSpeciesProfile profile = AquaticSpeciesProfile.For(parent?.def);
-            traitDefNames.RemoveAll(name => name.StartsWith(FishTraitUtility.DietPrefix) || name.StartsWith(FishTraitUtility.WaterPrefix));
+            traitDefNames.RemoveAll(name => name.NullOrEmpty() || name.StartsWith(FishTraitUtility.DietPrefix) || name.StartsWith(FishTraitUtility.WaterPrefix));
             traitDefNames.Add(FishTraitUtility.DietPrefix + profile.diet);
             traitDefNames.Add(FishTraitUtility.WaterPrefix + profile.waterKind);
         }
@@ -393,6 +410,7 @@ namespace AquacultureFishing
             if (!alive) return;
             AquacultureJournalComponent.Current?.NotifyFishRecord(this);
             alive = false;
+            AquacultureCommissionManager.NotifyFishChanged(this);
             airExposureTicks = 0f;
             nextBreedTick = 0;
             PondMovementUtility.Reset(this);
@@ -412,7 +430,7 @@ namespace AquacultureFishing
             nextAgeCheckTick = birthTick + Mathf.RoundToInt(lifespanTicks * nextFraction) + 1;
             if (!traitDefNames.Contains(age))
             {
-                traitDefNames.RemoveAll(name => name.StartsWith("AF_Age_"));
+                traitDefNames.RemoveAll(name => !name.NullOrEmpty() && name.StartsWith("AF_Age_"));
                 traitDefNames.Add(age);
                 NotifyTraitsChanged();
             }
@@ -432,9 +450,12 @@ namespace AquacultureFishing
             Scribe_Values.Look(ref colonyBorn, "colonyBorn");
             Scribe_Values.Look(ref breedId, "breedId");
             Scribe_Values.Look(ref breedGeneration, "breedGeneration");
+            Scribe_Values.Look(ref qualifyingBreedId, "qualifyingBreedId");
+            Scribe_Values.Look(ref qualifyingBreedGeneration, "qualifyingBreedGeneration");
             Scribe_Values.Look(ref parentOneThingId, "parentOneThingId");
             Scribe_Values.Look(ref parentTwoThingId, "parentTwoThingId");
             Scribe_Values.Look(ref breedBirthRecorded, "breedBirthRecorded");
+            Scribe_Values.Look(ref qualifyingBirthRecorded, "qualifyingBirthRecorded");
             Scribe_Values.Look(ref breedMasteryAnnounced, "breedMasteryAnnounced");
             Scribe_Values.Look(ref foodReserve, "foodReserve", 1f);
             Scribe_Values.Look(ref starvationProgress, "starvationProgress");
@@ -445,7 +466,18 @@ namespace AquacultureFishing
             Scribe_Values.Look(ref lastPondTemperature, "lastPondTemperature");
             if (traitDefNames == null) traitDefNames = new List<string>();
             if (traitValues == null) traitValues = new Dictionary<string, float>();
-            if (Scribe.mode == LoadSaveMode.PostLoadInit) { traitCacheDirty = true; nextAgeCheckTick = 0; EnsureDemographics(); }
+            if (Scribe.mode == LoadSaveMode.PostLoadInit)
+            {
+                if (qualifyingBreedId.NullOrEmpty() && !breedId.NullOrEmpty())
+                {
+                    qualifyingBreedId = breedId;
+                    qualifyingBreedGeneration = breedGeneration;
+                    qualifyingBirthRecorded = breedBirthRecorded;
+                }
+                traitCacheDirty = true;
+                nextAgeCheckTick = 0;
+                EnsureDemographics();
+            }
         }
 
         public override string CompInspectStringExtra()

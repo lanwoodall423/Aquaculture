@@ -81,12 +81,27 @@ namespace AquacultureFishing
     public sealed class AquacultureSettings : ModSettings
     {
         public const int CurrentCapacityModelVersion = 2;
+        public const int CurrentTraitBreedingSettingsVersion = 1;
+        public const float DefaultWildExceptionalTraitChance = 0.20f;
+        public const float DefaultParentalTraitInheritanceChance = 0.55f;
+        public const int DefaultMaximumInheritedTraits = 2;
+        public const float DefaultOffspringMutationChance = 0.05f;
+        public const int DefaultMaximumOffspringMutations = 1;
+        public const float DefaultRegisteredBreedDefiningTraitReliability = 0.95f;
         public int dataVersion = 1;
         public bool enableResearchProgression = true;
         public float fishingDurationFactor = 0.30f;
         public bool showPondAlerts = true;
-        public float globalMutationRate = 0.20f;
-        public int maxMutations = 2;
+        // These keys remain serialized so old settings files continue to load during migration.
+        public float globalMutationRate = DefaultWildExceptionalTraitChance;
+        public int maxMutations = DefaultMaximumInheritedTraits;
+        public int traitBreedingSettingsVersion;
+        public float wildExceptionalTraitChance = DefaultWildExceptionalTraitChance;
+        public float parentalTraitInheritanceChance = DefaultParentalTraitInheritanceChance;
+        public int maxInheritedTraits = DefaultMaximumInheritedTraits;
+        public float offspringMutationChance = DefaultOffspringMutationChance;
+        public int maxOffspringMutations = DefaultMaximumOffspringMutations;
+        public float registeredBreedDefiningTraitReliability = DefaultRegisteredBreedDefiningTraitReliability;
         public bool globalBreedingEnabled = true;
         public float breedingIntervalDays = 15f;
         public float eggHatchDays = 3f;
@@ -168,12 +183,20 @@ namespace AquacultureFishing
 
         public override void ExposeData()
         {
+            if (Scribe.mode == LoadSaveMode.Saving) traitBreedingSettingsVersion = CurrentTraitBreedingSettingsVersion;
             Scribe_Values.Look(ref dataVersion, "dataVersion", 1);
             Scribe_Values.Look(ref enableResearchProgression, "enableResearchProgression", true);
             Scribe_Values.Look(ref fishingDurationFactor, "fishingDurationFactor", 0.30f);
             Scribe_Values.Look(ref showPondAlerts, "showPondAlerts", true);
             Scribe_Values.Look(ref globalMutationRate, "globalMutationRate", 0.20f);
             Scribe_Values.Look(ref maxMutations, "maxMutations", 2);
+            Scribe_Values.Look(ref traitBreedingSettingsVersion, "traitBreedingSettingsVersion", 0);
+            Scribe_Values.Look(ref wildExceptionalTraitChance, "wildExceptionalTraitChance", DefaultWildExceptionalTraitChance);
+            Scribe_Values.Look(ref parentalTraitInheritanceChance, "parentalTraitInheritanceChance", DefaultParentalTraitInheritanceChance);
+            Scribe_Values.Look(ref maxInheritedTraits, "maxInheritedTraits", DefaultMaximumInheritedTraits);
+            Scribe_Values.Look(ref offspringMutationChance, "offspringMutationChance", DefaultOffspringMutationChance);
+            Scribe_Values.Look(ref maxOffspringMutations, "maxOffspringMutations", DefaultMaximumOffspringMutations);
+            Scribe_Values.Look(ref registeredBreedDefiningTraitReliability, "registeredBreedDefiningTraitReliability", DefaultRegisteredBreedDefiningTraitReliability);
             Scribe_Values.Look(ref globalBreedingEnabled, "globalBreedingEnabled", true);
             Scribe_Values.Look(ref breedingIntervalDays, "breedingIntervalDays", 15f);
             Scribe_Values.Look(ref eggHatchDays, "eggHatchDays", 3f);
@@ -212,6 +235,17 @@ namespace AquacultureFishing
             if (traitSettings == null) traitSettings = new List<FishTraitSetting>();
             if (fishExpertiseSettings == null) fishExpertiseSettings = new List<FishExpertiseSetting>();
             if (masks == null) masks = new List<FishMaskRecord>();
+            if (Scribe.mode == LoadSaveMode.PostLoadInit && traitBreedingSettingsVersion < CurrentTraitBreedingSettingsVersion)
+            {
+                // The old pair controlled one shared roll. Keep its player-selected values as the
+                // least surprising starting point for the new wild chance and inherited cap.
+                TraitBreedingRules.LegacySettingMigration migration = TraitBreedingRules.MigrateLegacySettings(
+                    traitBreedingSettingsVersion, globalMutationRate, maxMutations,
+                    wildExceptionalTraitChance, maxInheritedTraits);
+                wildExceptionalTraitChance = migration.WildExceptionalTraitChance;
+                maxInheritedTraits = migration.MaximumInheritedTraits;
+                traitBreedingSettingsVersion = CurrentTraitBreedingSettingsVersion;
+            }
             if (Scribe.mode == LoadSaveMode.PostLoadInit && capacityModelVersion < CurrentCapacityModelVersion)
             {
                 if (fishCapacityPerCell > PondCapacityRules.DefaultCapacityPerCell + 0.001f)
@@ -226,6 +260,12 @@ namespace AquacultureFishing
             fishingDurationFactor = Mathf.Clamp(fishingDurationFactor, 0.1f, 1f);
             globalMutationRate = Mathf.Clamp01(globalMutationRate);
             maxMutations = Mathf.Clamp(maxMutations, 0, 8);
+            wildExceptionalTraitChance = Mathf.Clamp01(wildExceptionalTraitChance);
+            parentalTraitInheritanceChance = Mathf.Clamp01(parentalTraitInheritanceChance);
+            maxInheritedTraits = Mathf.Clamp(maxInheritedTraits, 0, 8);
+            offspringMutationChance = Mathf.Clamp01(offspringMutationChance);
+            maxOffspringMutations = Mathf.Clamp(maxOffspringMutations, 0, 8);
+            registeredBreedDefiningTraitReliability = Mathf.Clamp01(registeredBreedDefiningTraitReliability);
             breedingIntervalDays = Mathf.Clamp(breedingIntervalDays, 1f, 60f);
             eggHatchDays = Mathf.Clamp(eggHatchDays, 0.25f, 30f);
             minimumOffspring = Mathf.Clamp(minimumOffspring, 1, 10);
@@ -345,17 +385,26 @@ namespace AquacultureFishing
             Text.Font = GameFont.Medium;
             Widgets.Label(new Rect(rect.x, rect.y, rect.width, 34f), "Traits");
             Text.Font = GameFont.Small;
-            Widgets.Label(new Rect(rect.x, rect.y + 38f, 250f, 28f), "Global Mutation Rate");
-            Settings.globalMutationRate = Widgets.HorizontalSlider(new Rect(rect.x + 250f, rect.y + 43f, rect.width - 330f, 22f), Settings.globalMutationRate, 0f, 1f, true);
-            Widgets.Label(new Rect(rect.xMax - 70f, rect.y + 38f, 70f, 28f), Settings.globalMutationRate.ToStringPercent());
-            Widgets.Label(new Rect(rect.x, rect.y + 72f, 250f, 28f), "Max Mutations");
-            Settings.maxMutations = Mathf.RoundToInt(Widgets.HorizontalSlider(new Rect(rect.x + 250f, rect.y + 77f, rect.width - 330f, 22f), Settings.maxMutations, 0f, 8f, true));
-            Widgets.Label(new Rect(rect.xMax - 70f, rect.y + 72f, 70f, 28f), Settings.maxMutations.ToString());
-            Widgets.Label(new Rect(rect.x, rect.y + 106f, rect.width, 42f), "A successful mutation rolls between one and Max Mutations. Age, Sex, Diet, and Water are required traits and do not count toward this limit.");
+            float y = rect.y + 42f;
+            DrawSettingSlider(rect, ref y, "AquacultureFishing.TraitWildExceptionalChance".Translate().ToString(),
+                ref Settings.wildExceptionalTraitChance, 0f, 1f, value => value.ToStringPercent());
+            DrawSettingSlider(rect, ref y, "AquacultureFishing.TraitParentalInheritanceChance".Translate().ToString(),
+                ref Settings.parentalTraitInheritanceChance, 0f, 1f, value => value.ToStringPercent());
+            DrawSettingSlider(rect, ref y, "AquacultureFishing.TraitMaximumInherited".Translate().ToString(),
+                ref Settings.maxInheritedTraits, 0, 8, value => Mathf.RoundToInt(value).ToString());
+            DrawSettingSlider(rect, ref y, "AquacultureFishing.TraitOffspringMutationChance".Translate().ToString(),
+                ref Settings.offspringMutationChance, 0f, 1f, value => value.ToStringPercent());
+            DrawSettingSlider(rect, ref y, "AquacultureFishing.TraitMaximumOffspringMutations".Translate().ToString(),
+                ref Settings.maxOffspringMutations, 0, 8, value => Mathf.RoundToInt(value).ToString());
+            DrawSettingSlider(rect, ref y, "AquacultureFishing.TraitRegisteredBreedReliability".Translate().ToString(),
+                ref Settings.registeredBreedDefiningTraitReliability, 0f, 1f, value => value.ToStringPercent());
+            Widgets.Label(new Rect(rect.x, y + 2f, rect.width, 62f),
+                "AquacultureFishing.TraitSettingsExplanation".Translate().ToString());
 
             List<FishTraitDef> traits = DefDatabase<FishTraitDef>.AllDefsListForReading.OrderBy(def => def.kind).ThenBy(def => def.label).ToList();
-            traits = traits.Where(def => def.mutationEligible).ToList();
-            Rect outRect = new Rect(rect.x, rect.y + 154f, rect.width, rect.height - 154f);
+            traits = traits.Where(def => def.mutationEligible && !FishTraitUtility.IsDemographicOrEcology(def.defName)).ToList();
+            float listTop = y + 72f;
+            Rect outRect = new Rect(rect.x, listTop, rect.width, rect.height - (listTop - rect.y));
             Rect view = new Rect(0f, 0f, outRect.width - 16f, traits.Count * 74f);
             Widgets.BeginScrollView(outRect, ref traitScroll, view);
             for (int i = 0; i < traits.Count; i++) DrawTraitSetting(new Rect(0f, i * 74f, view.width, 68f), traits[i]);

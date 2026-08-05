@@ -24,6 +24,7 @@ namespace AquacultureFishing
         public int affectedFish;
         public int detailPage = -1;
         public CompFishTraits sampleFish;
+        public Func<int, string> textFactory;
 
         public Texture2D Icon => priority == PondCausalPriority.Lethal ? TexButton.Stop
             : priority == PondCausalPriority.Starvation ? TexButton.Minus
@@ -123,16 +124,16 @@ namespace AquacultureFishing
         {
             if (population > habitat.physicalMaximum)
                 AddIssue(summary, "physical", PondCausalPriority.Lethal,
-                    "AquacultureFishing.PondCausalPhysicalOvercrowding".Translate(population - habitat.physicalMaximum).ToString(),
+                    affected => "AquacultureFishing.PondCausalPhysicalOvercrowding".Translate(affected).ToString(),
                     population - habitat.physicalMaximum, 1, null);
             if (population > habitat.industrialMaximum)
                 AddIssue(summary, "industrial", PondCausalPriority.SevereStress,
-                    "AquacultureFishing.PondCausalIndustrialOverage".Translate(population - habitat.industrialMaximum).ToString(),
+                    affected => "AquacultureFishing.PondCausalIndustrialOverage".Translate(affected).ToString(),
                     population - habitat.industrialMaximum, 1, null);
             else if (population > habitat.sustainablePopulation)
                 AddIssue(summary, "sustainable", PondCausalPriority.SevereStress,
-                    "AquacultureFishing.PondCausalEcologicalSupport".Translate(
-                        population - habitat.sustainablePopulation,
+                    affected => "AquacultureFishing.PondCausalEcologicalSupport".Translate(
+                        affected,
                         PondCapacityRules.ConstraintLabel(habitat.limitingConstraint)).ToString(),
                     population - habitat.sustainablePopulation, 1, null);
         }
@@ -153,30 +154,30 @@ namespace AquacultureFishing
             }
             if (summary.wrongWater > 0)
                 AddIssue(summary, "water", PondCausalPriority.Lethal,
-                    "AquacultureFishing.PondCausalWaterRisk".Translate(summary.wrongWater).ToString(),
+                    affected => "AquacultureFishing.PondCausalWaterRisk".Translate(affected).ToString(),
                     summary.wrongWater, 1, waterSample);
             if (summary.temperatureStressed > 0)
                 AddIssue(summary, "temperature", summary.maximumTemperatureStress >= 0.75f
                         ? PondCausalPriority.Lethal : PondCausalPriority.SevereStress,
-                    (summary.maximumTemperatureStress >= 0.75f
+                    affected => (summary.maximumTemperatureStress >= 0.75f
                         ? "AquacultureFishing.PondCausalTemperatureCritical"
-                        : "AquacultureFishing.PondCausalTemperatureRisk").Translate(summary.temperatureStressed).ToString(),
+                        : "AquacultureFishing.PondCausalTemperatureRisk").Translate(affected).ToString(),
                     summary.temperatureStressed, 1, temperatureSample);
             if (summary.starving > 0)
                 AddIssue(summary, "starvation", PondCausalPriority.Starvation,
-                    "AquacultureFishing.PondCausalStarvation".Translate(summary.starving).ToString(),
+                    affected => "AquacultureFishing.PondCausalStarvation".Translate(affected).ToString(),
                     summary.starving, 1, stressSample);
             else if (summary.hungry > 0)
                 AddIssue(summary, "hunger", PondCausalPriority.Starvation,
-                    "AquacultureFishing.PondCausalHunger".Translate(summary.hungry).ToString(),
+                    affected => "AquacultureFishing.PondCausalHunger".Translate(affected).ToString(),
                     summary.hungry, 1, stressSample);
             if (summary.waterStressed > 0)
                 AddIssue(summary, "waterStress", PondCausalPriority.SevereStress,
-                    "AquacultureFishing.PondCausalWaterStress".Translate(summary.waterStressed).ToString(),
+                    affected => "AquacultureFishing.PondCausalWaterStress".Translate(affected).ToString(),
                     summary.waterStressed, 1, stressSample);
             if (habitat.stressedFish > 0)
                 AddIssue(summary, "habitat", PondCausalPriority.SevereStress,
-                    "AquacultureFishing.PondCausalHabitatDeficit".Translate(habitat.stressedFish).ToString(),
+                    affected => "AquacultureFishing.PondCausalHabitatDeficit".Translate(affected).ToString(),
                     habitat.stressedFish, 1, stressSample);
         }
 
@@ -193,14 +194,14 @@ namespace AquacultureFishing
             {
                 summary.breedingLine = "AquacultureFishing.PondCausalBreedingDisabled".Translate().ToString();
                 AddIssue(summary, "breedingDisabled", PondCausalPriority.Reproduction,
-                    "AquacultureFishing.PondCausalBreedingDisabled".Translate().ToString(), fishCount, 2, null);
+                    _ => "AquacultureFishing.PondCausalBreedingDisabled".Translate().ToString(), fishCount, 2, null);
                 return;
             }
             if (fishCount >= habitat.effectiveCapacity)
             {
                 summary.breedingLine = "AquacultureFishing.PondCausalBreedingAtCapacity".Translate().ToString();
                 AddIssue(summary, "breedingCapacity", PondCausalPriority.Reproduction,
-                    "AquacultureFishing.PondCausalBreedingAtCapacity".Translate().ToString(), fishCount, 0, null);
+                    _ => "AquacultureFishing.PondCausalBreedingAtCapacity".Translate().ToString(), fishCount, 0, null);
                 return;
             }
 
@@ -263,37 +264,42 @@ namespace AquacultureFishing
             }
             if (juvenileSpecies > 0 && noFemaleSpecies == 0 && noMaleSpecies == 0)
                 AddIssue(summary, "juvenile", PondCausalPriority.Reproduction,
-                    "AquacultureFishing.PondCausalJuvenileOnly".Translate(juvenileSpecies, juvenileFish).ToString(), juvenileFish, 2, sample);
+                    affected => "AquacultureFishing.PondCausalJuvenileOnly".Translate(juvenileSpecies, affected).ToString(), juvenileFish, 2, sample);
             if (noFemaleSpecies > 0)
                 AddIssue(summary, "adultFemale", PondCausalPriority.Reproduction,
-                    "AquacultureFishing.PondCausalNoAdultFemale".Translate(noFemaleSpecies, noFemaleFish).ToString(), noFemaleFish, 2, sample);
+                    affected => "AquacultureFishing.PondCausalNoAdultFemale".Translate(noFemaleSpecies, affected).ToString(), noFemaleFish, 2, sample);
             if (noMaleSpecies > 0)
                 AddIssue(summary, "adultMale", PondCausalPriority.Reproduction,
-                    "AquacultureFishing.PondCausalNoAdultMale".Translate(noMaleSpecies, noMaleFish).ToString(), noMaleFish, 2, sample);
+                    affected => "AquacultureFishing.PondCausalNoAdultMale".Translate(noMaleSpecies, affected).ToString(), noMaleFish, 2, sample);
             if (sterileFish > 0)
                 AddIssue(summary, "sterile", PondCausalPriority.Reproduction,
-                    "AquacultureFishing.PondCausalSterile".Translate(sterileFish).ToString(), sterileFish, 2, sample);
+                    affected => "AquacultureFishing.PondCausalSterile".Translate(affected).ToString(), sterileFish, 2, sample);
             if (conditionBlockedFish > 0)
                 AddIssue(summary, "breedingConditions", PondCausalPriority.Reproduction,
-                    "AquacultureFishing.PondCausalBreedingConditions".Translate(conditionBlockedFish).ToString(),
+                    affected => "AquacultureFishing.PondCausalBreedingConditions".Translate(affected).ToString(),
                     conditionBlockedFish, 2, sample);
         }
 
         private static void AddIssue(PondCausalSummary summary, string key, PondCausalPriority priority,
-            string text, int affectedFish, int detailPage, CompFishTraits sample)
+            Func<int, string> textFactory, int affectedFish, int detailPage, CompFishTraits sample)
         {
             PondCausalIssue existing = summary.issues.FirstOrDefault(issue => issue.key == key);
             if (existing != null)
             {
                 existing.affectedFish += Mathf.Max(0, affectedFish);
+                if (priority < existing.priority) existing.priority = priority;
+                if (detailPage >= 0) existing.detailPage = detailPage;
                 if (existing.sampleFish == null) existing.sampleFish = sample;
+                existing.textFactory = textFactory ?? existing.textFactory;
+                existing.text = existing.textFactory?.Invoke(existing.affectedFish) ?? existing.text;
                 return;
             }
             summary.issues.Add(new PondCausalIssue
             {
                 key = key,
                 priority = priority,
-                text = text,
+                textFactory = textFactory,
+                text = textFactory?.Invoke(Mathf.Max(0, affectedFish)),
                 affectedFish = Mathf.Max(0, affectedFish),
                 detailPage = detailPage,
                 sampleFish = sample
@@ -303,6 +309,36 @@ namespace AquacultureFishing
 
     public static class PondCausalUi
     {
+        public static float DrawSafetySummary(Rect rect, PondMenuSnapshot snapshot)
+        {
+            PondCausalSummary summary = snapshot?.causalSummary;
+            if (summary == null) return 0f;
+            Widgets.DrawMenuSection(rect);
+            Text.Font = GameFont.Medium;
+            Widgets.Label(new Rect(rect.x + 10f, rect.y + 7f, rect.width - 20f, 26f),
+                "AquacultureFishing.PondSafetyTitle".Translate());
+            Text.Font = GameFont.Small;
+            int visible = Mathf.Min(3, summary.issues.Count);
+            if (visible == 0)
+            {
+                GUI.color = new Color(0.55f, 0.86f, 0.62f);
+                Widgets.Label(new Rect(rect.x + 10f, rect.y + 36f, rect.width - 20f, 24f),
+                    "AquacultureFishing.PondSafetyHealthy".Translate());
+                GUI.color = Color.white;
+                return 68f;
+            }
+            for (int i = 0; i < visible; i++)
+            {
+                PondCausalIssue issue = summary.issues[i];
+                Rect row = new Rect(rect.x + 8f, rect.y + 34f + i * 26f, rect.width - 16f, 24f);
+                GUI.color = issue.Color;
+                Widgets.Label(new Rect(row.x + 4f, row.y, row.width - 8f, row.height), issue.text);
+                GUI.color = Color.white;
+                TooltipHandler.TipRegion(row, issue.text);
+            }
+            return 42f + visible * 26f;
+        }
+
         public static float DrawSummary(Rect rect, PondMenuSnapshot snapshot, Action<int> navigate)
         {
             PondCausalSummary summary = snapshot?.causalSummary;

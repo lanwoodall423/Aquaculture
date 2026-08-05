@@ -87,6 +87,7 @@ namespace AquacultureFishing
         public const string Female = "AF_Sex_Female";
         public const string DietPrefix = "AF_Diet_";
         public const string WaterPrefix = "AF_Water_";
+        public const int MaximumWildExceptionalTraits = 2;
 
         public static List<FishTraitDef> Resolve(IEnumerable<string> names)
         {
@@ -106,32 +107,52 @@ namespace AquacultureFishing
             return 4;
         }
 
-        public static List<FishTraitDef> SelectMutationTraits(int maximum)
+        public static List<FishTraitDef> SelectWildExceptionalTraits()
         {
             AquacultureSettings settings = AquacultureMod.Settings;
-            var result = new List<FishTraitDef>();
-            if (settings == null || maximum <= 0 || !Rand.Chance(settings.globalMutationRate)) return result;
-            int desired = Rand.RangeInclusive(1, maximum);
-            List<FishTraitDef> candidates = DefDatabase<FishTraitDef>.AllDefsListForReading
-                .Where(def => def.mutationEligible && settings.TraitEnabled(def) && settings.TraitWeight(def) > 0f).ToList();
-            while (result.Count < desired && candidates.Count > 0)
-            {
-                float total = candidates.Sum(def => settings.TraitWeight(def));
-                float roll = Rand.Value * total;
-                FishTraitDef selected = candidates[candidates.Count - 1];
-                foreach (FishTraitDef candidate in candidates)
+            if (settings == null) return new List<FishTraitDef>();
+            List<string> names = TraitBreedingRules.RollNewMutationTraits(
+                EligibleMutationCandidates(settings), new HashSet<string>(), new HashSet<string>(),
+                settings.wildExceptionalTraitChance, MaximumWildExceptionalTraits, () => Rand.Value, RandomIndex);
+            return Resolve(names);
+        }
+
+        public static List<TraitBreedingRules.Candidate> EligibleMutationCandidates(AquacultureSettings settings)
+        {
+            if (settings == null) return new List<TraitBreedingRules.Candidate>();
+            return DefDatabase<FishTraitDef>.AllDefsListForReading
+                .Where(def => def != null && def.mutationEligible && !IsDemographicOrEcology(def.defName) &&
+                    settings.TraitEnabled(def) && settings.TraitWeight(def) > 0f)
+                .Select(def => new TraitBreedingRules.Candidate
                 {
-                    roll -= settings.TraitWeight(candidate);
-                    if (roll <= 0f) { selected = candidate; break; }
-                }
-                result.Add(selected);
-                candidates.RemoveAll(def => def == selected || ExclusiveGroup(def) == ExclusiveGroup(selected));
-            }
-            return result;
+                    Id = def.defName,
+                    CompatibilityGroup = ExclusiveGroup(def),
+                    Weight = settings.TraitWeight(def)
+                }).ToList();
+        }
+
+        public static bool IsInheritableTraitName(string name)
+        {
+            if (IsDemographicOrEcology(name)) return false;
+            FishTraitDef trait = DefDatabase<FishTraitDef>.GetNamedSilentFail(name);
+            return trait != null && trait.mutationEligible;
+        }
+
+        public static bool IsDemographicOrEcology(string name)
+        {
+            return name.NullOrEmpty() || name.StartsWith("AF_Age_") || name.StartsWith("AF_Sex_")
+                || name.StartsWith(DietPrefix) || name.StartsWith(WaterPrefix);
+        }
+
+        private static int RandomIndex(int minimum, int maximumExclusive)
+        {
+            return maximumExclusive <= minimum ? minimum : Rand.RangeInclusive(minimum, maximumExclusive - 1);
         }
 
         public static int RollPercent(FishTraitDef trait)
         {
+            if (trait == null) return 0;
+            if (trait.maxPercent < trait.minPercent || trait.percentStep <= 0) return Mathf.Max(0, trait.minPercent);
             int steps = (trait.maxPercent - trait.minPercent) / trait.percentStep;
             int index = 0;
             while (index < steps && Rand.Chance(0.45f)) index++;

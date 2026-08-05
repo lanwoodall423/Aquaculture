@@ -1,0 +1,3 @@
+# Aquaculture Dev Bridge Workflow
+
+The adapter is an optional owner package in `DevTools/BridgeAdapters`. Read `AGENTS.md` and `DevTools/DevBridge/agent.json`, then use the Dev Bridge client to discover a fresh live bridge and query `lan.aquaculture.fishing` context before testing. Run the owner build and validator before `adapter reload`. Reload only adapter changes; for a coordinator-owned sandbox request `restart request --agent-id <id> --package-id lan.aquaculture.fishing --readiness game --save-policy none`; attached/live processes require a person or external orchestrator. Discard cached context, leases, cursors, and handles after reload or restart.

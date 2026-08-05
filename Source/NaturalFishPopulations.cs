@@ -9,23 +9,7 @@ using HarmonyLib;
 
 namespace AquacultureFishing
 {
-    public enum NaturalWaterHabitat { Pond, Lake, River, Marsh, Coastal, Ocean }
     public enum FishPopulationRarity { Common, Uncommon, Rare }
-
-    internal static class NaturalFishMigrationRules
-    {
-        // Ponds, lakes, and marshes are closed. Open-water pressure is same-category only.
-        public static bool IsOpen(NaturalWaterHabitat habitat)
-        {
-            return habitat == NaturalWaterHabitat.River || habitat == NaturalWaterHabitat.Coastal ||
-                habitat == NaturalWaterHabitat.Ocean;
-        }
-
-        public static bool AreCompatible(NaturalWaterHabitat first, NaturalWaterHabitat second)
-        {
-            return IsOpen(first) && first == second;
-        }
-    }
 
     public sealed class FishHabitatPreference
     {
@@ -165,15 +149,19 @@ namespace AquacultureFishing
                 var lines = new List<string>
                 {
                     PopulationLabel,
-                    (extinct ? "AquacultureFishing.ConservationExtinct" : DirectionLabel),
+                    (extinct ? "AquacultureFishing.ConservationExtinct".Translate().ToString() : DirectionLabel),
                     (!extinct && breedingPossible
                         ? "AquacultureFishing.ConservationBreedingPossible"
                         : "AquacultureFishing.ConservationBreedingPaused").Translate().ToString()
                 };
-                if (catchLikelyCrossesBreedingFloor)
-                    lines.Add((populationForCalculation >= breedingFloor
-                        ? "AquacultureFishing.ConservationCatchRisk"
-                        : "AquacultureFishing.ConservationCatchRiskBelow").Translate().ToString());
+                if (extinct)
+                    lines.Add("AquacultureFishing.ConservationCatchUnavailable".Translate().ToString());
+                else
+                    lines.Add((catchLikelyCrossesBreedingFloor
+                        ? populationForCalculation >= breedingFloor
+                            ? "AquacultureFishing.ConservationCatchRisk"
+                            : "AquacultureFishing.ConservationCatchRiskBelow"
+                        : "AquacultureFishing.ConservationCatchSafe").Translate().ToString());
                 lines.Add(MigrationTooltip());
                 return string.Join("\n", lines.Where(line => !line.NullOrEmpty()));
             }
@@ -264,6 +252,8 @@ namespace AquacultureFishing
         public int carryingCapacity;
         public readonly List<ThingDef> presentSpecies = new List<ThingDef>();
         public readonly List<ThingDef> trackedSpecies = new List<ThingDef>();
+        public readonly List<ThingDef> commonSpecies = new List<ThingDef>();
+        public readonly List<ThingDef> uncommonSpecies = new List<ThingDef>();
         public readonly Dictionary<ThingDef, int> estimatedPopulation = new Dictionary<ThingDef, int>();
         public readonly Dictionary<ThingDef, string> displayLabels = new Dictionary<ThingDef, string>();
         public readonly Dictionary<ThingDef, NaturalFishConservationStatus> conservationBySpecies =
@@ -338,6 +328,11 @@ namespace AquacultureFishing
                 preparedViews.Clear();
                 conservationWarningKeys.Clear();
                 preparedViewsDirty = true;
+                initializedAllBodies = false;
+                int tick = Find.TickManager?.TicksGame ?? 0;
+                topologyRebuildTick = tick + 60;
+                nextBalanceTick = topologyRebuildTick;
+                AquacultureSnapshotCache.Invalidate();
             }
         }
 
@@ -353,12 +348,18 @@ namespace AquacultureFishing
             int tick = Find.TickManager?.TicksGame ?? 0;
             if (tick < nextBalanceTick) return;
             if (!initializedAllBodies && tick >= topologyRebuildTick) InitializeAllWaterBodies();
+            bool rebalanced = false;
             for (int i = 0; i < populations.Count; i++)
             {
                 FishPopulationHabitatDef habitatDef = HabitatDef(populations[i].habitat);
                 int interval = Mathf.Max(2500, habitatDef?.updateIntervalTicks ?? 60000);
-                if (tick - populations[i].lastBalanceTick >= interval) GradualRebalance(populations[i], tick);
+                if (tick - populations[i].lastBalanceTick >= interval)
+                {
+                    GradualRebalance(populations[i], tick);
+                    rebalanced = true;
+                }
             }
+            if (rebalanced) RefreshMigrationSummaries();
             ScheduleNextBalance(tick);
         }
 
@@ -390,6 +391,7 @@ namespace AquacultureFishing
                     PopulationAtOdyssey(body.rootCell, body);
                 }
                 initializedAllBodies = true;
+                RefreshMigrationSummaries();
                 return;
             }
             for (int index = 0; index < map.cellIndices.NumGridCells; index++)
@@ -398,6 +400,7 @@ namespace AquacultureFishing
                 if (IsNaturalWater(cell) && !populationByCell.ContainsKey(cell)) PopulationAt(cell);
             }
             initializedAllBodies = true;
+            RefreshMigrationSummaries();
         }
 
         public NaturalWaterPopulation PopulationAt(IntVec3 cell, IEnumerable<ThingDef> establishedSpecies = null, float establishedPopulation = 0f)
@@ -405,7 +408,10 @@ namespace AquacultureFishing
             if (populationByCell.TryGetValue(cell, out NaturalWaterPopulation cached))
             {
                 if (establishedSpecies != null && ImportEstablished(cached, establishedSpecies, establishedPopulation))
+                {
                     RefreshSummary(cached);
+                    RefreshMigrationSummaries();
+                }
                 return cached;
             }
             if (!TryResolveWaterCell(cell, out cell)) return null;
@@ -431,6 +437,7 @@ namespace AquacultureFishing
                 UpgradePopulationGeneration(record, cells);
             RefreshSummary(record);
             SynchronizeWaterBody(body, record);
+            if (initializedAllBodies) RefreshMigrationSummaries();
             return record;
         }
 
@@ -440,6 +447,7 @@ namespace AquacultureFishing
             int tick = Find.TickManager?.TicksGame ?? 0;
             topologyRebuildTick = tick + 60;
             nextBalanceTick = Mathf.Min(nextBalanceTick, topologyRebuildTick);
+            populationByCell.Clear();
             summaryByPopulation.Clear();
             preparedViews.Clear();
             conservationWarningKeys.Clear();
@@ -450,7 +458,7 @@ namespace AquacultureFishing
         public bool TryGetPreparedSummary(IntVec3 cell, out NaturalFishPopulationSummary summary)
         {
             summary = null;
-            return populationByCell.TryGetValue(cell, out NaturalWaterPopulation record) &&
+            return initializedAllBodies && populationByCell.TryGetValue(cell, out NaturalWaterPopulation record) &&
                 summaryByPopulation.TryGetValue(record, out summary);
         }
 
@@ -566,6 +574,7 @@ namespace AquacultureFishing
             if (speciesRecord == null) return;
             speciesRecord.population = Mathf.Max(0f, speciesRecord.population - Mathf.Max(0f, amount));
             RefreshSummary(record);
+            RefreshMigrationSummaries();
             WaterBody body = map.waterBodyTracker?.WaterBodyAt(cell);
             SynchronizeWaterBody(body, record);
         }
@@ -586,6 +595,7 @@ namespace AquacultureFishing
             item.population += amount;
             item.established = true;
             RefreshSummary(record);
+            RefreshMigrationSummaries();
             SynchronizeWaterBody(map.waterBodyTracker?.WaterBodyAt(record.anchor), record);
             return true;
         }
@@ -767,7 +777,9 @@ namespace AquacultureFishing
                     target.established |= incoming.established;
                 }
                 populations.Remove(source);
+                summaryByPopulation.Remove(source);
             }
+            preparedViewsDirty = true;
             return primary;
         }
 
@@ -843,24 +855,22 @@ namespace AquacultureFishing
             }
             float incoming = budget * Mathf.Clamp01(1f - populationPressure);
             if (incoming <= 0f || diversity <= 0) return;
-            List<ThingDef> candidates = CompatibleCandidates(record).Take(diversity).ToList();
-            int present = record.species.Count(item => item.population >= 0.5f && candidates.Contains(item.FishDef));
-            if (present < diversity)
+            List<ThingDef> recoverable = CompatibleCandidates(record).Where(fish =>
             {
-                ThingDef addition = candidates.FirstOrDefault(def =>
-                    record.species.All(item => item.FishDef != def || item.population < 0.5f));
-                if (addition != null)
-                {
-                    NaturalFishSpeciesPopulation item = record.species.FirstOrDefault(existing => existing.FishDef == addition);
-                    if (item == null)
-                    {
-                        item = new NaturalFishSpeciesPopulation { fishDefName = addition.defName };
-                        record.species.Add(item);
-                    }
-                }
+                NaturalFishSpeciesPopulation existing = record.species.FirstOrDefault(item => item.FishDef == fish);
+                float population = existing?.population ?? 0f;
+                return NaturalFishMigrationRules.NeedsRegionalRecovery(population, habitatDef.minimumBreedingPopulation) &&
+                    HasCompatibleRecordedSource(record, fish);
+            }).Take(diversity).ToList();
+            if (recoverable.Count == 0) return;
+            for (int i = 0; i < recoverable.Count; i++)
+            {
+                ThingDef fish = recoverable[i];
+                if (record.species.Any(item => item.FishDef == fish)) continue;
+                record.species.Add(new NaturalFishSpeciesPopulation { fishDefName = fish.defName });
             }
             List<NaturalFishSpeciesPopulation> receivers = record.species.Where(item => item.FishDef != null &&
-                candidates.Contains(item.FishDef)).ToList();
+                recoverable.Contains(item.FishDef)).ToList();
             Dictionary<ThingDef, float> regionalPressure = new Dictionary<ThingDef, float>();
             for (int i = 0; i < receivers.Count; i++)
             {
@@ -869,23 +879,38 @@ namespace AquacultureFishing
                     regionalPressure[fishDef] = RegionalSpeciesPressure(record, fishDef);
             }
             float totalWeight = receivers.Sum(item => PopulationWeight(item.FishDef, record.habitat) *
-                (0.25f + regionalPressure[item.FishDef]));
+                regionalPressure[item.FishDef]);
             for (int i = 0; i < receivers.Count; i++)
             {
                 NaturalFishSpeciesPopulation item = receivers[i];
                 float weight = PopulationWeight(item.FishDef, record.habitat) *
-                    (0.25f + regionalPressure[item.FishDef]);
+                    regionalPressure[item.FishDef];
                 item.population += incoming * weight / Mathf.Max(0.01f, totalWeight);
             }
         }
 
         private float RegionalSpeciesPressure(NaturalWaterPopulation record, ThingDef fishDef)
         {
+            if (!HasCompatibleRecordedSource(record, fishDef)) return 0f;
             IEnumerable<NaturalWaterPopulation> regional = populations.Where(other => other != record &&
                 MigrationRegionCompatible(record.habitat, other.habitat));
             float capacity = regional.Sum(other => Mathf.Max(1f, other.carryingCapacity));
             if (capacity <= 0f) return 0f;
-            return Mathf.Clamp01(regional.Sum(other => other.species.FirstOrDefault(item => item.FishDef == fishDef)?.population ?? 0f) / capacity);
+            return Mathf.Clamp01(regional.Sum(other => other.species
+                .Where(item => item.FishDef == fishDef &&
+                    item.population > NaturalFishMigrationRules.MinimumRecordedSourcePopulation)
+                .Sum(item => item.population)) / capacity);
+        }
+
+        private bool HasCompatibleRecordedSource(NaturalWaterPopulation record, ThingDef fishDef)
+        {
+            if (record == null || fishDef == null || !NaturalFishMigrationRules.IsOpen(record.habitat)) return false;
+            IEnumerable<NaturalFishMigrationSource> sources = populations
+                .Where(other => other != null && other != record && MigrationRegionCompatible(record.habitat, other.habitat))
+                .SelectMany(other => other.species
+                    .Where(item => item?.FishDef == fishDef)
+                    .Select(item => new NaturalFishMigrationSource(other.habitat, item.fishDefName, item.population)));
+            return NaturalFishMigrationRules.HasCompatibleRecordedSource(sources, record.habitat, fishDef.defName);
         }
 
         private static bool AllowsNaturalMigration(NaturalWaterHabitat habitat)
@@ -984,11 +1009,18 @@ namespace AquacultureFishing
         {
             AquaticSpeciesExtension extension = fish?.GetModExtension<AquaticSpeciesExtension>();
             float dependencyCommonality = AquaticSpeciesProfile.PopulationCommonality(fish);
-            FishPopulationRarity rarity = extension != null ? extension.populationRarity :
-                dependencyCommonality < 0.2f ? FishPopulationRarity.Rare :
-                dependencyCommonality < 0.65f ? FishPopulationRarity.Uncommon : FishPopulationRarity.Common;
+            FishPopulationRarity rarity = RarityFor(fish);
             float density = extension != null ? extension.populationDensity : Mathf.Clamp(dependencyCommonality, 0.1f, 2f);
             return Mathf.Max(0.01f, RarityWeight(rarity) * Mathf.Max(0.01f, density) * Suitability(fish, habitat));
+        }
+
+        private static FishPopulationRarity RarityFor(ThingDef fish)
+        {
+            AquaticSpeciesExtension extension = fish?.GetModExtension<AquaticSpeciesExtension>();
+            float dependencyCommonality = AquaticSpeciesProfile.PopulationCommonality(fish);
+            return extension != null ? extension.populationRarity :
+                dependencyCommonality < 0.2f ? FishPopulationRarity.Rare :
+                dependencyCommonality < 0.65f ? FishPopulationRarity.Uncommon : FishPopulationRarity.Common;
         }
 
         private static float RarityWeight(FishPopulationRarity rarity)
@@ -1032,6 +1064,8 @@ namespace AquacultureFishing
             summary.unavailable = false;
             summary.presentSpecies.Clear();
             summary.trackedSpecies.Clear();
+            summary.commonSpecies.Clear();
+            summary.uncommonSpecies.Clear();
             summary.estimatedPopulation.Clear();
             summary.displayLabels.Clear();
             summary.conservationBySpecies.Clear();
@@ -1067,8 +1101,11 @@ namespace AquacultureFishing
                     ? item.population * Mathf.Max(0f, habitatDef?.breedingPerDay ?? 0f) * Suitability(fish, record.habitat) : 0f;
                 float breedingGrowth = totalBreedingPotential > 0f ? growth * potential / totalBreedingPotential : 0f;
                 NaturalFishConservationStatus status = BuildConservationStatus(record, item, habitatDef,
-                    breedingFloor, availableGrowth, breedingGrowth, migrationPressures[fish], suitable);
+                    breedingFloor, availableGrowth, breedingGrowth, migrationPressures[fish],
+                    HasCompatibleRecordedSource(record, fish), suitable);
                 summary.trackedSpecies.Add(fish);
+                if (RarityFor(fish) == FishPopulationRarity.Common) summary.commonSpecies.Add(fish);
+                else summary.uncommonSpecies.Add(fish);
                 summary.conservationBySpecies[fish] = status;
                 int estimate = status.approximatePopulation;
                 summary.estimatedPopulation[fish] = estimate;
@@ -1089,7 +1126,7 @@ namespace AquacultureFishing
 
         private NaturalFishConservationStatus BuildConservationStatus(NaturalWaterPopulation record,
             NaturalFishSpeciesPopulation item, FishPopulationHabitatDef habitatDef, float breedingFloor,
-            float availableGrowth, float breedingGrowth, float migrationPressure, bool suitable)
+            float availableGrowth, float breedingGrowth, float migrationPressure, bool hasRecordedSource, bool suitable)
         {
             float population = Mathf.Max(0f, item?.population ?? 0f);
             bool available = population >= 0.5f;
@@ -1119,7 +1156,7 @@ namespace AquacultureFishing
                 catchLikelyCrossesBreedingFloor = catchRisk,
                 direction = direction,
                 migrationContext = !open ? NaturalFishMigrationContext.Closed :
-                    migrationPressure > 0.001f ? NaturalFishMigrationContext.OpenWithRecordedSource :
+                    hasRecordedSource ? NaturalFishMigrationContext.OpenWithRecordedSource :
                     NaturalFishMigrationContext.OpenWithoutRecordedSource,
                 habitat = record.habitat
             };
@@ -1130,6 +1167,11 @@ namespace AquacultureFishing
             if (record == null || fishDef == null || !NaturalFishMigrationRules.IsOpen(record.habitat) ||
                 (habitatDef?.migrationPerDay ?? 0f) <= 0f || (habitatDef?.maximumMigrationPerDay ?? 0f) <= 0f) return 0f;
             return RegionalSpeciesPressure(record, fishDef);
+        }
+
+        private void RefreshMigrationSummaries()
+        {
+            for (int i = 0; i < populations.Count; i++) RefreshSummary(populations[i]);
         }
 
         private float ExpectedMigrationDelta(NaturalWaterPopulation record, NaturalFishSpeciesPopulation item,
@@ -1317,8 +1359,9 @@ namespace AquacultureFishing
         public static float PreparedPopulation(WaterBody body) => (activeSummary ?? PreparedSummaryFor(body))?.totalPopulation ?? 0f;
         public static float PreparedCapacity(WaterBody body) => (activeSummary ?? PreparedSummaryFor(body))?.carryingCapacity ?? 0f;
         public static IEnumerable<ThingDef> PreparedCommonSpecies(WaterBody body) =>
-            (activeSummary ?? PreparedSummaryFor(body))?.trackedSpecies ?? Enumerable.Empty<ThingDef>();
-        public static IEnumerable<ThingDef> PreparedUncommonSpecies(WaterBody body) => Enumerable.Empty<ThingDef>();
+            (activeSummary ?? PreparedSummaryFor(body))?.commonSpecies ?? Enumerable.Empty<ThingDef>();
+        public static IEnumerable<ThingDef> PreparedUncommonSpecies(WaterBody body) =>
+            (activeSummary ?? PreparedSummaryFor(body))?.uncommonSpecies ?? Enumerable.Empty<ThingDef>();
 
         public static void Prefix(ITab_Fishing __instance)
         {

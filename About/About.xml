@@ -9,7 +9,6 @@
     <li><packageId>lan.knowledgeframework</packageId><displayName>Knowledge Framework</displayName></li>
     <li><packageId>lan.deferredreality.framework</packageId><displayName>Deferred Reality Framework</displayName></li>
     <li><packageId>VanillaExpanded.VCEF</packageId><displayName>Vanilla Fishing Expanded</displayName><steamWorkshopUrl>steam://url/CommunityFilePage/1914064942</steamWorkshopUrl></li>
-    <li><packageId>VanillaExpanded.VCEFAddon</packageId><displayName>Vanilla Fishing Expanded - Fishing Treasures AddOn</displayName><steamWorkshopUrl>steam://url/CommunityFilePage/2468543398</steamWorkshopUrl></li>
   </modDependencies>
   <loadAfter>
     <li>brrainz.harmony</li><li>lan.knowledgeframework</li><li>lan.deferredreality.framework</li><li>VanillaExpanded.VCEF</li><li>VanillaExpanded.VCEFAddon</li><li>Nightmare.Aquariums</li>

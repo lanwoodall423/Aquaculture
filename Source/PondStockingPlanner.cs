@@ -42,15 +42,15 @@ namespace AquacultureFishing
         {
             if (pond?.Spawned != true || component == null)
             {
-                Widgets.Label(inRect, "The pond is no longer available.");
+                Widgets.Label(inRect, "AquacultureFishing.PondPlannerUnavailable".Translate());
                 return;
             }
 
             Text.Font = GameFont.Medium;
-            Widgets.Label(new Rect(inRect.x, inRect.y, inRect.width - 290f, 34f), "Pond Stocking Planner");
+            Widgets.Label(new Rect(inRect.x, inRect.y, inRect.width - 290f, 34f), "AquacultureFishing.PondPlannerTitle".Translate());
             Text.Font = GameFont.Small;
             Widgets.Label(new Rect(inRect.x, inRect.y + 36f, inRect.width - 290f, 28f),
-                "Model a stable ecosystem before moving fish. Calculations update only when this window is open.");
+                "AquacultureFishing.PondPlannerSubtitle".Translate());
 
             DrawWaterControl(new Rect(inRect.xMax - 275f, inRect.y, 275f, 64f));
 
@@ -71,7 +71,7 @@ namespace AquacultureFishing
             Widgets.DrawMenuSection(rect);
             Text.Font = GameFont.Tiny;
             GUI.color = new Color(0.72f, 0.72f, 0.72f);
-            Widgets.Label(new Rect(rect.x + 10f, rect.y + 5f, rect.width - 20f, 20f), "PLANNED WATER");
+            Widgets.Label(new Rect(rect.x + 10f, rect.y + 5f, rect.width - 20f, 20f), "AquacultureFishing.PondPlannerPlannedWater".Translate());
             Text.Font = GameFont.Small;
             GUI.color = Color.white;
             if (Widgets.ButtonText(new Rect(rect.x + 10f, rect.y + 27f, rect.width - 20f, 29f), WaterLabel(plannedWater)))
@@ -79,14 +79,14 @@ namespace AquacultureFishing
                 Find.WindowStack.Add(new FloatMenu(Enum.GetValues(typeof(PondWaterKind)).Cast<PondWaterKind>()
                     .Select(kind => new FloatMenuOption(WaterLabel(kind), () => plannedWater = kind)).ToList()));
             }
-            TooltipHandler.TipRegion(rect, "This changes the forecast only. Empty ponds can be refilled from Basic management.");
+            TooltipHandler.TipRegion(rect, "AquacultureFishing.PondPlannerWaterTip".Translate());
         }
 
         private void DrawAvailableSpecies(Rect rect)
         {
             Widgets.DrawMenuSection(rect);
             Text.Font = GameFont.Medium;
-            Widgets.Label(new Rect(rect.x + 12f, rect.y + 10f, rect.width - 24f, 30f), "Available Species");
+            Widgets.Label(new Rect(rect.x + 12f, rect.y + 10f, rect.width - 24f, 30f), "AquacultureFishing.PondPlannerAvailableSpecies".Translate());
             Text.Font = GameFont.Small;
             search = Widgets.TextField(new Rect(rect.x + 12f, rect.y + 46f, rect.width - 24f, 30f), search ?? string.Empty);
 
@@ -106,7 +106,8 @@ namespace AquacultureFishing
                 AquaticSpeciesProfile profile = AquaticSpeciesProfile.For(def);
                 Text.Font = GameFont.Tiny;
                 GUI.color = new Color(0.72f, 0.72f, 0.72f);
-                Widgets.Label(new Rect(row.x + 47f, row.y + 24f, row.width - 102f, 18f), profile.diet + " | " + WaterLabel(profile.waterKind));
+                Widgets.Label(new Rect(row.x + 47f, row.y + 24f, row.width - 102f, 18f),
+                    "AquacultureFishing.PondPlannerSpeciesMeta".Translate(profile.diet.ToString(), WaterLabel(profile.waterKind)));
                 GUI.color = Color.white;
                 Text.Font = GameFont.Small;
                 if (Widgets.ButtonText(new Rect(row.xMax - 46f, row.y + 7f, 40f, 30f), "+")) ChangeCount(def, 1);
@@ -119,14 +120,14 @@ namespace AquacultureFishing
         {
             Widgets.DrawMenuSection(rect);
             Text.Font = GameFont.Medium;
-            Widgets.Label(new Rect(rect.x + 12f, rect.y + 10f, rect.width - 24f, 30f), "Planned Stock");
+            Widgets.Label(new Rect(rect.x + 12f, rect.y + 10f, rect.width - 24f, 30f), "AquacultureFishing.PondPlannerPlannedStock".Translate());
             Text.Font = GameFont.Small;
             List<KeyValuePair<ThingDef, int>> entries = plan.Where(pair => pair.Value > 0)
                 .OrderBy(pair => pair.Key.label).ToList();
             int total = entries.Sum(pair => pair.Value);
             GUI.color = new Color(0.72f, 0.72f, 0.72f);
             Widgets.Label(new Rect(rect.x + 12f, rect.y + 42f, rect.width - 24f, 24f),
-                entries.Count + " species | " + total + " fish");
+                "AquacultureFishing.PondPlannerTotals".Translate(entries.Count, total));
             GUI.color = Color.white;
 
             Rect outRect = new Rect(rect.x + 8f, rect.y + 72f, rect.width - 16f, rect.height - 184f);
@@ -155,19 +156,19 @@ namespace AquacultureFishing
 
             float buttonY = rect.yMax - 100f;
             float third = (rect.width - 28f) / 3f;
-            if (Widgets.ButtonText(new Rect(rect.x + 10f, buttonY, third, 32f), "Current")) LoadCurrentStock();
-            if (Widgets.ButtonText(new Rect(rect.x + 14f + third, buttonY, third, 32f), "Blueprint")) LoadBlueprint();
-            if (Widgets.ButtonText(new Rect(rect.x + 18f + third * 2f, buttonY, third, 32f), "Clear")) plan.Clear();
-            if (Widgets.ButtonText(new Rect(rect.x + 10f, buttonY + 40f, rect.width - 20f, 38f), "Save Living Blueprint"))
+            if (Widgets.ButtonText(new Rect(rect.x + 10f, buttonY, third, 32f), "AquacultureFishing.PondPlannerCurrent".Translate())) LoadCurrentStock();
+            if (Widgets.ButtonText(new Rect(rect.x + 14f + third, buttonY, third, 32f), "AquacultureFishing.PondPlannerBlueprint".Translate())) LoadBlueprint();
+            if (Widgets.ButtonText(new Rect(rect.x + 18f + third * 2f, buttonY, third, 32f), "AquacultureFishing.PondPlannerClear".Translate())) plan.Clear();
+            if (Widgets.ButtonText(new Rect(rect.x + 10f, buttonY + 40f, rect.width - 20f, 38f), "AquacultureFishing.PondPlannerSave".Translate()))
             {
                 component.SetStockingBlueprint(pond.Position, plan, plannedWater);
                 Messages.Message(total > 0
-                        ? "Saved a living blueprint for " + total + " fish. Surplus harvesting will now respect species targets."
-                        : "Cleared the pond blueprint.",
+                        ? "AquacultureFishing.PondPlannerSaved".Translate(total).ToString()
+                        : "AquacultureFishing.PondPlannerCleared".Translate().ToString(),
                     MessageTypeDefOf.TaskCompletion, false);
             }
             TooltipHandler.TipRegion(new Rect(rect.x + 10f, buttonY + 40f, rect.width - 20f, 38f),
-                "Persist this species mix and water intent on the pond. The total becomes its population goal. If surplus harvesting is enabled, handlers remove only fish above species targets.");
+                "AquacultureFishing.PondPlannerSaveTip".Translate());
         }
 
         private void DrawForecast(Rect rect)
@@ -180,7 +181,11 @@ namespace AquacultureFishing
                 : new Color(0.45f, 0.92f, 0.55f);
             Text.Font = GameFont.Medium;
             GUI.color = statusColor;
-            Widgets.Label(new Rect(inner.x, inner.y, inner.width, 32f), data.danger ? "Unsafe Plan" : data.warnings.Count > 0 ? "Needs Support" : "Stable Plan");
+            Widgets.Label(new Rect(inner.x, inner.y, inner.width, 32f), data.danger
+                ? "AquacultureFishing.PondPlannerUnsafe".Translate()
+                : data.warnings.Count > 0
+                    ? "AquacultureFishing.PondPlannerNeedsSupport".Translate()
+                    : "AquacultureFishing.PondPlannerStable".Translate());
             GUI.color = Color.white;
             Text.Font = GameFont.Small;
 
@@ -191,24 +196,27 @@ namespace AquacultureFishing
                 data.sustainableCapacity, new Color(0.38f, 0.82f, 0.44f));
             DrawGauge(inner, ref y, "AquacultureFishing.PondPlannerIndustrial".Translate().ToString(), data.totalFish,
                 data.industrialCapacity, new Color(0.78f, 0.58f, 0.28f));
-            DrawGauge(inner, ref y, "Daily Algae Demand", data.algaeDemand, Mathf.Max(0.001f, data.sustainableAlgae), new Color(0.38f, 0.82f, 0.44f));
+            DrawGauge(inner, ref y, "AquacultureFishing.PondPlannerAlgaeDemand".Translate().ToString(), data.algaeDemand,
+                Mathf.Max(0.001f, data.sustainableAlgae), new Color(0.38f, 0.82f, 0.44f));
             y += 4f;
-            DrawForecastCard(inner, ref y, "Food Demand", data.dailyDemand.ToString("0.000") + " / day",
-                "Natural algae growth: " + data.sustainableAlgae.ToString("0.000") + "/day\nEstimated prepared feed: " + data.feedNeeded.ToString("0.000") + "/day",
+            DrawForecastCard(inner, ref y, "AquacultureFishing.PondPlannerFoodDemand".Translate().ToString(),
+                "AquacultureFishing.PondPlannerPerDay".Translate(data.dailyDemand.ToString("0.000")).ToString(),
+                "AquacultureFishing.PondPlannerFoodDetails".Translate(data.sustainableAlgae.ToString("0.000"), data.feedNeeded.ToString("0.000")),
                 TexCommand.DesirePower);
-            DrawForecastCard(inner, ref y, "Diet Mix",
-                "Plants " + data.plantEaters + " | Mixed " + data.omnivores + " | Predators " + data.predators,
-                data.predationRisk ? "Predation risk is present." : "No modeled predation pressure.",
+            DrawForecastCard(inner, ref y, "AquacultureFishing.PondPlannerDietMix".Translate().ToString(),
+                "AquacultureFishing.PondPlannerDietCounts".Translate(data.plantEaters, data.omnivores, data.predators),
+                data.predationRisk ? "AquacultureFishing.PondPlannerPredationRisk".Translate().ToString() :
+                    "AquacultureFishing.PondPlannerNoPredation".Translate().ToString(),
                 TexCommand.Attack);
-            DrawForecastCard(inner, ref y, "Expected Value",
-                "Beauty " + data.beauty.ToString("0.#") + " | Meat index " + data.meatIndex.ToString("0.#"),
-                data.breedingSpecies + " species have enough planned adults to establish breeding pairs.",
+            DrawForecastCard(inner, ref y, "AquacultureFishing.PondPlannerExpectedValue".Translate().ToString(),
+                "AquacultureFishing.PondPlannerValue".Translate(data.beauty.ToString("0.#"), data.meatIndex.ToString("0.#")),
+                "AquacultureFishing.PondPlannerBreedingSpecies".Translate(data.breedingSpecies),
                 TexCommand.SelectCarriedThing);
 
             Rect warningOut = new Rect(inner.x, y + 4f, inner.width, inner.yMax - y - 4f);
             List<string> messages = data.warnings.Count > 0 ? data.warnings : new List<string>
             {
-                "Water, temperature, capacity, and baseline food pressure are compatible."
+                "AquacultureFishing.PondPlannerCompatible".Translate().ToString()
             };
             Rect warningView = new Rect(0f, 0f, warningOut.width - 18f, Mathf.Max(warningOut.height, messages.Count * 42f));
             Widgets.BeginScrollView(warningOut, ref forecastScroll, warningView);
@@ -258,10 +266,16 @@ namespace AquacultureFishing
                 else data.plantEaters += count;
                 if (count >= 2) data.breedingSpecies++;
                 if (!AquaticSpeciesProfile.WaterCompatible(profile.waterKind, plannedWater))
-                    data.warnings.Add(def.LabelCap + " requires " + WaterLabel(profile.waterKind) + " conditions.");
+                {
+                    data.unsafeCompatibility = true;
+                    data.warnings.Add("AquacultureFishing.PondPlannerWrongWater".Translate(def.LabelCap, WaterLabel(profile.waterKind)).ToString());
+                }
                 if (temperature < profile.minimumTemperature || temperature > profile.maximumTemperature)
-                    data.warnings.Add(def.LabelCap + " is outside its " + profile.minimumTemperature.ToString("0.#") + " to " +
-                        profile.maximumTemperature.ToString("0.#") + " C range.");
+                {
+                    data.unsafeCompatibility = true;
+                    data.warnings.Add("AquacultureFishing.PondPlannerTemperature".Translate(def.LabelCap,
+                        profile.minimumTemperature.ToString("0.#"), profile.maximumTemperature.ToString("0.#")).ToString());
+                }
             }
 
             data.sustainableAlgae = snapshot.habitat?.naturalFoodPerDay ??
@@ -284,16 +298,16 @@ namespace AquacultureFishing
             else if (data.totalFish > data.sustainableCapacity)
                 data.warnings.Insert(0, "AquacultureFishing.PondPlannerUnsupported".Translate(
                     data.foodSupportedCapacity <= data.habitatSupportedCapacity ?
-                        "AquacultureFishing.PondConstraintFood".Translate().ToString() :
-                        "AquacultureFishing.PondConstraintHabitat".Translate().ToString()).ToString());
+                        "AquacultureFishing.PondCapacityConstraintFood".Translate().ToString() :
+                        "AquacultureFishing.PondCapacityConstraintHabitat".Translate().ToString()).ToString());
             if (data.algaeDemand > data.sustainableAlgae * 1.1f)
-                data.warnings.Add("Plant-food demand exceeds sustainable algae growth.");
+                data.warnings.Add("AquacultureFishing.PondPlannerAlgaeWarning".Translate());
             if (data.preyDemand > 0f && !data.predationRisk)
-                data.warnings.Add("Predatory food demand has no varied prey population.");
+                data.warnings.Add("AquacultureFishing.PondPlannerNoPrey".Translate());
             else if (data.predationRisk)
-                data.warnings.Add("Predators may consume smaller pond fish; the forecast cannot guarantee species ratios.");
-            if (data.totalFish == 0) data.warnings.Add("Add fish to create a stocking plan.");
-            data.danger = data.totalFish > data.physicalCapacity || data.warnings.Any(message => message.Contains("requires") || message.Contains("outside"));
+                data.warnings.Add("AquacultureFishing.PondPlannerPredatorWarning".Translate());
+            if (data.totalFish == 0) data.warnings.Add("AquacultureFishing.PondPlannerEmpty".Translate());
+            data.danger = data.totalFish > data.physicalCapacity || data.unsafeCompatibility;
             return data;
         }
 
@@ -370,19 +384,21 @@ namespace AquacultureFishing
         private string CompatibilityLabel(ThingDef def)
         {
             AquaticSpeciesProfile profile = AquaticSpeciesProfile.For(def);
-            if (!AquaticSpeciesProfile.WaterCompatible(profile.waterKind, plannedWater)) return "Wrong water";
+            if (!AquaticSpeciesProfile.WaterCompatible(profile.waterKind, plannedWater))
+                return "AquacultureFishing.PondPlannerWrongWaterLabel".Translate();
             float temperature = component.MenuSnapshotAt(pond.Position)?.temperature ?? 21f;
-            return temperature < profile.minimumTemperature || temperature > profile.maximumTemperature ? "Unsafe temperature" : "Compatible";
+            return temperature < profile.minimumTemperature || temperature > profile.maximumTemperature
+                ? "AquacultureFishing.PondPlannerUnsafeTemperatureLabel".Translate()
+                : "AquacultureFishing.PondPlannerCompatibleLabel".Translate();
         }
 
         private static string SpeciesTooltip(ThingDef def, AquaticSpeciesProfile profile)
         {
-            return def.LabelCap + "\nDiet: " + profile.diet + "\nWater: " + WaterLabel(profile.waterKind) +
-                "\nTemperature: " + profile.minimumTemperature.ToString("0.#") + " to " + profile.maximumTemperature.ToString("0.#") +
-                " C\nDaily food demand: " + (profile.hourlyDemand * 24f).ToString("0.000") +
-                "\nBreeding interval: " + profile.breedingIntervalFactor.ToStringPercent() +
-                "\nOffspring: " + profile.offspringFactor.ToStringPercent() +
-                "\nMeat yield: " + profile.meatYieldFactor.ToStringPercent();
+            return "AquacultureFishing.PondPlannerSpeciesTooltip".Translate(def.LabelCap, profile.diet.ToString(),
+                WaterLabel(profile.waterKind), profile.minimumTemperature.ToString("0.#"),
+                profile.maximumTemperature.ToString("0.#"), (profile.hourlyDemand * 24f).ToString("0.000"),
+                profile.breedingIntervalFactor.ToStringPercent(), profile.offspringFactor.ToStringPercent(),
+                profile.meatYieldFactor.ToStringPercent()).ToString();
         }
 
         private static void DrawDefIcon(Rect rect, ThingDef def)
@@ -428,6 +444,7 @@ namespace AquacultureFishing
             public float feedNeeded;
             public float beauty;
             public float meatIndex;
+            public bool unsafeCompatibility;
             public bool predationRisk;
             public bool danger;
             public readonly List<string> warnings = new List<string>();

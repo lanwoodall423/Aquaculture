@@ -11,6 +11,8 @@ $fishing = Get-Content -Raw $fishingPath
 $localization = Get-Content -Raw $localizationPath
 $guide = Get-Content -Raw $guidePath
 $testPlan = Get-Content -Raw $testPlanPath
+$warningIndex = $fishing.IndexOf('WarnIfCatchLikelyCrossesBreedingFloor')
+$biteResolutionIndex = $fishing.IndexOf('bool fishBit =')
 
 $checks = [ordered]@{
     'status model fields' = $population -match 'NaturalFishConservationStatus' -and
@@ -36,8 +38,8 @@ $checks = [ordered]@{
     'catch warning deduplication' = $population -match 'WarnIfCatchLikelyCrossesBreedingFloor' -and
         $population -match 'conservationWarningKeys\.Add' -and
         $population -match 'MessageTypeDefOf\.CautionInput'
-    'warning called before catch completion' = $fishing -match 'WarnIfCatchLikelyCrossesBreedingFloor' -and
-        $fishing -match 'if \(fishBit\)'
+    'warning called before bite resolution' = $warningIndex -ge 0 -and
+        $biteResolutionIndex -gt $warningIndex
     'selection excludes extinct ledger species' = $fishing -match 'Contains\(attempt\.waterCell, fish\)'
     'status tooltip is keyed' = $population -match 'TooltipHandler\.TipRegion' -and
         $population -match 'status\.Tooltip'

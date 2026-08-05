@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="TraitBreedingRules.Tests.cs" />
+    <Compile Include="..\Source\TraitBreedingRules.cs" Link="TraitBreedingRules.cs" />
+    <Compile Include="..\Source\NaturalFishRecoveryRules.cs" Link="NaturalFishRecoveryRules.cs" />
+    <Compile Include="..\Source\AquacultureCommissionRules.cs" Link="AquacultureCommissionRules.cs" />
+  </ItemGroup>
+</Project>

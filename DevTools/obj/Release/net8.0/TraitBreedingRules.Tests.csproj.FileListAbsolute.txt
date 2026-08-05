@@ -1,0 +1,15 @@
+C:\Games\Steam\steamapps\common\RimWorld\Mods\AquacultureFishing\DevTools\bin\Release\net8.0\TraitBreedingRules.Tests.exe
+C:\Games\Steam\steamapps\common\RimWorld\Mods\AquacultureFishing\DevTools\bin\Release\net8.0\TraitBreedingRules.Tests.deps.json
+C:\Games\Steam\steamapps\common\RimWorld\Mods\AquacultureFishing\DevTools\bin\Release\net8.0\TraitBreedingRules.Tests.runtimeconfig.json
+C:\Games\Steam\steamapps\common\RimWorld\Mods\AquacultureFishing\DevTools\bin\Release\net8.0\TraitBreedingRules.Tests.dll
+C:\Games\Steam\steamapps\common\RimWorld\Mods\AquacultureFishing\DevTools\bin\Release\net8.0\TraitBreedingRules.Tests.pdb
+C:\Games\Steam\steamapps\common\RimWorld\Mods\AquacultureFishing\DevTools\obj\Release\net8.0\TraitBreedingRules.Tests.GeneratedMSBuildEditorConfig.editorconfig
+C:\Games\Steam\steamapps\common\RimWorld\Mods\AquacultureFishing\DevTools\obj\Release\net8.0\TraitBreedingRules.Tests.AssemblyInfoInputs.cache
+C:\Games\Steam\steamapps\common\RimWorld\Mods\AquacultureFishing\DevTools\obj\Release\net8.0\TraitBreedingRules.Tests.AssemblyInfo.cs
+C:\Games\Steam\steamapps\common\RimWorld\Mods\AquacultureFishing\DevTools\obj\Release\net8.0\TraitBreedingRules.Tests.csproj.CoreCompileInputs.cache
+C:\Games\Steam\steamapps\common\RimWorld\Mods\AquacultureFishing\DevTools\obj\Release\net8.0\TraitBreedingRules.Tests.sourcelink.json
+C:\Games\Steam\steamapps\common\RimWorld\Mods\AquacultureFishing\DevTools\obj\Release\net8.0\TraitBreedingRules.Tests.dll
+C:\Games\Steam\steamapps\common\RimWorld\Mods\AquacultureFishing\DevTools\obj\Release\net8.0\refint\TraitBreedingRules.Tests.dll
+C:\Games\Steam\steamapps\common\RimWorld\Mods\AquacultureFishing\DevTools\obj\Release\net8.0\TraitBreedingRules.Tests.pdb
+C:\Games\Steam\steamapps\common\RimWorld\Mods\AquacultureFishing\DevTools\obj\Release\net8.0\TraitBreedingRules.Tests.genruntimeconfig.cache
+C:\Games\Steam\steamapps\common\RimWorld\Mods\AquacultureFishing\DevTools\obj\Release\net8.0\ref\TraitBreedingRules.Tests.dll

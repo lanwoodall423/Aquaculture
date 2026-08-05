@@ -14,7 +14,7 @@ namespace AquacultureFishing
         {
             if (AquacultureMod.Settings?.enableResearchProgression == false) return true;
             ResearchProjectDef research = DefDatabase<ResearchProjectDef>.GetNamedSilentFail(researchDefName);
-            return research == null || research.IsFinished;
+            return research != null && research.IsFinished;
         }
     }
 
@@ -767,7 +767,8 @@ namespace AquacultureFishing
             {
                 PondState pond = pondStates[i];
                 PondMenuSnapshot snapshot = pond.menuSnapshot ?? (pond.menuSnapshot = BuildMenuSnapshot(pond));
-                if (snapshot.warnings.Count > 0 && pond.proxy?.Spawned == true) result.Add(pond.proxy);
+                if (snapshot.causalSummary?.issues?.Any(issue => issue.priority <= PondCausalPriority.Reproduction) == true &&
+                    pond.proxy?.Spawned == true) result.Add(pond.proxy);
             }
             return result;
         }
@@ -1130,8 +1131,8 @@ namespace AquacultureFishing
     {
         public Alert_AquaculturePondHealth()
         {
-            defaultLabel = "Pond ecosystem at risk";
-            defaultExplanation = "One or more managed ponds contain starving, overcrowded, temperature-stressed, or water-incompatible fish. Select the alert to inspect the affected ponds.";
+            defaultLabel = "AquacultureFishing.PondAlertLabel".Translate();
+            defaultExplanation = "AquacultureFishing.PondAlertExplanation".Translate();
         }
 
         public override AlertPriority Priority => AlertPriority.High;
@@ -1139,7 +1140,6 @@ namespace AquacultureFishing
         public override AlertReport GetReport()
         {
             if (AquacultureMod.Settings?.showPondAlerts == false
-                || !AquacultureProgression.IsAvailable("AF_IndustrialAquaculture")
                 || Current.Game?.Maps == null) return false;
             var culprits = new List<Thing>();
             for (int i = 0; i < Current.Game.Maps.Count; i++)
