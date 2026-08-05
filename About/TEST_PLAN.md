@@ -2,6 +2,8 @@
 
 Use a new colony with Harmony, Knowledge Framework, Deferred Reality Framework, Vanilla Fishing Expanded, and Aquaculture - Fishing enabled in that order. Fishing Treasures, Odyssey, Aquariums, and additional fish packs are optional configuration variants.
 
+The final release boundary, evidence status, isolated startup results, and prioritized manual cases are tracked in `About/RELEASE_READINESS_TEST_MATRIX.md`. Startup success is not a substitute for the gameplay, save/load, performance, or visual cases marked for manual RimWorld validation there.
+
 ## Load And Progression
 
 1. Confirm the main menu log has no red XML, def, or Harmony errors.
