@@ -25,6 +25,7 @@ namespace AquacultureFishing
             "AQUA_JOURNAL|R|Summarize species milestones and registered fish breeds",
             "AQUA_OPPORTUNITIES|R|Analyze loaded content for high-value Aquaculture feature opportunities",
             "AQUA_SETTINGS|R|List active simulation and visual settings",
+            "AQUA_DEFERRED_REALITY|R|Report Deferred Reality provider, ownership, process, migration, and exactly-once diagnostics",
             "AQUA_ADAPTER_STATUS|R|Report Aquaculture hot adapter identity and capabilities",
             "AQUA_PERFORMANCE|R|Report scheduler scale and cached workload",
             "AQUA_VALIDATE|R|Run read-only Aquaculture state invariants",
@@ -46,6 +47,7 @@ namespace AquacultureFishing
                 case "AQUA_JOURNAL": return Journal();
                 case "AQUA_OPPORTUNITIES": return Opportunities();
                 case "AQUA_SETTINGS": return Settings();
+                case "AQUA_DEFERRED_REALITY": return DeferredReality();
                 case "AQUA_ADAPTER_STATUS": return AdapterStatus();
                 case "AQUA_PERFORMANCE": return Performance(map);
                 case "AQUA_VALIDATE": return Validate(map);
@@ -92,6 +94,54 @@ namespace AquacultureFishing
                     " industrial:" + Available("AF_IndustrialAquaculture") + " breeding:" + Available("AF_SelectiveBreeding"),
                 "queryMs=" + watch.Elapsed.TotalMilliseconds.ToString("0.00")
             };
+            return result;
+        }
+
+        private static List<string> DeferredReality()
+        {
+            var result = new List<string>();
+            try
+            {
+                Type providerType = Type.GetType(
+                    "DeferredReality.Aquaculture.AquacultureRealityProvider, DeferredReality.Aquaculture", false);
+                if (providerType == null)
+                {
+                    result.Add("provider=lan.aquaculture.natural-water available=false reason=assembly-not-loaded");
+                    return result;
+                }
+
+                PropertyInfo currentProperty = providerType.GetProperty("Current",
+                    BindingFlags.Public | BindingFlags.Static);
+                object provider = currentProperty?.GetValue(null, null);
+                if (provider == null)
+                {
+                    result.Add("provider=lan.aquaculture.natural-water available=false reason=not-registered");
+                    return result;
+                }
+
+                MethodInfo diagnostics = providerType.GetMethod("BridgeDiagnostics",
+                    BindingFlags.Public | BindingFlags.Instance);
+                if (diagnostics == null)
+                {
+                    result.Add("provider=lan.aquaculture.natural-water available=false reason=diagnostics-unavailable");
+                    return result;
+                }
+
+                if (diagnostics.Invoke(provider, null) is IEnumerable lines)
+                {
+                    foreach (object line in lines)
+                    {
+                        if (line != null) result.Add(line.ToString());
+                    }
+                }
+                if (result.Count == 0) result.Add("provider=lan.aquaculture.natural-water available=false reason=empty-diagnostics");
+            }
+            catch (Exception ex)
+            {
+                result.Clear();
+                result.Add("provider=lan.aquaculture.natural-water available=false reason=reflection-failure");
+                result.Add("error=" + ex.GetType().Name);
+            }
             return result;
         }
 

@@ -33,11 +33,18 @@ namespace AquacultureFishing
         private const string ContextFishingCell = "fishing_cell";
         private const string ContextPond = "managed_pond";
         private const string ContextPondType = "pond_type";
+        private const string BalancedAggregationMigrationId = "aquaculture.knowledge.balanced-stage";
+        private const int BalancedAggregationMigrationVersion = 1;
 
         private static bool registered;
         private static bool migrating;
         private static bool migrationChecked;
-        private static int eventSequence;
+        private static bool registrationInProgress;
+        private static string activeLogicalEventId;
+        private static readonly HashSet<string> HandledLogicalEvents = new HashSet<string>(StringComparer.Ordinal);
+        private static readonly HashSet<string> SubmittedRelations = new HashSet<string>(StringComparer.Ordinal);
+        private static readonly HashSet<string> RegisteredDynamicSubjects = new HashSet<string>(StringComparer.Ordinal);
+        private static readonly Dictionary<int, CompFishTraits> KnownIndividuals = new Dictionary<int, CompFishTraits>();
 
         private static readonly string[] FacetIds =
         {
@@ -58,65 +65,87 @@ namespace AquacultureFishing
 
         public static void Register()
         {
-            if (!registered)
+            if (!V3ContractReady())
             {
-                KnowledgeRegistry.RegisterDomain(new KnowledgeDomainRegistration
-                {
-                    id = DomainId,
-                    label = "Aquaculture",
-                    description = "Evidence-based knowledge of fish, waters, ponds, anglers, and cultivated lines.",
-                    enableUncertainty = true,
-                    enableFamiliarity = true,
-                    sharingModel = KnowledgeSharingModel.Reportable,
-                    sortOrder = 20,
-                    provenanceLimit = 24,
-                    evidenceAggregateLimit = 128,
-                    facets = BuildFacets(),
-                    stages = BuildStages(),
-                    expertiseTracks = new[]
-                    {
-                        new KnowledgeExpertiseTrackDef
-                        {
-                            defName = ExpertiseTrackId,
-                            stableId = ExpertiseTrackId,
-                            label = "Fishing Expertise",
-                            adept = 100f,
-                            expert = 300f,
-                            master = 700f
-                        }
-                    },
-                    observations = BuildObservations(),
-                    claims = BuildClaims(),
-                    archetypes = BuildArchetypes(),
-                    milestoneTracks = BuildMilestoneTracks(),
-                    expertiseNamespaces = new[]
-                    {
-                        new KnowledgeExpertiseNamespaceDef
-                        {
-                            defName = "aquaculture_fishing_expertise",
-                            stableId = "aquaculture_fishing_expertise",
-                            label = "Colony fishing expertise",
-                            adept = 100f,
-                            expert = 300f,
-                            master = 700f
-                        }
-                    },
-                    subjectResolver = ResolveSubject,
-                    subjectSource = SourceSubjects,
-                    source = "lan.aquaculture.fishing.v3"
-                }, new KnowledgeRegistrationOptions
-                {
-                    source = "lan.aquaculture.fishing.v3",
-                    priority = 100,
-                    conflict = KnowledgeRegistrationConflict.ReplaceIfHigherPriority
-                });
-                RegisterContexts();
-                RegisterRelations();
-                KnowledgeProviderRegistry.Register(DomainId, 20, EntryFor);
-                KnowledgeV3Ui.Register(new AquacultureKnowledgeUi(), true);
-                registered = true;
+                registered = false;
+                return;
             }
+            if (!registered && !registrationInProgress)
+            {
+                registrationInProgress = true;
+                try
+                {
+                    bool domainAccepted = KnowledgeRegistry.RegisterDomain(new KnowledgeDomainRegistration
+                    {
+                        id = DomainId,
+                        label = "Aquaculture",
+                        description = "Evidence-based knowledge of fish, waters, ponds, anglers, and cultivated lines.",
+                        enableUncertainty = true,
+                        enableFamiliarity = true,
+                        sharingModel = KnowledgeSharingModel.Reportable,
+                        stageAggregationMode = KnowledgeStageAggregationMode.Balanced,
+                        sortOrder = 20,
+                        provenanceLimit = 24,
+                        evidenceAggregateLimit = 128,
+                        facets = BuildFacets(),
+                        stages = BuildStages(),
+                        expertiseTracks = new[]
+                        {
+                            new KnowledgeExpertiseTrackDef
+                            {
+                                defName = ExpertiseTrackId,
+                                stableId = ExpertiseTrackId,
+                                label = "Fishing Expertise",
+                                adept = 100f,
+                                expert = 300f,
+                                master = 700f
+                            }
+                        },
+                        observations = BuildObservations(),
+                        claims = BuildClaims(),
+                        archetypes = BuildArchetypes(),
+                        milestoneTracks = BuildMilestoneTracks(),
+                        expertiseNamespaces = new[]
+                        {
+                            new KnowledgeExpertiseNamespaceDef
+                            {
+                                defName = "aquaculture_fishing_expertise",
+                                stableId = "aquaculture_fishing_expertise",
+                                label = "Colony fishing expertise",
+                                adept = 100f,
+                                expert = 300f,
+                                master = 700f
+                            }
+                        },
+                        subjectResolver = ResolveSubject,
+                        subjectSource = SourceSubjects,
+                        source = "lan.aquaculture.fishing.v3"
+                    }, new KnowledgeRegistrationOptions
+                    {
+                        source = "lan.aquaculture.fishing.v3",
+                        priority = 100,
+                        conflict = KnowledgeRegistrationConflict.ReplaceIfHigherPriority
+                    });
+                    if (!domainAccepted && KnowledgeRegistry.Schema(DomainId) == null)
+                        throw new InvalidOperationException("Knowledge Framework rejected the Aquaculture domain registration.");
+                    if (!RegisterContexts() || !RegisterRelations())
+                        throw new InvalidOperationException("Knowledge Framework rejected an Aquaculture context or relation registration.");
+                    KnowledgeProviderRegistry.Register(DomainId, 20, EntryFor);
+                    if (!KnowledgeV3Ui.Register(new AquacultureKnowledgeUi(), true))
+                        throw new InvalidOperationException("Knowledge Framework rejected the Aquaculture UI registration.");
+                    registered = true;
+                }
+                catch (Exception exception)
+                {
+                    registered = false;
+                    Log.ErrorOnce("[Aquaculture - Fishing] Knowledge Framework registration deferred: " +
+                        exception.GetBaseException().Message, GenText.StableStringHash("AquacultureKnowledgeRegistration"));
+                }
+                finally { registrationInProgress = false; }
+            }
+            if (!registered) return;
             AquacultureDiscoveryDirector.Register();
+            TryCommitBalancedAggregationMigration();
             TryMigrateLegacy();
         }
 
@@ -124,6 +153,11 @@ namespace AquacultureFishing
         {
             if (value == null) return;
             Register();
+            if (!FrameworkReady || !TryBeginLogicalEvent(value)) return;
+            string previousEventId = activeLogicalEventId;
+            activeLogicalEventId = value.logicalEventId;
+            try
+            {
             switch (value.kind)
             {
                 case AquacultureEventKind.FishHooked:
@@ -134,6 +168,12 @@ namespace AquacultureFishing
                     break;
                 case AquacultureEventKind.FishEscaped:
                     ObserveEscape(value);
+                    break;
+                case AquacultureEventKind.FishDied:
+                    ObserveDeath(value);
+                    break;
+                case AquacultureEventKind.FishStocked:
+                    ObserveStocking(value);
                     break;
                 case AquacultureEventKind.FishEstablished:
                     ObserveEstablished(value);
@@ -163,6 +203,14 @@ namespace AquacultureFishing
                     ObserveEcology(value, true);
                     break;
             }
+            }
+            catch (Exception exception)
+            {
+                HandledLogicalEvents.Remove(value.logicalEventId);
+                Log.ErrorOnce("[Aquaculture - Fishing] Knowledge event deferred for retry: " +
+                    exception.GetBaseException().Message, GenText.StableStringHash("AquacultureKnowledgeEventRetry"));
+            }
+            finally { activeLogicalEventId = previousEventId; }
         }
 
         public static float SpeciesKnowledgeFor(Pawn pawn, ThingDef fishDef)
@@ -231,21 +279,33 @@ namespace AquacultureFishing
             }
             KnowledgeScope scope = colony ? KnowledgeScope.Colony : KnowledgeScope.Personal;
             KnowledgeSubjectSnapshotV2 subject = KnowledgeQuery.Subject(DomainId, SpeciesSubjectId(fishDef), colony ? null : pawn, scope);
+            KnowledgeStageSnapshot stage = KnowledgeDiscovery.StageSnapshot(DomainId, SpeciesSubjectId(fishDef),
+                colony ? null : pawn, scope, KnowledgeContextKey.Empty, KnowledgeContextFallbackMode.ParentThenGlobal);
             List<string> known = new List<string>();
-            float knowledge = 0f;
-            float confidence = 0f;
             foreach (string facet in FacetIds)
             {
                 KnowledgeFacetSnapshotV2 value = KnowledgeQuery.Facet(DomainId, SpeciesSubjectId(fishDef), facet,
                     colony ? null : pawn, scope, true, false);
                 if (value.amount > 0f) known.Add(facet);
-                knowledge += value.amount;
-                confidence = Mathf.Max(confidence, value.confidence);
             }
             KnowledgeClaimSnapshot identity = Claim(SpeciesSubjectId(fishDef), "identity", "species_identity", pawn, colony,
                 KnowledgeContextKey.Empty);
-            return new AquacultureKnowledgeView(SpeciesSubjectId(fishDef), subject.stageId ?? "Unknown", Mathf.Clamp01(knowledge / 100f),
-                confidence, identity.value != null && identity.effectiveConfidence > 0f, known);
+            string stageId = stage?.stageId ?? subject?.stageId ?? "Unknown";
+            return new AquacultureKnowledgeView(SpeciesSubjectId(fishDef), stageId, StageKnowledge(stageId),
+                Mathf.Clamp01(identity?.effectiveConfidence ?? 0f), identity?.value != null && identity.effectiveConfidence > 0f, known);
+        }
+
+        private static float StageKnowledge(string stageId)
+        {
+            switch (stageId)
+            {
+                case "hooked": return 0.20f;
+                case "identified": return 0.40f;
+                case "studied": return 0.60f;
+                case "cultivated": return 0.80f;
+                case "documented": return 1f;
+                default: return 0f;
+            }
         }
 
         public static KnowledgeClaimSnapshot Claim(string subjectId, string facetId, string claimId, Pawn pawn, bool colony,
@@ -266,7 +326,8 @@ namespace AquacultureFishing
         public static KnowledgeContextKey ContextForFishing(Map map, IntVec3 cell)
         {
             return map == null || !cell.IsValid ? KnowledgeContextKey.Empty : new KnowledgeContextKey(ContextFishingCell,
-                map.uniqueID + ":" + cell.x + "," + cell.z);
+                AquacultureKnowledgeContract.StableContextId(ContextFishingCell, map.uniqueID,
+                    cell.x + "," + cell.z, "topology:fishing", null));
         }
 
         public static KnowledgeContextKey ContextForPond(Map map, IntVec3 cell)
@@ -275,7 +336,10 @@ namespace AquacultureFishing
             FishPondMapComponent component = map.GetComponent<FishPondMapComponent>();
             PondProxyThing proxy = component?.ProxyFor(cell);
             IntVec3 anchor = proxy?.Position ?? cell;
-            return new KnowledgeContextKey(ContextPond, map.uniqueID + ":" + anchor.x + "," + anchor.z);
+            PondWaterKind water = component?.WaterKindAt(cell) ?? PondWaterKind.Freshwater;
+            return new KnowledgeContextKey(ContextPond, AquacultureKnowledgeContract.StableContextId(ContextPond,
+                map.uniqueID, anchor.x + "," + anchor.z,
+                "topology:" + (proxy?.thingIDNumber.ToString() ?? "cell"), "water:" + water));
         }
 
         public static KnowledgeContextKey ContextForFish(CompFishTraits fish)
@@ -298,8 +362,34 @@ namespace AquacultureFishing
             return KnowledgeTransmission.Document(DomainId, SpeciesSubjectId(fishDef), pawn, "Aquaculture Field Journal");
         }
 
-        private static bool FrameworkReady => registered && GameComponent_KnowledgeFramework.Current != null &&
+        private static bool FrameworkReady => registered && V3ContractReady() && GameComponent_KnowledgeFramework.Current != null &&
             KnowledgeRegistry.Schema(DomainId) != null;
+
+        private static bool V3ContractReady()
+        {
+            return GameComponent_KnowledgeFramework.Current != null &&
+                AquacultureKnowledgeContract.SupportsV3(KnowledgeFrameworkApi.ApiVersion,
+                    (version, capability) => KnowledgeFrameworkApi.Supports(version, capability),
+                    KnowledgeFrameworkApi.CapabilityVersion);
+        }
+
+        private static bool TryBeginLogicalEvent(AquacultureEvent value)
+        {
+            string id = value.logicalEventId;
+            if (id.NullOrEmpty())
+            {
+                id = AquacultureKnowledgeContract.StableEventId(value.kind.ToString(), value.fishDef?.defName,
+                    Find.TickManager?.TicksGame ?? 0, value.map?.uniqueID.ToString(), value.cell.ToString());
+                value.logicalEventId = id;
+            }
+            if (!HandledLogicalEvents.Add(id)) return false;
+            if (HandledLogicalEvents.Count > 2048)
+            {
+                string oldest = HandledLogicalEvents.FirstOrDefault();
+                if (!oldest.NullOrEmpty()) HandledLogicalEvents.Remove(oldest);
+            }
+            return true;
+        }
 
         private static void ObserveHooked(AquacultureEvent value)
         {
@@ -329,10 +419,9 @@ namespace AquacultureFishing
                 Measurement(SpeciesSubjectId(value.fishDef), "traits", "trait_expression", KnowledgeClaimValue.Set(visualTraits), context, colony,
                     visualTraits.Count == 0 ? "No unusual visible trait was confirmed." : "Visible phenotype observed on a landed specimen.")
             };
-            Submit(value.pawn, SpeciesSubjectId(value.fishDef), "identity", "catch", 8f, 8f + (1f - SpeciesKnowledgeFor(value.pawn, value.fishDef)) * 4f,
-                1f, context, measurements(false), value.source ?? "fishing");
-            SubmitColony(SpeciesSubjectId(value.fishDef), "identity", "catch", 5f, 1f, context, measurements(true), value.source ?? "fishing");
-            if (value.fish != null) ObserveFish(value, "survey", 2f, 0f);
+            SubmitBoth(value.pawn, SpeciesSubjectId(value.fishDef), "identity", "catch", 8f,
+                8f + (1f - SpeciesKnowledgeFor(value.pawn, value.fishDef)) * 4f, 1f, context,
+                measurements(false), value.source ?? "fishing");
             ReportMilestone(SpeciesSubjectId(value.fishDef), "discovery", "identified", value.pawn, context);
             if (visualTraits.Count > 0) ReportMilestone(SpeciesSubjectId(value.fishDef), "discovery", "studied", value.pawn, context);
         }
@@ -343,6 +432,20 @@ namespace AquacultureFishing
             EnsureSpeciesSubject(value.fishDef);
             Submit(value.pawn, SpeciesSubjectId(value.fishDef), "catching", "escape", 0.5f, 0f, 0.25f,
                 ContextForFishing(value.map, value.cell), null, value.source ?? "fishing");
+        }
+
+        private static void ObserveDeath(AquacultureEvent value)
+        {
+            if (value.fishDef == null) return;
+            EnsureSpeciesSubject(value.fishDef);
+            KnowledgeContextKey context = ContextForPond(value.map, value.cell);
+            SubmitColony(SpeciesSubjectId(value.fishDef), "health", "death", 0.5f, 0.5f, context,
+                new[]
+                {
+                    Measurement(SpeciesSubjectId(value.fishDef), "health", "health_status",
+                        KnowledgeClaimValue.Text(KnowledgeClaimValueType.EnumId, "dead"), context, true,
+                        value.reason ?? "A fish death was recorded.")
+                }, "fish-death");
         }
 
         private static void ObserveEstablished(AquacultureEvent value)
@@ -360,10 +463,8 @@ namespace AquacultureFishing
                     KnowledgeClaimValue.Text(KnowledgeClaimValueType.EnumId, value.fish.Diet.ToString()), context, false,
                     "Pond observation recorded feeding behavior.")
             };
-            Submit(value.pawn, SpeciesSubjectId(value.fishDef), "pond_compatibility", "established", 6f, 0f, 2f,
+            SubmitBoth(value.pawn, SpeciesSubjectId(value.fishDef), "pond_compatibility", "established", 6f, 0f, 2f,
                 context, measurements, "pond-establishment");
-            SubmitColony(SpeciesSubjectId(value.fishDef), "pond_compatibility", "established", 5f, 1f, context,
-                measurements.Select(item => CloneMeasurement(item, true)).ToList(), "pond-establishment");
             ReportMilestone(SpeciesSubjectId(value.fishDef), "discovery", "cultivated", value.pawn, context);
         }
 
@@ -481,63 +582,63 @@ namespace AquacultureFishing
             float familiarity, KnowledgeContextKey context, IEnumerable<KnowledgeMeasurement> measurements, string source)
         {
             if (pawn == null) return;
-            Submit(pawn, subjectId, facetId, reason, knowledge, expertise, familiarity, context,
-                measurements?.Select(item => CloneMeasurement(item, false)).ToList(), source);
-            SubmitColony(subjectId, facetId, reason, knowledge * 0.7f, familiarity * 0.7f, context,
-                measurements?.Select(item => CloneMeasurement(item, true)).ToList(), source);
+            string eventId = CurrentLogicalEventId(source, subjectId, reason);
+            KnowledgeTransaction transaction = new KnowledgeTransaction
+            {
+                source = source,
+                transactionId = TransactionId(eventId)
+            };
+            transaction.Add(BuildObservation(pawn, subjectId, facetId, reason, knowledge, expertise, familiarity,
+                context, measurements, source, false, eventId));
+            transaction.Add(BuildObservation(null, subjectId, facetId, reason, knowledge * 0.7f, 0f, familiarity * 0.7f,
+                context, measurements, source, true, eventId));
+            SubmitTransaction(transaction);
         }
 
         private static bool Submit(Pawn pawn, string subjectId, string facetId, string reason, float knowledge, float expertise,
             float familiarity, KnowledgeContextKey context, IEnumerable<KnowledgeMeasurement> measurements, string source)
         {
             if (!FrameworkReady || pawn == null || subjectId.NullOrEmpty()) return false;
-            KnowledgeObservation observation = new KnowledgeObservation
-            {
-                observer = pawn,
-                domainId = DomainId,
-                subjectId = subjectId,
-                facetId = facetId,
-                observationId = ObservationId(reason),
-                methodId = reason,
-                directKnowledge = Mathf.Max(0f, knowledge),
-                directExpertise = Mathf.Max(0f, expertise),
-                directFamiliarity = Mathf.Max(0f, familiarity),
-                expertiseTrackId = ExpertiseTrackId,
-                success = true,
-                quality = 1f,
-                novelty = 1f,
-                repetition = 1f,
-                sourceReliability = 1f,
-                reasonId = reason,
-                source = source,
-                sourceInstanceId = source + ":" + pawn.thingIDNumber + ":" + (++eventSequence),
-                context = context,
-                summary = source,
-                claimMeasurements = measurements?.ToList(),
-                witnessDistribution = WitnessDistribution(pawn),
-                suppressConfiguredKnowledge = true
-            };
-            return KnowledgeEngine.Submit(new KnowledgeTransaction
+            string eventId = CurrentLogicalEventId(source, subjectId, reason);
+            return SubmitTransaction(new KnowledgeTransaction
             {
                 source = source,
-                transactionId = "aquaculture:" + source + ":" + eventSequence
-            }.Add(observation)).success;
+                transactionId = TransactionId(eventId)
+            }.Add(BuildObservation(pawn, subjectId, facetId, reason, knowledge, expertise, familiarity,
+                context, measurements, source, false, eventId)));
         }
 
         private static bool SubmitColony(string subjectId, string facetId, string reason, float knowledge, float familiarity,
             KnowledgeContextKey context, IEnumerable<KnowledgeMeasurement> measurements, string source)
         {
             if (!FrameworkReady || subjectId.NullOrEmpty()) return false;
-            KnowledgeObservation observation = new KnowledgeObservation
+            string eventId = CurrentLogicalEventId(source, subjectId, reason);
+            return SubmitTransaction(new KnowledgeTransaction
             {
+                source = source,
+                transactionId = TransactionId(eventId)
+            }.Add(BuildObservation(null, subjectId, facetId, reason, knowledge, 0f, familiarity,
+                context, measurements, source, true, eventId)));
+        }
+
+        private static KnowledgeObservation BuildObservation(Pawn pawn, string subjectId, string facetId, string reason,
+            float knowledge, float expertise, float familiarity, KnowledgeContextKey context,
+            IEnumerable<KnowledgeMeasurement> measurements, string source, bool colony, string eventId)
+        {
+            return new KnowledgeObservation
+            {
+                observer = colony ? null : pawn,
                 domainId = DomainId,
                 subjectId = subjectId,
                 facetId = facetId,
-                observationId = ObservationId(reason),
+                observationId = ObservationId(eventId, reason, subjectId, facetId, colony),
+                logicalEventId = eventId,
                 methodId = reason,
-                targetColony = true,
-                directKnowledge = Mathf.Max(0f, knowledge),
-                directFamiliarity = Mathf.Max(0f, familiarity),
+                targetColony = colony,
+                directKnowledge = SafeKnowledge(knowledge),
+                directExpertise = SafeKnowledge(expertise),
+                directFamiliarity = SafeKnowledge(familiarity),
+                expertiseTrackId = colony ? null : ExpertiseTrackId,
                 success = true,
                 quality = 1f,
                 novelty = 1f,
@@ -545,18 +646,48 @@ namespace AquacultureFishing
                 sourceReliability = 1f,
                 reasonId = reason,
                 source = source,
-                sourceInstanceId = source + ":colony:" + (++eventSequence),
+                sourceInstanceId = eventId + (colony ? ":colony" : ":pawn:" + (pawn?.thingIDNumber.ToString() ?? "0")),
                 context = context,
                 summary = source,
-                claimMeasurements = measurements?.Select(item => CloneMeasurement(item, true)).ToList(),
+                claimMeasurements = measurements?.Select(item => CloneMeasurement(item, colony)).Where(item => item != null).ToList(),
+                witnessDistribution = colony ? null : WitnessDistribution(pawn),
                 suppressConfiguredKnowledge = true
-            };
-            return KnowledgeEngine.Submit(new KnowledgeTransaction
-            {
-                source = source,
-                transactionId = "aquaculture:colony:" + source + ":" + eventSequence
-            }.Add(observation)).success;
+                };
         }
+
+        private static void ObserveStocking(AquacultureEvent value)
+        {
+            if (value.map == null || value.fishDef == null) return;
+            EnsureSpeciesSubject(value.fishDef);
+            KnowledgeContextKey context = ContextForFishing(value.map, value.cell);
+            SubmitColony(SpeciesSubjectId(value.fishDef), "population", "stocking", 1f, 0.5f, context,
+                new[]
+                {
+                    Measurement(SpeciesSubjectId(value.fishDef), "population", "population_estimate",
+                        KnowledgeClaimValue.Range(Mathf.Max(0f, value.value * 0.7f),
+                            Mathf.Max(0f, value.value * 1.3f)), context, true,
+                        "A stocking event changed the approximate population.")
+                }, "fish-stocking");
+        }
+
+        private static bool SubmitTransaction(KnowledgeTransaction transaction)
+        {
+            if (!FrameworkReady || transaction == null || transaction.Observations.Count == 0) return false;
+            return KnowledgeEngine.Submit(transaction).success;
+        }
+
+        private static float SafeKnowledge(float value)
+        {
+            return AquacultureKnowledgeContract.IsFiniteNonNegative(value) ? value : 0f;
+        }
+
+        private static string CurrentLogicalEventId(string source, string subjectId, string reason)
+        {
+            return activeLogicalEventId.NullOrEmpty() ? AquacultureKnowledgeContract.StableEventId(source, subjectId,
+                Find.TickManager?.TicksGame ?? 0, DomainId, reason) : activeLogicalEventId;
+        }
+
+        private static string TransactionId(string eventId) => "aquaculture:event:" + (eventId ?? "unknown");
 
         private static KnowledgeMeasurement Measurement(string subjectId, string facetId, string claimId,
             KnowledgeClaimValue value, KnowledgeContextKey context, bool colony, string summary)
@@ -576,7 +707,7 @@ namespace AquacultureFishing
                 confidenceFactor = 1f,
                 disposition = KnowledgeEvidenceDisposition.Supporting,
                 source = "Aquaculture",
-                sourceInstanceId = "event:" + (++eventSequence),
+                sourceInstanceId = MeasurementSourceId(subjectId, facetId, claimId, colony),
                 methodId = "field_observation",
                 reasonId = "field_observation",
                 summary = summary,
@@ -591,7 +722,14 @@ namespace AquacultureFishing
             if (clone == null) return null;
             clone.scope = colony ? KnowledgeScope.Colony : KnowledgeScope.Personal;
             clone.observer = null;
+            clone.sourceInstanceId = MeasurementSourceId(clone.subjectId, clone.facetId, clone.claimId, colony);
             return clone;
+        }
+
+        private static string MeasurementSourceId(string subjectId, string facetId, string claimId, bool colony)
+        {
+            return (activeLogicalEventId.NullOrEmpty() ? "aquaculture:unscoped" : activeLogicalEventId) + ":measurement:" +
+                (colony ? "colony" : "personal") + ":" + subjectId + ":" + facetId + ":" + claimId;
         }
 
         private static KnowledgeWitnessDistribution WitnessDistribution(Pawn observer)
@@ -610,12 +748,11 @@ namespace AquacultureFishing
             };
         }
 
-        private static string ObservationId(string reason)
+        private static string ObservationId(string eventId, string reason, string subjectId, string facetId, bool colony)
         {
-            string id = "observe_" + (reason ?? "field").Replace('-', '_');
-            return new[] { "observe_hooked", "observe_catch", "observe_escape", "observe_established", "observe_pond",
-                "observe_feed", "observe_breed", "observe_hatch", "observe_survey", "observe_trait_observed",
-                "observe_health_event", "observe_health_recovered" }.Contains(id) ? id : "observe_field";
+            return AquacultureKnowledgeContract.StableEventId("knowledge-observation", eventId ?? "unknown",
+                0, reason ?? "field", (subjectId ?? string.Empty) + ":" + (facetId ?? string.Empty) + ":" +
+                (colony ? "colony" : "personal"));
         }
 
         private static bool IsPlayerReadableTrait(string name)
@@ -668,52 +805,38 @@ namespace AquacultureFishing
         private static void AddRelation(CompFishTraits parent, string childId, string type)
         {
             if (parent?.parent == null || childId.NullOrEmpty()) return;
-            KnowledgeRelationService.Add(new KnowledgeSubjectRelation
+            AddRelationByIds(IndividualSubjectId(parent.parent), childId, type);
+        }
+
+        private static void AddRelationByIds(string fromId, string childId, string type)
+        {
+            if (fromId.NullOrEmpty() || childId.NullOrEmpty() || type.NullOrEmpty()) return;
+            string relationKey = DomainId + "|" + fromId + "|" + childId + "|" + type;
+            if (!SubmittedRelations.Add(relationKey)) return;
+            if (!KnowledgeRelationService.Add(new KnowledgeSubjectRelation
             {
                 domainId = DomainId,
-                fromSubjectId = IndividualSubjectId(parent.parent),
+                fromSubjectId = fromId,
                 toDomainId = DomainId,
                 toSubjectId = childId,
                 relationTypeId = type,
                 confidence = 1f,
                 source = "Aquaculture breeding",
                 tick = Find.TickManager?.TicksGame ?? 0
-            });
+            })) SubmittedRelations.Remove(relationKey);
         }
 
         private static void AddBreedRelation(CompFishTraits fish, string targetId, string type)
         {
             if (fish?.parent == null || targetId.NullOrEmpty()) return;
-            KnowledgeRelationService.Add(new KnowledgeSubjectRelation
-            {
-                domainId = DomainId,
-                fromSubjectId = IndividualSubjectId(fish.parent),
-                toDomainId = DomainId,
-                toSubjectId = targetId,
-                relationTypeId = type,
-                confidence = 1f,
-                source = "Aquaculture breeding",
-                tick = Find.TickManager?.TicksGame ?? 0
-            });
+            AddRelationByIds(IndividualSubjectId(fish.parent), targetId, type);
         }
 
         private static void AddParentRelationById(int parentId, string childId)
         {
             if (parentId <= 0 || childId.NullOrEmpty()) return;
-            Thing parent = Find.Maps.SelectMany(map => map.listerThings.AllThings)
-                .FirstOrDefault(thing => thing.thingIDNumber == parentId);
-            if (parent == null) return;
-            KnowledgeRelationService.Add(new KnowledgeSubjectRelation
-            {
-                domainId = DomainId,
-                fromSubjectId = IndividualSubjectId(parent),
-                toDomainId = DomainId,
-                toSubjectId = childId,
-                relationTypeId = "parent_offspring",
-                confidence = 1f,
-                source = "Aquaculture breeding",
-                tick = Find.TickManager?.TicksGame ?? 0
-            });
+            if (KnownIndividuals.TryGetValue(parentId, out CompFishTraits parent) && parent?.parent != null)
+                AddRelationByIds(IndividualSubjectId(parent.parent), childId, "parent_offspring");
         }
 
         private static KnowledgeEntry EntryFor(Pawn pawn)
@@ -754,6 +877,7 @@ namespace AquacultureFishing
         private static void EnsureIndividualSubject(CompFishTraits fish)
         {
             if (fish?.parent == null || !FrameworkReady) return;
+            KnownIndividuals[fish.parent.thingIDNumber] = fish;
             RegisterSubject(new KnowledgeSubjectRegistration
             {
                 id = IndividualSubjectId(fish.parent),
@@ -765,6 +889,20 @@ namespace AquacultureFishing
                 applicableClaimIds = new[] { "average_mass", "maximum_observed_mass", "trait_expression", "health_status", "generation", "lineage_summary" },
                 source = "Aquaculture specimen registry"
             });
+        }
+
+        public static void ForgetIndividual(CompFishTraits fish)
+        {
+            int id = fish?.parent?.thingIDNumber ?? 0;
+            if (id > 0) KnownIndividuals.Remove(id);
+        }
+
+        public static void TrackIndividual(CompFishTraits fish)
+        {
+            int id = fish?.parent?.thingIDNumber ?? 0;
+            if (id <= 0) return;
+            KnownIndividuals[id] = fish;
+            if (FrameworkReady) EnsureIndividualSubject(fish);
         }
 
         private static void EnsurePondSubject(Map map, IntVec3 cell)
@@ -816,12 +954,23 @@ namespace AquacultureFishing
         private static void RegisterSubject(KnowledgeSubjectRegistration subject)
         {
             if (subject == null || !FrameworkReady) return;
-            KnowledgeRegistry.RegisterSubject(DomainId, subject, new KnowledgeRegistrationOptions
+            if (!subject.id.NullOrEmpty() && !RegisteredDynamicSubjects.Contains(subject.id))
+            {
+                if (!AquacultureKnowledgeContract.DynamicSubjectCountAllowed(RegisteredDynamicSubjects.Count + 1))
+                {
+                    Log.ErrorOnce("[Aquaculture - Fishing] Knowledge subject limit reached; dropping new subject " + subject.id,
+                        GenText.StableStringHash("AquacultureKnowledgeSubjectLimit"));
+                    return;
+                }
+                RegisteredDynamicSubjects.Add(subject.id);
+            }
+            bool accepted = KnowledgeRegistry.RegisterSubject(DomainId, subject, new KnowledgeRegistrationOptions
             {
                 source = "lan.aquaculture.fishing.v3",
                 priority = 100,
                 conflict = KnowledgeRegistrationConflict.Replace
             });
+            if (!accepted) RegisteredDynamicSubjects.Remove(subject.id);
         }
 
         private static KnowledgeSubjectRegistration ResolveSubject(string id)
@@ -870,8 +1019,9 @@ namespace AquacultureFishing
             if (id.StartsWith("individual:", StringComparison.Ordinal))
             {
                 if (!int.TryParse(id.Substring("individual:".Length), out int number)) return null;
-                Thing thing = Find.Maps.SelectMany(map => map.listerThings.AllThings).FirstOrDefault(item => item.thingIDNumber == number);
-                return thing == null ? null : new KnowledgeSubjectRegistration
+                if (!KnownIndividuals.TryGetValue(number, out CompFishTraits fish) || fish?.parent == null) return null;
+                Thing thing = fish.parent;
+                return new KnowledgeSubjectRegistration
                 {
                     id = id,
                     label = thing.LabelCap.ToString(),
@@ -909,25 +1059,27 @@ namespace AquacultureFishing
                 yield return ResolveSubject(SpeciesSubjectId(fish));
         }
 
-        private static void RegisterContexts()
+        private static bool RegisterContexts()
         {
-            KnowledgeContextRegistry.RegisterType(new KnowledgeContextTypeDef { defName = "AF_ContextGlobal", stableId = ContextGlobal }, true);
-            KnowledgeContextRegistry.RegisterType(new KnowledgeContextTypeDef { defName = "AF_ContextBiome", stableId = ContextBiome }, true);
-            KnowledgeContextRegistry.RegisterType(new KnowledgeContextTypeDef { defName = "AF_ContextMapRegion", stableId = ContextMapRegion, parentTypeId = ContextBiome }, true);
-            KnowledgeContextRegistry.RegisterType(new KnowledgeContextTypeDef { defName = "AF_ContextWaterBody", stableId = ContextWaterBody, parentTypeId = ContextMapRegion }, true);
-            KnowledgeContextRegistry.RegisterType(new KnowledgeContextTypeDef { defName = "AF_ContextFishingCell", stableId = ContextFishingCell, parentTypeId = ContextWaterBody }, true);
-            KnowledgeContextRegistry.RegisterType(new KnowledgeContextTypeDef { defName = "AF_ContextPond", stableId = ContextPond, parentTypeId = ContextPondType }, true);
-            KnowledgeContextRegistry.RegisterType(new KnowledgeContextTypeDef { defName = "AF_ContextPondType", stableId = ContextPondType, parentTypeId = ContextBiome }, true);
-            KnowledgeContextRegistry.RegisterResolver(ContextFishingCell, new FishingCellContextResolver(), true);
-            KnowledgeContextRegistry.RegisterResolver(ContextWaterBody, new WaterBodyContextResolver(), true);
-            KnowledgeContextRegistry.RegisterResolver(ContextMapRegion, new MapRegionContextResolver(), true);
-            KnowledgeContextRegistry.RegisterResolver(ContextPond, new PondContextResolver(), true);
-            KnowledgeContextRegistry.RegisterResolver(ContextPondType, new PondTypeContextResolver(), true);
+            bool types = KnowledgeContextRegistry.RegisterType(new KnowledgeContextTypeDef { defName = "AF_ContextGlobal", stableId = ContextGlobal }, true)
+                && KnowledgeContextRegistry.RegisterType(new KnowledgeContextTypeDef { defName = "AF_ContextBiome", stableId = ContextBiome, parentTypeId = ContextGlobal }, true)
+                && KnowledgeContextRegistry.RegisterType(new KnowledgeContextTypeDef { defName = "AF_ContextMapRegion", stableId = ContextMapRegion, parentTypeId = ContextBiome }, true)
+                && KnowledgeContextRegistry.RegisterType(new KnowledgeContextTypeDef { defName = "AF_ContextWaterBody", stableId = ContextWaterBody, parentTypeId = ContextMapRegion }, true)
+                && KnowledgeContextRegistry.RegisterType(new KnowledgeContextTypeDef { defName = "AF_ContextFishingCell", stableId = ContextFishingCell, parentTypeId = ContextWaterBody }, true)
+                && KnowledgeContextRegistry.RegisterType(new KnowledgeContextTypeDef { defName = "AF_ContextPondType", stableId = ContextPondType, parentTypeId = ContextBiome }, true)
+                && KnowledgeContextRegistry.RegisterType(new KnowledgeContextTypeDef { defName = "AF_ContextPond", stableId = ContextPond, parentTypeId = ContextPondType }, true);
+            bool resolvers = KnowledgeContextRegistry.RegisterResolver(ContextGlobal, new GlobalContextResolver(), true)
+                && KnowledgeContextRegistry.RegisterResolver(ContextFishingCell, new FishingCellContextResolver(), true)
+                && KnowledgeContextRegistry.RegisterResolver(ContextWaterBody, new WaterBodyContextResolver(), true)
+                && KnowledgeContextRegistry.RegisterResolver(ContextMapRegion, new MapRegionContextResolver(), true)
+                && KnowledgeContextRegistry.RegisterResolver(ContextPond, new PondContextResolver(), true)
+                && KnowledgeContextRegistry.RegisterResolver(ContextPondType, new PondTypeContextResolver(), true);
+            return types && resolvers;
         }
 
-        private static void RegisterRelations()
+        private static bool RegisterRelations()
         {
-            KnowledgeRelationService.RegisterType(new KnowledgeSubjectRelationTypeDef
+            bool parent = KnowledgeRelationService.RegisterType(new KnowledgeSubjectRelationTypeDef
             {
                 defName = "AF_RelationParentOffspring",
                 stableId = "parent_offspring",
@@ -937,7 +1089,7 @@ namespace AquacultureFishing
                 inverseTypeId = "parent_offspring",
                 metadataLimit = 8
             }, true);
-            KnowledgeRelationService.RegisterType(new KnowledgeSubjectRelationTypeDef
+            bool breed = KnowledgeRelationService.RegisterType(new KnowledgeSubjectRelationTypeDef
             {
                 defName = "AF_RelationBreedDescendant",
                 stableId = "breed_descendant",
@@ -946,7 +1098,7 @@ namespace AquacultureFishing
                 symmetric = false,
                 metadataLimit = 8
             }, true);
-            KnowledgeRelationService.RegisterType(new KnowledgeSubjectRelationTypeDef
+            bool trait = KnowledgeRelationService.RegisterType(new KnowledgeSubjectRelationTypeDef
             {
                 defName = "AF_RelationTraitOrigin",
                 stableId = "trait_origin",
@@ -955,6 +1107,7 @@ namespace AquacultureFishing
                 symmetric = false,
                 metadataLimit = 8
             }, true);
+            return parent && breed && trait;
         }
 
         private static IReadOnlyList<KnowledgeFacetDef> BuildFacets()
@@ -999,15 +1152,15 @@ namespace AquacultureFishing
                 Claim("maximum_observed_mass", "size", KnowledgeClaimValueType.Float, KnowledgeClaimAggregation.Highest, KnowledgeClaimStalenessPolicy.Permanent),
                 Claim("diet", "feeding", KnowledgeClaimValueType.EnumId, KnowledgeClaimAggregation.MostSupported, KnowledgeClaimStalenessPolicy.Permanent),
                 Claim("schooling_behavior", "behavior", KnowledgeClaimValueType.EnumId, KnowledgeClaimAggregation.MostSupported, KnowledgeClaimStalenessPolicy.Permanent),
-                Claim("population_estimate", "population", KnowledgeClaimValueType.NumericRange, KnowledgeClaimAggregation.Latest, KnowledgeClaimStalenessPolicy.Contextual),
+                Claim("population_estimate", "population", KnowledgeClaimValueType.NumericRange, KnowledgeClaimAggregation.Latest, KnowledgeClaimStalenessPolicy.ConsumerManaged),
                 Claim("breeding_season", "breeding", KnowledgeClaimValueType.EnumId, KnowledgeClaimAggregation.MostSupported, KnowledgeClaimStalenessPolicy.Seasonal),
                 Claim("maturity_time", "breeding", KnowledgeClaimValueType.Float, KnowledgeClaimAggregation.WeightedMean, KnowledgeClaimStalenessPolicy.Permanent),
-                Claim("compatibility", "pond_compatibility", KnowledgeClaimValueType.EnumId, KnowledgeClaimAggregation.MostSupported, KnowledgeClaimStalenessPolicy.Contextual),
+                Claim("compatibility", "pond_compatibility", KnowledgeClaimValueType.EnumId, KnowledgeClaimAggregation.MostSupported, KnowledgeClaimStalenessPolicy.ConsumerManaged),
                 Claim("trait_expression", "traits", KnowledgeClaimValueType.SetOfIds, KnowledgeClaimAggregation.Union, KnowledgeClaimStalenessPolicy.Permanent),
                 Claim("food_demand", "feeding", KnowledgeClaimValueType.Float, KnowledgeClaimAggregation.WeightedMean, KnowledgeClaimStalenessPolicy.SlowlyStale),
                 Claim("stress_tolerance", "health", KnowledgeClaimValueType.Percentage, KnowledgeClaimAggregation.WeightedMean, KnowledgeClaimStalenessPolicy.Permanent),
-                Claim("health_status", "health", KnowledgeClaimValueType.EnumId, KnowledgeClaimAggregation.Latest, KnowledgeClaimStalenessPolicy.Contextual),
-                Claim("breeding_readiness", "breeding", KnowledgeClaimValueType.Percentage, KnowledgeClaimAggregation.Latest, KnowledgeClaimStalenessPolicy.Contextual),
+                Claim("health_status", "health", KnowledgeClaimValueType.EnumId, KnowledgeClaimAggregation.Latest, KnowledgeClaimStalenessPolicy.ConsumerManaged),
+                Claim("breeding_readiness", "breeding", KnowledgeClaimValueType.Percentage, KnowledgeClaimAggregation.Latest, KnowledgeClaimStalenessPolicy.ConsumerManaged),
                 Claim("generation", "breeding", KnowledgeClaimValueType.Integer, KnowledgeClaimAggregation.Highest, KnowledgeClaimStalenessPolicy.Permanent),
                 Claim("lineage_summary", "breeding", KnowledgeClaimValueType.SetOfIds, KnowledgeClaimAggregation.Union, KnowledgeClaimStalenessPolicy.Permanent)
             };
@@ -1053,7 +1206,6 @@ namespace AquacultureFishing
             {
                 defName = "AF_Archetype_" + id,
                 stableId = id,
-                categoryId = "aquaculture",
                 applicableFacetIds = facets.ToList(),
                 applicableClaimIds = ClaimIds.ToList()
             };
@@ -1206,15 +1358,16 @@ namespace AquacultureFishing
             migrating = true;
             try
             {
-                foreach (PawnFishingProgress progress in legacy.PawnProgress.Where(item => item?.pawn != null))
+                List<bool> imports = new List<bool>();
+                foreach (PawnFishingProgress progress in (legacy.PawnProgress ?? new List<PawnFishingProgress>()).Where(item => item?.pawn != null))
                 {
-                    foreach (KeyValuePair<string, float> pair in progress.speciesKnowledge.ToList())
+                    foreach (KeyValuePair<string, float> pair in (progress.speciesKnowledge ?? new Dictionary<string, float>()).ToList())
                     {
                         ThingDef fish = DefDatabase<ThingDef>.GetNamedSilentFail(pair.Key);
                         if (fish == null) continue;
                         EnsureSpeciesSubject(fish);
-                        float amount = Mathf.Clamp01(pair.Value) * 100f;
-                        KnowledgeMigrationService.Import(new KnowledgeConsumerMigration
+                        float amount = FiniteLegacyKnowledge(pair.Value) * 100f;
+                        imports.Add(KnowledgeMigrationService.Import(new KnowledgeConsumerMigration
                         {
                             consumerId = LegacyMigrationId + "/species/" + progress.pawn.thingIDNumber + "/" + fish.defName,
                             version = LegacyMigrationVersion,
@@ -1224,17 +1377,17 @@ namespace AquacultureFishing
                             personalKnowledge = amount,
                             colonyKnowledge = amount,
                             expertise = 0f
-                        });
+                        }));
                     }
-                    KnowledgeMigrationService.Import(new KnowledgeConsumerMigration
+                    imports.Add(KnowledgeMigrationService.Import(new KnowledgeConsumerMigration
                     {
                         consumerId = LegacyMigrationId + "/expertise/" + progress.pawn.thingIDNumber,
                         version = LegacyMigrationVersion,
                         domainId = DomainId,
                         subjectId = GlobalSubjectId,
                         pawn = progress.pawn,
-                        expertise = Mathf.Max(0f, progress.expertiseExperience)
-                    });
+                        expertise = FiniteLegacyKnowledge(progress.expertiseExperience)
+                    }));
                 }
                 List<KnowledgeMilestoneConditionSample> milestones = new List<KnowledgeMilestoneConditionSample>();
                 foreach (FishSpeciesJournalRecord record in journal?.SpeciesRecords ?? Enumerable.Empty<FishSpeciesJournalRecord>())
@@ -1253,7 +1406,8 @@ namespace AquacultureFishing
                 foreach (FishBreedRecord breed in journal?.Breeds ?? Enumerable.Empty<FishBreedRecord>())
                 {
                     EnsureBreedSubject(breed);
-                    subjects.Add(ResolveSubject(BreedSubjectId(breed.id)));
+                    KnowledgeSubjectRegistration subject = ResolveSubject(BreedSubjectId(breed.id));
+                    if (subject != null) subjects.Add(subject);
                     ThingDef fish = breed.FishDef;
                     if (fish != null)
                     {
@@ -1270,7 +1424,7 @@ namespace AquacultureFishing
                         });
                     }
                 }
-                KnowledgeMigrationService.Import(new KnowledgeConsumerMigration
+                imports.Add(KnowledgeMigrationService.Import(new KnowledgeConsumerMigration
                 {
                     consumerId = LegacyMigrationId,
                     version = LegacyMigrationVersion,
@@ -1279,14 +1433,40 @@ namespace AquacultureFishing
                     milestones = milestones,
                     subjects = subjects,
                     relations = relations
-                });
+                }));
+                if (!AquacultureKnowledgeContract.CanFinalizeMigration(imports,
+                    KnowledgeMigrationService.IsCommitted(LegacyMigrationId, LegacyMigrationVersion)))
+                    throw new InvalidOperationException("Knowledge Framework did not durably commit every legacy import.");
                 migrationChecked = true;
             }
             catch (Exception exception)
             {
-                Log.Warning("[Aquaculture - Fishing] V3 legacy migration deferred: " + exception.GetBaseException().Message);
+                Log.ErrorOnce("[Aquaculture - Fishing] V3 legacy migration deferred: " +
+                    exception.GetBaseException().Message, GenText.StableStringHash("AquacultureLegacyMigration"));
             }
             finally { migrating = false; }
+        }
+
+        private static void TryCommitBalancedAggregationMigration()
+        {
+            if (!FrameworkReady || KnowledgeMigrationService.IsCommitted(BalancedAggregationMigrationId,
+                BalancedAggregationMigrationVersion)) return;
+            bool imported = KnowledgeMigrationService.Import(new KnowledgeConsumerMigration
+            {
+                consumerId = BalancedAggregationMigrationId,
+                version = BalancedAggregationMigrationVersion,
+                domainId = DomainId,
+                subjectId = GlobalSubjectId
+            });
+            if (!imported || !KnowledgeMigrationService.IsCommitted(BalancedAggregationMigrationId,
+                BalancedAggregationMigrationVersion))
+                Log.ErrorOnce("[Aquaculture - Fishing] Balanced knowledge-stage migration will retry.",
+                    GenText.StableStringHash("AquacultureBalancedStageMigration"));
+        }
+
+        private static float FiniteLegacyKnowledge(float value)
+        {
+            return AquacultureKnowledgeContract.IsFiniteNonNegative(value) ? Mathf.Clamp01(value) : 0f;
         }
 
         private static void AddLegacyMilestone(List<KnowledgeMilestoneConditionSample> target, string subjectId, string milestoneId, bool met)
@@ -1323,6 +1503,11 @@ namespace AquacultureFishing
             }
         }
 
+        private sealed class GlobalContextResolver : IKnowledgeContextResolver
+        {
+            public KnowledgeContextKey Parent(KnowledgeContextKey context) => KnowledgeContextKey.Empty;
+        }
+
         private sealed class WaterBodyContextResolver : IKnowledgeContextResolver
         {
             public KnowledgeContextKey Parent(KnowledgeContextKey context)
@@ -1348,7 +1533,7 @@ namespace AquacultureFishing
             {
                 if (!TryMapCell(context, out Map map, out IntVec3 cell)) return KnowledgeContextKey.Empty;
                 PondWaterKind water = map.GetComponent<FishPondMapComponent>()?.WaterKindAt(cell) ?? PondWaterKind.Freshwater;
-                return new KnowledgeContextKey(ContextPondType, water.ToString());
+                return new KnowledgeContextKey(ContextPondType, map.uniqueID + ":" + water);
             }
         }
 
@@ -1356,7 +1541,9 @@ namespace AquacultureFishing
         {
             public KnowledgeContextKey Parent(KnowledgeContextKey context)
             {
-                Map map = Find.CurrentMap;
+                string mapPart = (context.stableId ?? string.Empty).Split(':').FirstOrDefault();
+                if (!int.TryParse(mapPart, out int mapId)) return KnowledgeContextKey.Empty;
+                Map map = MapById(mapId);
                 return map?.Biome == null ? KnowledgeContextKey.Empty : new KnowledgeContextKey(ContextBiome, map.Biome.defName);
             }
         }

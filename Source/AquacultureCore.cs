@@ -251,6 +251,7 @@ namespace AquacultureFishing
             base.PostSpawnSetup(respawningAfterLoad);
             RefreshAgeTrait();
             parent.Map.GetComponent<FishPondMapComponent>().Register(this);
+            AquacultureKnowledgeAdapter.TrackIndividual(this);
             AquacultureCommissionManager.NotifyFishSpawned(this);
             if (!respawningAfterLoad)
             {
@@ -264,6 +265,7 @@ namespace AquacultureFishing
         public override void PostDeSpawn(Map map, DestroyMode mode = DestroyMode.Vanish)
         {
             AquacultureCommissionManager.NotifyFishDespawned(this);
+            AquacultureKnowledgeAdapter.ForgetIndividual(this);
             map?.GetComponent<FishPondMapComponent>()?.Deregister(this);
             base.PostDeSpawn(map, mode);
         }
@@ -410,6 +412,7 @@ namespace AquacultureFishing
             if (!alive) return;
             AquacultureJournalComponent.Current?.NotifyFishRecord(this);
             alive = false;
+            AquacultureEventRouter.FishDied(this, "fish-death");
             AquacultureCommissionManager.NotifyFishChanged(this);
             airExposureTicks = 0f;
             nextBreedTick = 0;

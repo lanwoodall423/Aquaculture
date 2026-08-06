@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <Deterministic>true</Deterministic>
+    <DebugType>none</DebugType>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AssemblyName>DeferredReality.Aquaculture</AssemblyName>
+    <RootNamespace>DeferredReality.Aquaculture</RootNamespace>
+    <AquacultureRoot Condition="'$(AquacultureRoot)' == ''">$(MSBuildThisFileDirectory)..\..</AquacultureRoot>
+    <RimWorldRoot Condition="'$(RimWorldRoot)' == ''">$(AquacultureRoot)\..\..</RimWorldRoot>
+    <RimWorldManagedPath Condition="'$(RimWorldManagedPath)' == ''">$(RimWorldRoot)\RimWorldWin64_Data\Managed</RimWorldManagedPath>
+    <DeferredRealityRoot Condition="'$(DeferredRealityRoot)' == ''">$(AquacultureRoot)\..\DeferredRealityFramework</DeferredRealityRoot>
+    <DeferredRealityAssembly Condition="'$(DeferredRealityAssembly)' == ''">$(DeferredRealityRoot)\1.6\Assemblies\DeferredRealityFramework.dll</DeferredRealityAssembly>
+    <HarmonyPath Condition="'$(HarmonyPath)' == ''">$(RimWorldManagedPath)\0Harmony.dll</HarmonyPath>
+    <OutputPath>$(AquacultureRoot)\1.6\Assemblies\</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="DeferredRealityAquacultureProvider.cs" />
+    <Compile Include="DeferredRealityProviderRules.cs" />
+    <ProjectReference Include="..\AquacultureFishing.csproj" ReferenceOutputAssembly="true" />
+    <Reference Include="Assembly-CSharp" HintPath="$(RimWorldManagedPath)\Assembly-CSharp.dll" Private="false" />
+    <Reference Include="UnityEngine.CoreModule" HintPath="$(RimWorldManagedPath)\UnityEngine.CoreModule.dll" Private="false" />
+    <Reference Include="0Harmony" HintPath="$(HarmonyPath)" Private="false" />
+    <Reference Include="DeferredRealityFramework" HintPath="$(DeferredRealityAssembly)" Private="false" />
+  </ItemGroup>
+</Project>

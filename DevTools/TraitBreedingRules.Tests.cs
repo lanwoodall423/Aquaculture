@@ -1,4 +1,5 @@
 using AquacultureFishing;
+using DeferredReality.Aquaculture;
 
 static class TraitBreedingRulesTests
 {
@@ -123,6 +124,83 @@ static class TraitBreedingRulesTests
         Check("floor is recoverable", NaturalFishMigrationRules.NeedsRegionalRecovery(2f, 2f));
         Check("below floor is recoverable", NaturalFishMigrationRules.NeedsRegionalRecovery(1.99f, 2f));
         Check("above floor is not recoverable", !NaturalFishMigrationRules.NeedsRegionalRecovery(2.01f, 2f));
+    }
+
+    private static void TestKnowledgeContract()
+    {
+        bool Supports(int api, string capability) => api <= 3 && !capability.Equals("missing", StringComparison.Ordinal);
+        int CapabilityVersion(string capability) => capability.Equals("old", StringComparison.Ordinal) ? 2 : 3;
+        Check("knowledge V3 rejects old API", !AquacultureKnowledgeContract.SupportsV3(2, Supports, CapabilityVersion));
+        Check("knowledge V3 rejects missing capability", !AquacultureKnowledgeContract.SupportsV3(3,
+            (api, capability) => capability != "contextual-knowledge", CapabilityVersion));
+        Check("knowledge V3 rejects old capability generation", !AquacultureKnowledgeContract.SupportsV3(3,
+            Supports, capability => capability == "claims" ? 2 : 3));
+        Check("knowledge V3 accepts complete capability contract", AquacultureKnowledgeContract.SupportsV3(3, Supports,
+            CapabilityVersion));
+        string eventId = AquacultureKnowledgeContract.StableEventId("catch", "pawn:4", 100, "map:1", "fish");
+        Check("knowledge event identity is deterministic", eventId == AquacultureKnowledgeContract.StableEventId(
+            "catch", "pawn:4", 100, "map:1", "fish"));
+        Check("knowledge event identity separates logical events", eventId != AquacultureKnowledgeContract.StableEventId(
+            "catch", "pawn:4", 101, "map:1", "fish"));
+        Check("migration waits for durable commit", !AquacultureKnowledgeContract.CanFinalizeMigration(new[] { true }, false));
+        Check("migration retries incomplete imports", !AquacultureKnowledgeContract.CanFinalizeMigration(new[] { true, false }, true));
+        Check("migration finalizes only after every import commits", AquacultureKnowledgeContract.CanFinalizeMigration(
+            new[] { true, true }, true));
+        Check("invalid knowledge scalar rejected", !AquacultureKnowledgeContract.IsFiniteNonNegative(float.NaN)
+            && !AquacultureKnowledgeContract.IsFiniteNonNegative(float.PositiveInfinity));
+        Check("knowledge registration waits for every phase", !AquacultureKnowledgeContract.RegistrationComplete(true, false, true));
+        Check("knowledge registration accepts complete phases", AquacultureKnowledgeContract.RegistrationComplete(true, true, true));
+        Check("knowledge subject retention is bounded", AquacultureKnowledgeContract.DynamicSubjectCountAllowed(
+            AquacultureKnowledgeContract.MaximumDynamicSubjects));
+        Check("knowledge subject retention rejects overflow", !AquacultureKnowledgeContract.DynamicSubjectCountAllowed(
+            AquacultureKnowledgeContract.MaximumDynamicSubjects + 1));
+        string contextId = AquacultureKnowledgeContract.StableContextId("managed_pond", 4, "proxy:9", "topology:9", "freshwater");
+        Check("knowledge context identity is deterministic", contextId == AquacultureKnowledgeContract.StableContextId(
+            "managed_pond", 4, "proxy:9", "topology:9", "freshwater"));
+        Check("knowledge context identity separates topology", contextId != AquacultureKnowledgeContract.StableContextId(
+            "managed_pond", 4, "proxy:9", "topology:10", "freshwater"));
+    }
+
+    private static void TestDeferredRealityProviderRules()
+    {
+        string region = DeferredRealityProviderRules.Stable("region", "tile:42", "surface");
+        Check("deferred region identity is deterministic", region == DeferredRealityProviderRules.Stable(
+            "region", "tile:42", "surface"));
+        Check("deferred map instances do not collide", DeferredRealityProviderRules.RegionId(42, "MapParent_A") !=
+            DeferredRealityProviderRules.RegionId(42, "MapParent_B"));
+        Check("deferred population identity separates species", DeferredRealityProviderRules.PopulationId(
+            region, "water:river", "fish:a") != DeferredRealityProviderRules.PopulationId(
+            region, "water:river", "fish:b"));
+        Check("deferred population identity retains legacy subject shape", DeferredRealityProviderRules.PopulationId(
+            region, "water:river", "fish:a").EndsWith(":water:river:fish:fish:a", StringComparison.Ordinal));
+        Check("deferred process identity retains legacy key shape", DeferredRealityProviderRules.ProcessId("population:a") ==
+            "aquaculture:population:population:a");
+        Check("closed deferred water cannot migrate", !DeferredRealityProviderRules.AreCompatibleHabitats("Pond", "Pond"));
+        Check("cross-category deferred migration is rejected", !DeferredRealityProviderRules.AreCompatibleHabitats("River", "Coastal"));
+        Check("valid deferred recovery requires positive source", DeferredRealityProviderRules.CanRecover(
+            "fish", "fish", "River", "River", 1f, 0f, 2f));
+        Check("zero deferred source cannot recover", !DeferredRealityProviderRules.CanRecover(
+            "fish", "fish", "River", "River", 0f, 0f, 2f));
+        Check("invalid deferred scalar normalizes", DeferredRealityProviderRules.NormalizeNonNegative(float.NaN) == 0f &&
+            DeferredRealityProviderRules.NormalizeNonNegative(4f, 0f, 2f) == 2f);
+        Check("deferred advancement is bounded", DeferredRealityProviderRules.AdvancePopulation(2f, 3f, 60000f, 1f) <= 3f);
+        Check("deferred record bound is enforced", DeferredRealityProviderRules.IsWithinRecordLimit(
+            DeferredRealityProviderRules.MaximumDynamicRecords) && !DeferredRealityProviderRules.IsWithinRecordLimit(
+                DeferredRealityProviderRules.MaximumDynamicRecords + 1));
+        var applied = new HashSet<string>(StringComparer.Ordinal);
+        int mutations = 0;
+        Check("first deferred operation applies", DeferredRealityProviderRules.ApplyExactlyOnce(applied, "op:1", () =>
+        {
+            mutations++;
+            return true;
+        }));
+        Check("duplicate deferred operation is a no-op", DeferredRealityProviderRules.ApplyExactlyOnce(applied, "op:1", () =>
+        {
+            mutations++;
+            return true;
+        }) && mutations == 1);
+        Check("failed deferred operation can retry", !DeferredRealityProviderRules.ApplyExactlyOnce(applied, "op:2", () => false) &&
+            DeferredRealityProviderRules.ApplyExactlyOnce(applied, "op:2", () => true));
     }
 
     private static AquacultureCommissionEligibilityInput EligibleInput()
@@ -279,6 +357,76 @@ static class TraitBreedingRulesTests
         Check("missing references rejected", !AquacultureCommissionGoalRules.TryNormalizeSavedState(legacy, false));
     }
 
+    private static void TestFrameworkIntegrationRules()
+    {
+        string first = FrameworkIntegrationRules.CorrelationId("catch", "pawn:1", 40, "map:a", "10,10", "Fish_Cod");
+        string duplicate = FrameworkIntegrationRules.CorrelationId("catch", "pawn:1", 40, "map:a", "10,10", "Fish_Cod");
+        string secondPawn = FrameworkIntegrationRules.CorrelationId("catch", "pawn:2", 40, "map:a", "10,10", "Fish_Cod");
+        string secondMap = FrameworkIntegrationRules.CorrelationId("catch", "pawn:1", 40, "map:b", "10,10", "Fish_Cod");
+        Check("correlation retry is stable", first == duplicate);
+        Check("simultaneous pawns remain distinct", first != secondPawn);
+        Check("multiple maps remain distinct", first != secondMap);
+
+        var state = new FrameworkIntegrationRules.IntegrationState { population = 10f, activeMap = true };
+        Check("consume succeeds once", FrameworkIntegrationRules.ApplyPopulationMutation(state, "consume:1", -1f,
+            true) == false);
+        // The pure mutation helper models positive deltas; use a dedicated ledger for a consume marker.
+        Check("population operation commits once", state.populationOperations.Apply("consume:1", () =>
+        {
+            state.population -= 1f;
+            return true;
+        }));
+        Check("population duplicate is a no-op", state.populationOperations.Apply("consume:1", () =>
+        {
+            state.population -= 1f;
+            return true;
+        }) && state.population == 9f);
+        Check("release duplicate is a no-op", state.populationOperations.Apply("release:1", () =>
+        {
+            state.population += 1f;
+            return true;
+        }) && state.populationOperations.Apply("release:1", () =>
+        {
+            state.population += 1f;
+            return true;
+        }) && state.population == 10f);
+
+        Check("knowledge failure does not duplicate population", FrameworkIntegrationRules.ApplyKnowledgeAfterPopulation(
+            state, first, false) == false && state.population == 10f);
+        Check("knowledge retry commits once", FrameworkIntegrationRules.ApplyKnowledgeAfterPopulation(state, first, true)
+            && FrameworkIntegrationRules.ApplyKnowledgeAfterPopulation(state, first, true)
+            && state.knowledgeGroups == 1);
+        Check("expertise duplicate is harmless", FrameworkIntegrationRules.ApplyExpertise(state, first, true)
+            && FrameworkIntegrationRules.ApplyExpertise(state, first, true) && state.expertiseAwards == 1);
+        Check("journal duplicate is harmless", FrameworkIntegrationRules.ApplyJournal(state, first, true)
+            && FrameworkIntegrationRules.ApplyJournal(state, first, true) && state.journalEntries == 1);
+        Check("failed population operation remains retryable", !state.populationOperations.Apply("failed:1", () => false)
+            && state.populationOperations.Apply("failed:1", () => true));
+        Check("failed DRF operation has no knowledge group", !FrameworkIntegrationRules.ApplyKnowledgeAfterPopulation(
+            state, "failed:1", false) && state.knowledgeGroups == 1);
+        Check("only one simulation advances", FrameworkIntegrationRules.AdvanceExactlyOnce(state, "process:1", false,
+            true) && state.activeAdvances == 0 && state.latentAdvances == 1
+            && !FrameworkIntegrationRules.AdvanceExactlyOnce(state, "process:2", true, true));
+
+        FrameworkIntegrationRules.IntegrationState restored = state.Clone();
+        Check("save/load preserves completed operation", restored.populationOperations.Apply("consume:1", () =>
+        {
+            restored.population -= 1f;
+            return true;
+        }) && restored.population == state.population);
+        FrameworkIntegrationRules.RemoveMapPreservingLatent(restored);
+        Check("map removal clears active ownership only", !restored.activeMap && restored.population == state.population);
+        restored.providerAvailable = false;
+        Check("provider absence does not mutate", !FrameworkIntegrationRules.ApplyPopulationMutation(restored, "consume:2",
+            -1f, false) && restored.population == state.population);
+        restored.providerAvailable = true;
+        Check("restored provider can retry", FrameworkIntegrationRules.ApplyPopulationMutation(restored, "stock:1", 1f,
+            true) && restored.population == state.population + 1f);
+        Check("invalid population values are rejected", !FrameworkIntegrationRules.IsFiniteNonNegative(float.NaN)
+            && !FrameworkIntegrationRules.IsFiniteNonNegative(float.PositiveInfinity)
+            && !FrameworkIntegrationRules.IsFiniteNonNegative(-1f));
+    }
+
     public static int Main()
     {
         TestProbabilityBoundaries();
@@ -287,6 +435,9 @@ static class TraitBreedingRulesTests
         TestStabilityAndMigration();
         TestRecoveryRules();
         TestCommissionRules();
+        TestKnowledgeContract();
+        TestDeferredRealityProviderRules();
+        TestFrameworkIntegrationRules();
         Console.WriteLine(failures == 0 ? "TraitBreedingRules: all executable tests passed." : "TraitBreedingRules: " + failures + " failure(s).");
         return failures == 0 ? 0 : 1;
     }

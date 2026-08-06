@@ -185,3 +185,14 @@ The final release boundary, evidence status, isolated startup results, and prior
 ## Trait Breeding Rules (Executable)
 
 Run `dotnet build DevTools\TraitBreedingRules.Tests.csproj --configuration Release` followed by `dotnet run --project DevTools\TraitBreedingRules.Tests.csproj --configuration Release --no-build`. The dependency-free executable covers zero/full boundary probabilities, independent parental-union rolls, dual-parent advantage, post-roll caps, incompatible and empty pools, separate mutations, outlier weights, registered-breed reliability, matching/failed qualifying-birth success rates, restrained generation contribution, stability, legacy setting migration, legacy stability preservation, and closed/same-category/positive-source recovery rules. Run `DevTools\Test-AquacultureLocalization.ps1` to check duplicate keys and every source-referenced Aquaculture key in each supported language file. RimWorld runtime tests remain required for Def loading, save/load, journal event routing, UI localization, and breeding in an actual pond.
+Knowledge Framework hardening is covered by the same executable: V3 API/capability gating, stable logical event IDs, migration commit requirements, finite-value rejection, and deterministic identity checks. Framework-specific validation must additionally run `KnowledgeFramework\DevTools\Run-KnowledgeFrameworkBehavioralTests.ps1 -SkipBuild` from the installed framework checkout. Runtime cases must verify partial registration retry, one personal/colony transaction per logical event, duplicate event suppression, context parent/global fallback, migration retry after a rejected import, bounded dynamic subjects, and no whole-map parent lookup under large colonies.
+## Deferred Reality Provider
+
+Run `DevTools\Build-DeferredRealityProvider.ps1` with the installed DRF and
+Harmony paths. Verify the manifest hash and provider schema, then run the DRF
+pure/integrity suite. In an isolated RimWorld savedata folder, verify map
+activation/deactivation, latent population preservation, duplicate catch and
+stocking events, closed/cross-category migration rejection, provider removal
+and restoration, old-save migration, long elapsed time, and multiple maps and
+species. A failed DRF registration must leave the legacy natural-population
+tick active rather than running both authorities.

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using RimWorld;
 using UnityEngine;
@@ -13,7 +14,9 @@ namespace AquacultureFishing
         FishingPhase,
         FishHooked,
         FishCaught,
+        FishStocked,
         FishEscaped,
+        FishDied,
         FishEstablished,
         FishObserved,
         FishFed,
@@ -41,6 +44,7 @@ namespace AquacultureFishing
         public string phase;
         public string reason;
         public string source;
+        public string logicalEventId;
         public float progress;
         public float value;
         public int generation;
@@ -91,6 +95,8 @@ namespace AquacultureFishing
                 map = map,
                 cell = cell,
                 source = source,
+                logicalEventId = AquacultureKnowledgeContract.StableEventId("fishing-started",
+                    pawn?.thingIDNumber.ToString(), CurrentTick(), StableMapIdentity(map), cell.ToString()),
                 value = ++sequence
             });
         }
@@ -105,7 +111,9 @@ namespace AquacultureFishing
                 cell = cell,
                 phase = phase,
                 progress = Mathf.Clamp01(progress),
-                source = "fishing"
+                source = "fishing",
+                logicalEventId = AquacultureKnowledgeContract.StableEventId("fishing-phase",
+                    pawn?.thingIDNumber.ToString(), CurrentTick(), StableMapIdentity(map), phase)
             });
         }
 
@@ -120,7 +128,8 @@ namespace AquacultureFishing
                 fishDef = attempt?.FishDef,
                 attempt = attempt,
                 success = attempt?.fishBit == true,
-                source = attempt?.framework
+                source = attempt?.framework,
+                logicalEventId = AttemptEventId("fish-hooked", attempt, null)
             });
         }
 
@@ -137,7 +146,26 @@ namespace AquacultureFishing
                 attempt = attempt,
                 success = true,
                 source = attempt?.framework,
-                traits = fish?.traitDefNames?.ToList() ?? attempt?.hookedTraitNames?.ToList()
+                traits = fish?.traitDefNames?.ToList() ?? attempt?.hookedTraitNames?.ToList(),
+                logicalEventId = AttemptEventId("fish-caught", attempt, fish)
+            });
+        }
+
+        public static void FishStocked(Map map, IntVec3 cell, ThingDef fishDef, float amount, float resultingPopulation,
+            string logicalEventId = null)
+        {
+            Publish(new AquacultureEvent
+            {
+                kind = AquacultureEventKind.FishStocked,
+                map = map,
+                cell = cell,
+                fishDef = fishDef,
+                progress = Mathf.Max(0f, amount),
+                value = Mathf.Max(0f, resultingPopulation),
+                source = "natural-population",
+                logicalEventId = logicalEventId ?? AquacultureKnowledgeContract.StableEventId("fish-stocked",
+                    fishDef?.defName, CurrentTick(), StableMapIdentity(map), cell.ToString() + ":" +
+                    resultingPopulation.ToString("R", CultureInfo.InvariantCulture))
             });
         }
 
@@ -152,8 +180,29 @@ namespace AquacultureFishing
                 fishDef = attempt?.FishDef,
                 attempt = attempt,
                 reason = reason,
-                source = attempt?.framework
+                source = attempt?.framework,
+                logicalEventId = AttemptEventId("fish-escaped", attempt, null)
             });
+        }
+
+        public static void FishDied(CompFishTraits fish, string reason)
+        {
+            Publish(new AquacultureEvent
+            {
+                kind = AquacultureEventKind.FishDied,
+                map = fish?.parent?.Map,
+                cell = fish?.parent?.Position ?? IntVec3.Invalid,
+                fishDef = fish?.parent?.def,
+                fish = fish,
+                reason = reason,
+                source = "aquaculture",
+                logicalEventId = FishEventId("fish-died", fish, null, reason)
+            });
+        }
+
+        public static string CatchEventId(FishingAttemptRecord attempt)
+        {
+            return AttemptEventId("fish-caught", attempt, null);
         }
 
         public static void FishEstablished(CompFishTraits fish)
@@ -165,7 +214,8 @@ namespace AquacultureFishing
                 cell = fish?.parent?.Position ?? IntVec3.Invalid,
                 fishDef = fish?.parent?.def,
                 fish = fish,
-                source = "pond"
+                source = "pond",
+                logicalEventId = FishEventId("fish-established", fish, null, null)
             });
         }
 
@@ -180,7 +230,8 @@ namespace AquacultureFishing
                 fish = fish,
                 generation = fish?.breedGeneration ?? 0,
                 source = "breeding",
-                traits = fish?.traitDefNames?.ToList()
+                traits = fish?.traitDefNames?.ToList(),
+                logicalEventId = FishEventId("colony-born", fish, null, fish?.breedGeneration.ToString())
             });
         }
 
@@ -197,7 +248,8 @@ namespace AquacultureFishing
                 secondFish = second,
                 generation = child?.breedGeneration ?? Mathf.Max(first?.breedGeneration ?? 0, second?.breedGeneration ?? 0) + 1,
                 source = "breeding",
-                traits = child?.traitDefNames?.ToList()
+                traits = child?.traitDefNames?.ToList(),
+                logicalEventId = FishEventId("fish-bred", child ?? first, first, second?.parent?.thingIDNumber.ToString())
             });
         }
 
@@ -214,7 +266,8 @@ namespace AquacultureFishing
                 phase = method,
                 reason = reason,
                 source = "observation",
-                traits = fish?.traitDefNames?.ToList()
+                traits = fish?.traitDefNames?.ToList(),
+                logicalEventId = FishEventId("fish-observed", fish, null, method, true)
             });
         }
 
@@ -230,7 +283,8 @@ namespace AquacultureFishing
                 fish = fish,
                 reason = trait,
                 source = "trait-observation",
-                traits = fish?.traitDefNames?.ToList()
+                traits = fish?.traitDefNames?.ToList(),
+                logicalEventId = FishEventId("trait-observed", fish, null, trait)
             });
         }
 
@@ -247,8 +301,34 @@ namespace AquacultureFishing
                 fishDef = fishDef,
                 value = value,
                 reason = reason,
-                source = "ecology"
+                source = "ecology",
+                logicalEventId = AquacultureKnowledgeContract.StableEventId(kind.ToString(), fishDef?.defName,
+                    CurrentTick(), StableMapIdentity(map), cell + ":" + reason)
             });
+        }
+
+        private static int CurrentTick() => Find.TickManager?.TicksGame ?? 0;
+
+        private static string AttemptEventId(string kind, FishingAttemptRecord attempt, CompFishTraits fish)
+        {
+            return AquacultureKnowledgeContract.StableEventId(kind,
+                attempt?.pawn?.thingIDNumber.ToString() ?? fish?.parent?.thingIDNumber.ToString(),
+                attempt?.startedTick ?? CurrentTick(), StableMapIdentity(attempt?.pawn?.Map),
+                attempt?.waterCell.ToString() + ":" +
+                (attempt?.FishDef?.defName ?? fish?.parent?.def?.defName));
+        }
+
+        private static string FishEventId(string kind, CompFishTraits fish, CompFishTraits other, string detail,
+            bool includeCurrentTick = false)
+        {
+            return AquacultureKnowledgeContract.StableEventId(kind, fish?.parent?.thingIDNumber.ToString(),
+                includeCurrentTick ? CurrentTick() : fish?.birthTick ?? 0, StableMapIdentity(fish?.parent?.Map),
+                (other?.parent?.thingIDNumber.ToString() ?? string.Empty) + ":" + detail);
+        }
+
+        private static string StableMapIdentity(Map map)
+        {
+            return map?.Parent?.GetUniqueLoadID() ?? (map == null ? "map:none" : "tile:" + map.Tile);
         }
     }
 

@@ -92,3 +92,14 @@ Species receive inferred ecology and economy profiles covering food demand, spee
 When RimWorld Dev Bridge is loaded, Aquaculture exposes read-only commands for compact summaries, pond and fish inspection, species aggregates, active settings, scheduler scale, and state validation. The integration is reflection-discovered and does not make the bridge a dependency.
 
 Runtime Def changes are now scoped. Recognized fish retain only the Def-backed state required for individual lifecycle, rendering, stats, and save behavior. Food provenance is attached to relevant recipe output Things instead of every ingestible Def, while a temporary load-only compatibility pass preserves old serialized food components. Vanilla foods, unrelated modded ingestibles, storage, trade, and unrelated recipes are not modified.
+
+Knowledge Framework compatibility is explicit: Aquaculture targets `lan.knowledgeframework` API generation 3 with capability generation 3, registers Balanced stage aggregation, uses stable domain/context/subject/event IDs, commits migrations only after durable success, and falls back to the existing legacy expertise path when the V3 capability contract is unavailable. Personal and colony evidence from one logical event is submitted as one transaction, and dynamic individual subjects are bounded and resolved through the fish lifecycle registry.
+### Deferred Reality
+
+The natural-water Deferred Reality provider is now source-controlled and built
+as a deterministic compatibility artifact. It keeps active Things and ponds in
+Aquaculture, latent aggregate populations and exactly-once regional operations
+in Deferred Reality, and observations in Knowledge Framework. Closed water and
+cross-category migration are rejected, provider migration is retry-safe, and
+missing or incompatible Deferred Reality content fails closed to the legacy
+simulation. See `About/DEFERRED_REALITY_INTEGRATION.md` for the contract.

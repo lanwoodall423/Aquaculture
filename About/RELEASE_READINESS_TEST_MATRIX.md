@@ -14,6 +14,7 @@ This is the final validation boundary for Aquaculture on RimWorld 1.6. It separa
 | XML and Def startup, additional fish pack | Verified in RimWorld with environment caveat | Add the installed additional fish pack with and without Fishing Treasures. | Aquaculture reports no errors. The tested fish-pack environment produced unrelated Alpha Animals/VFE dependency errors and is not a clean compatibility result. |
 | Normal user configuration | Verified in RimWorld with environment caveat | Do not modify the normal configuration. Run the existing definition smoke test only. | Aquaculture produced zero definition errors; the normal list had an unrelated missing `VFET_ResearchSpot` reference from Progression Warrants. |
 | Localization keys and raw key detection | Verified automatically | Run `DevTools/Test-AquacultureLocalization.ps1`. | Every source-referenced key exists in each supported language, with no duplicate keys. Latest result: 1 language and 279 keys. |
+| Knowledge Framework contract | Verified automatically; Requires manual RimWorld validation | Run the pure contract tests and the Knowledge Framework behavioral harness. In an isolated game, exercise registration retry, event duplication, context fallback, migration retry, and dynamic-subject limits. | API/capability gating uses generation 3, Balanced aggregation is explicit, one logical event produces one transaction, migration commits durably before cleanup, and registration/context/relation failures retry without partial readiness. |
 | New-game settings defaults | Requires manual RimWorld validation | Start a fresh temporary colony, open mod settings, inspect trait, pond, fishing, rod, commission, and conservation defaults, then save and reload. | Defaults match the documented values; no legacy migration path overwrites new-game defaults. Failure evidence is the settings screen and `Player.log`. |
 | Legacy settings migration | Verified automatically; Requires manual RimWorld validation | Use an old save containing `globalMutationRate`, `maxMutations`, and earlier capacity/settings fields. Load in an isolated folder. | Legacy values map once to wild exceptional chance and inherited cap; current values remain stable after a second save/load. Capture before/after settings and log errors. |
 | Fish, breeds, histories, provenance | Requires manual RimWorld validation | Load a copy of a save containing fish traits, registered breeds, breed histories, commissions, food provenance, rods, and journal records. | Fish, traits, generations, breed evidence, provenance, journal entries, and rod state remain present and usable. Capture save-load log and representative inspect panels. |
@@ -43,8 +44,9 @@ This is the final validation boundary for Aquaculture on RimWorld 1.6. It separa
 
 ## Automated Evidence Collected
 
-- Gameplay Release build succeeded after a clean; five existing Knowledge Framework deprecation warnings remain in `AquacultureKnowledgeAdapter.cs`.
+- Gameplay Release build succeeded after a clean with zero warnings and zero errors; the obsolete Knowledge Framework staleness/category APIs were removed from the adapter.
 - Trait/recovery/commission executable tests passed sequentially.
+- Knowledge Framework behavioral harness passed 29 production pure checks and all public API baseline/regression audits; game-state and manual-UI layers were unavailable without an active game/map.
 - Bridge adapter Release build succeeded.
 - Fishing rod verification passed 34 checks; fishing expertise verification passed 16 checks.
 - Natural population, pond, processing, Def-mutation, and visual regression scripts passed after updating two stale contracts: the conservation script now checks pre-bite warnings, and the migration script reads the extracted recovery-rule file.
@@ -54,3 +56,23 @@ This is the final validation boundary for Aquaculture on RimWorld 1.6. It separa
 ## Release Gate
 
 Do not call the mod release-ready until the `Requires manual RimWorld validation` cases have been run on a controlled map and the visual-art blocker is resolved or explicitly accepted by the project owner. Startup success proves XML/Def loading only; it does not prove save migration, gameplay behavior, UI clarity, performance under load, delivery semantics, or visual integration.
+## Deferred Reality Provider
+
+Automated provider-rule and DRF behavioral tests cover deterministic IDs,
+finite normalization, exact-once duplicate/retry behavior, schema/API
+registration, and population mutation rollback. Provider Release build and
+manifest/hash validation are automated. RimWorld map activation/deactivation,
+active-to-latent reconciliation, provider removal/restoration, old-save
+migration, long elapsed simulation, and multi-map population projection remain
+manual runtime cases unless an isolated live bridge is available.
+
+## Framework End-to-End Evidence
+
+| Area | Status | Evidence boundary |
+| --- | --- | --- |
+| Correlation IDs and exactly-once invariants | Verified automatically | `FrameworkIntegrationRules` executable tests cover distinct pawns/maps/events, duplicate population/Knowledge/expertise/journal operations, failed-operation retry, save restoration, provider absence/restoration, map ownership removal, and finite/nonnegative state. |
+| Cross-framework event routing | Requires manual RimWorld validation | Static routing covers hooked/caught/escaped/stocked/born/died/survey/ecology events and DRF latent migration. A live map must verify one operation group and one Knowledge group at each boundary. |
+| Failure injection ordering | Requires manual RimWorld validation | The pure ledger models before/after mutation and retry behavior. Live exception injection before/after DRF and Knowledge commit still requires a diagnostic bridge session. |
+| Save/load and provider restoration | Requires manual RimWorld validation | Durable IDs, ledgers, migration markers, and opaque-provider behavior are covered by contracts; an old provider-state save and restored-provider load have not been exercised. |
+| Multiple maps and long run | Requires manual RimWorld validation | Deterministic map/region IDs and bounded ledgers are tested; no controlled multi-map elapsed simulation has been completed. |
+| Dev Bridge diagnostic report | Blocked, with reason | `AQUA_DEFERRED_REALITY` is implemented and the adapter builds, but Dev Bridge discovery was unavailable, so no live command report was collected. |

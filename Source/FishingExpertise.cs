@@ -208,6 +208,8 @@ namespace AquacultureFishing
     {
         private List<PawnFishingProgress> pawnProgress = new List<PawnFishingProgress>();
         private List<FishingAttemptRecord> attempts = new List<FishingAttemptRecord>();
+        private List<string> completedCatchEventIds = new List<string>();
+        private const int CompletedCatchRetention = 4096;
 
         public FishingProgressionComponent(Game game) { }
 
@@ -218,10 +220,16 @@ namespace AquacultureFishing
         {
             Scribe_Collections.Look(ref pawnProgress, "aquacultureFishingProgression", LookMode.Deep);
             Scribe_Collections.Look(ref attempts, "aquacultureFishingAttempts", LookMode.Deep);
+            Scribe_Collections.Look(ref completedCatchEventIds, "aquacultureFishingCompletedCatchEvents", LookMode.Value);
             if (pawnProgress == null) pawnProgress = new List<PawnFishingProgress>();
             if (attempts == null) attempts = new List<FishingAttemptRecord>();
+            if (completedCatchEventIds == null) completedCatchEventIds = new List<string>();
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
             {
+                List<string> validCatchEvents = completedCatchEventIds.Where(id => !id.NullOrEmpty())
+                    .Distinct(StringComparer.Ordinal).ToList();
+                completedCatchEventIds = validCatchEvents.Skip(Math.Max(0, validCatchEvents.Count - CompletedCatchRetention))
+                    .ToList();
                 pawnProgress.RemoveAll(record => record?.pawn == null);
                 attempts.RemoveAll(record => record?.pawn == null || record.framework.NullOrEmpty() ||
                     (record.FishDef == null && (!record.biteDecided || record.fishBit)));
@@ -333,16 +341,32 @@ namespace AquacultureFishing
         public void Complete(FishingAttemptRecord attempt)
         {
             if (attempt?.pawn == null || attempt.FishDef == null) return;
+            string logicalEventId = AquacultureEventRouter.CatchEventId(attempt);
+            if (completedCatchEventIds.Contains(logicalEventId))
+            {
+                attempts.Remove(attempt);
+                return;
+            }
+            attempt.pawn.Map?.GetComponent<NaturalFishPopulationMapComponent>()?.ConsumeCatch(attempt.waterCell,
+                attempt.FishDef, 1f, logicalEventId);
+            RememberCompletedCatch(logicalEventId);
             PawnFishingProgress progress = ProgressFor(attempt.pawn);
             float knowledge = progress.speciesKnowledge.TryGetValue(attempt.fishDefName, out float legacyKnowledge)
                 ? Mathf.Clamp01(legacyKnowledge) : 0f;
             progress.speciesKnowledge[attempt.fishDefName] = Mathf.Clamp01(knowledge + 0.08f + (1f - knowledge) * 0.04f);
             KnowledgeRank required = AquacultureMod.Settings?.MinimumExpertiseFor(attempt.FishDef) ?? KnowledgeRank.Novice;
             progress.expertiseExperience += 8f + (int)required * 2f + (1f - knowledge) * 4f;
-            attempt.pawn.Map?.GetComponent<NaturalFishPopulationMapComponent>()?.ConsumeCatch(attempt.waterCell, attempt.FishDef);
             attempts.Remove(attempt);
             AquacultureEventRouter.FishCaught(attempt);
             AquacultureKnowledgeAdapter.Invalidate(attempt.pawn);
+        }
+
+        private void RememberCompletedCatch(string logicalEventId)
+        {
+            if (logicalEventId.NullOrEmpty() || completedCatchEventIds.Contains(logicalEventId)) return;
+            completedCatchEventIds.Add(logicalEventId);
+            if (completedCatchEventIds.Count > CompletedCatchRetention)
+                completedCatchEventIds.RemoveRange(0, completedCatchEventIds.Count - CompletedCatchRetention);
         }
     }
 

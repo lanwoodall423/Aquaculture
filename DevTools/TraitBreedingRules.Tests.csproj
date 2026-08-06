@@ -12,5 +12,8 @@
     <Compile Include="..\Source\TraitBreedingRules.cs" Link="TraitBreedingRules.cs" />
     <Compile Include="..\Source\NaturalFishRecoveryRules.cs" Link="NaturalFishRecoveryRules.cs" />
     <Compile Include="..\Source\AquacultureCommissionRules.cs" Link="AquacultureCommissionRules.cs" />
+    <Compile Include="..\Source\FrameworkIntegrationRules.cs" Link="FrameworkIntegrationRules.cs" />
+    <Compile Include="..\Source\AquacultureKnowledgeContract.cs" Link="AquacultureKnowledgeContract.cs" />
+    <Compile Include="..\Source\DeferredRealityProvider\DeferredRealityProviderRules.cs" Link="DeferredRealityProviderRules.cs" />
   </ItemGroup>
 </Project>

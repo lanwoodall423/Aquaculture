@@ -1,0 +1,24 @@
+﻿{
+    "schema":  1,
+    "providerId":  "lan.aquaculture.natural-water",
+    "assemblyName":  "DeferredReality.Aquaculture",
+    "assemblyVersion":  "1.0.0.0",
+    "sourceCommit":  "cb827e494f7a3ef7f0b2ff37d267bb10fda4aa77",
+    "sourceDirty":  true,
+    "sha256":  "D0D052AB74FD1D20FE2D2F47B6DFD2BAB733F258D4CBEB65896D05A6FB0C8D2D",
+    "semanticApiVersion":  2,
+    "providerSchemaVersion":  2,
+    "deferredRealitySaveSchema":  5,
+    "capabilities":  [
+                         "Regions",
+                         "Populations",
+                         "Processes",
+                         "Anchors",
+                         "Diagnostics"
+                     ],
+    "operationRetentionTicks":  -1,
+    "compactableOperationKinds":  [
+
+                                  ],
+    "exactlyOnceSequenceDomain":  "natural-water-population"
+}

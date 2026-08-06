@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using RimWorld;
@@ -304,6 +305,9 @@ namespace AquacultureFishing
             new Dictionary<NaturalWaterPopulation, NaturalFishPopulationSummary>();
         private readonly List<NaturalWaterViewSnapshot> preparedViews = new List<NaturalWaterViewSnapshot>();
         private readonly HashSet<string> conservationWarningKeys = new HashSet<string>();
+        private List<string> completedPopulationEventIds = new List<string>();
+        private long stockingEventSequence;
+        private const int CompletedEventRetention = 4096;
         private bool preparedViewsDirty = true;
         private int nextBalanceTick;
         private int topologyRebuildTick;
@@ -314,14 +318,21 @@ namespace AquacultureFishing
         // Read-only integration surface for optional Deferred Reality natural-water ownership.
         public Map ActiveMap => map;
         public IReadOnlyList<NaturalWaterPopulation> Populations => populations;
+        public bool IsInitializedForDeferredReality => initializedAllBodies;
 
         public override void ExposeData()
         {
             base.ExposeData();
             Scribe_Collections.Look(ref populations, "aquacultureNaturalFishPopulations", LookMode.Deep);
+            Scribe_Collections.Look(ref completedPopulationEventIds, "aquacultureNaturalStockingEvents", LookMode.Value);
+            Scribe_Values.Look(ref stockingEventSequence, "aquacultureNaturalStockingSequence", 0L);
             if (populations == null) populations = new List<NaturalWaterPopulation>();
+            if (completedPopulationEventIds == null) completedPopulationEventIds = new List<string>();
             if (Scribe.mode == LoadSaveMode.PostLoadInit)
             {
+                completedPopulationEventIds = completedPopulationEventIds.Where(id => !id.NullOrEmpty())
+                    .Distinct(StringComparer.Ordinal).ToList();
+                stockingEventSequence = Math.Max(0L, stockingEventSequence);
                 populations.RemoveAll(record => record == null || !record.anchor.IsValid);
                 populationByCell.Clear();
                 summaryByPopulation.Clear();
@@ -567,8 +578,23 @@ namespace AquacultureFishing
             return record.species.Any(item => item.FishDef == fishDef && item.population >= 0.5f);
         }
 
-        public void ConsumeCatch(IntVec3 cell, ThingDef fishDef, float amount = 1f)
+        public void NotifyDeferredRealityProjection()
         {
+            for (int i = 0; i < populations.Count; i++)
+            {
+                NaturalWaterPopulation record = populations[i];
+                if (record == null) continue;
+                RefreshSummary(record);
+                SynchronizeWaterBody(map.waterBodyTracker?.WaterBodyAt(record.anchor), record);
+            }
+            RefreshMigrationSummaries();
+            preparedViewsDirty = true;
+            AquacultureSnapshotCache.Invalidate();
+        }
+
+        public void ConsumeCatch(IntVec3 cell, ThingDef fishDef, float amount = 1f, string logicalEventId = null)
+        {
+            if (!logicalEventId.NullOrEmpty() && completedPopulationEventIds.Contains("catch:" + logicalEventId)) return;
             NaturalWaterPopulation record = PreparedRecordAt(cell) ?? PopulationAt(cell);
             NaturalFishSpeciesPopulation speciesRecord = record?.species.FirstOrDefault(item => item.FishDef == fishDef);
             if (speciesRecord == null) return;
@@ -577,12 +603,18 @@ namespace AquacultureFishing
             RefreshMigrationSummaries();
             WaterBody body = map.waterBodyTracker?.WaterBodyAt(cell);
             SynchronizeWaterBody(body, record);
+            if (!logicalEventId.NullOrEmpty()) RememberCompletedEvent("catch:" + logicalEventId);
         }
 
-        public bool IntroduceFish(IntVec3 cell, ThingDef fishDef, float amount = 1f)
+        public bool IntroduceFish(IntVec3 cell, ThingDef fishDef, float amount = 1f, string logicalEventId = null)
         {
             NaturalWaterPopulation record = PreparedRecordAt(cell) ?? PopulationAt(cell);
             if (record == null || fishDef == null || !FishUtility.IsFish(fishDef) || amount <= 0f) return false;
+            if (logicalEventId.NullOrEmpty())
+                logicalEventId = AquacultureKnowledgeContract.StableEventId("fish-stocked", fishDef.defName,
+                    Find.TickManager?.TicksGame ?? 0, map.Parent?.GetUniqueLoadID() ?? map.Tile.ToString(),
+                    cell + ":" + (++stockingEventSequence).ToString(CultureInfo.InvariantCulture));
+            if (completedPopulationEventIds.Contains("stocking:" + logicalEventId)) return true;
             float temperature = GenTemperature.GetTemperatureForCell(record.anchor, map);
             Season season = NormalizeSeason(GenLocalDate.Season(map));
             if (!Suitable(fishDef, record.habitat, map.Biome, temperature, season)) return false;
@@ -597,7 +629,17 @@ namespace AquacultureFishing
             RefreshSummary(record);
             RefreshMigrationSummaries();
             SynchronizeWaterBody(map.waterBodyTracker?.WaterBodyAt(record.anchor), record);
+            RememberCompletedEvent("stocking:" + logicalEventId);
+            AquacultureEventRouter.FishStocked(map, cell, fishDef, amount, item.population, logicalEventId);
             return true;
+        }
+
+        private void RememberCompletedEvent(string eventId)
+        {
+            if (eventId.NullOrEmpty() || completedPopulationEventIds.Contains(eventId)) return;
+            completedPopulationEventIds.Add(eventId);
+            if (completedPopulationEventIds.Count > CompletedEventRetention)
+                completedPopulationEventIds.RemoveRange(0, completedPopulationEventIds.Count - CompletedEventRetention);
         }
 
         private bool TryResolveWaterCell(IntVec3 requested, out IntVec3 waterCell)
