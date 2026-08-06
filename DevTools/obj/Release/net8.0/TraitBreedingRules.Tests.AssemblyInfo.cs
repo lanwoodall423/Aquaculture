@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("TraitBreedingRules.Tests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+cb827e494f7a3ef7f0b2ff37d267bb10fda4aa77")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ea5d3eb846b5559d87648a62b3a07ec5062dcf66")]
 [assembly: System.Reflection.AssemblyProductAttribute("TraitBreedingRules.Tests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("TraitBreedingRules.Tests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
