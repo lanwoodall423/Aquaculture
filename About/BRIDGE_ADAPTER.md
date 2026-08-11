@@ -1,37 +1,25 @@
-# RimWorld Dev Bridge Adapter
+# DevBridge2 diagnostics
 
-Aquaculture exposes optional diagnostics through a standalone, hot-reloadable adapter. RimWorld Dev Bridge is not a gameplay dependency.
+DevBridge2 is a development/testing dependency only. Its current coordinator
+API owns process lifecycle, readiness, and test leases; it does not register or
+execute standalone mod adapters.
 
-## Commands
+Aquaculture's supported live diagnostics are owned by
+`Source/AquacultureInGameTests.cs` and coordinated by
+`DevTools/Run-AquacultureInGameTests.ps1`. Requests and results are atomic JSON
+files under the DevBridge2 `Runtime` directory. The mod owns fixture setup,
+assertions, simulation, cleanup, and result status.
 
-- `AQUACULTURE`: compact map, pond, fish, health, and progression summary.
-- `AQUA_PONDS`: one cached summary line per connected pond.
-- `AQUA_POND <proxyThingId|x,z>`: ecology, health, work, policy, warnings, and schools for one pond.
-- `AQUA_HABITAT <proxyThingId|x,z>`: habitat structures, weighted supply and demand, fit, and stressed fish.
-- `AQUA_BLUEPRINT <proxyThingId|x,z>`: persistent species targets, actual counts, deficits, and surplus.
-- `AQUA_FISH <thingId>`: traits, life state, ecology, biology, and species profile for one fish.
-- `AQUA_SPECIES [filter]`: species aggregates for fish currently on the map.
-- `AQUA_CATALOG [filter]`: all loaded fish definitions and inferred ecological roles.
-- `AQUA_JOURNAL`: species milestones, specimen records, registered breeds, generations, and stability.
-- `AQUA_OPPORTUNITIES`: loaded-content analysis for future feature design.
-- `AQUA_SETTINGS`: active simulation, capacity, trait, and visual settings.
-- `AQUA_ADAPTER_STATUS`: loaded adapter identity and hot-reload capabilities.
-- `AQUA_PERFORMANCE`: scheduler cadence and current cached workload.
-- `AQUA_VALIDATE`: read-only state invariants for ponds, proxies, fish, required traits, and eggs.
-- `AQUA_OPEN_PLANNER <proxyThingId|x,z>`: opens a pond's Stocking Planner for UI testing.
-
-The adapter does not reference the bridge assembly, mutate game state, or add ticking behavior. Diagnostics only traverse map state when explicitly requested.
-
-## Development and packaging
-
-The adapter is owned and packaged by Aquaculture in `DevTools/BridgeAdapters`.
-Dev Bridge discovers that directory when Aquaculture is loaded; Aquaculture does
-not depend on Dev Bridge at runtime.
+Use:
 
 ```powershell
-& "C:\Games\Steam\steamapps\common\RimWorld\Mods\AquacultureFishing\DevTools\Build-HotBridgeAdapter.ps1"
+& 'C:\Games\Steam\steamapps\common\RimWorld\Mods\DevBridge2\DevBridge.cmd' status
+& 'C:\Games\Steam\steamapps\common\RimWorld\Mods\DevBridge2\DevBridge.cmd' test begin
+& .\DevTools\Run-AquacultureInGameTests.ps1 -DevBridgeRoot 'C:\Games\Steam\steamapps\common\RimWorld\Mods\DevBridge2' -Runs 2 -SkipRestart
 ```
 
-The helper creates a generation-specific DLL and manifest from the exact build.
-Old generations remain in memory until RimWorld restarts. Gameplay changes still
-require rebuilding and deploying `AquacultureFishing.dll` while RimWorld is closed.
+`DevTools/BridgeAdapter/AquacultureBridgeAdapter.cs` and its project are kept
+as historical source for reference only. They are not registered, published,
+required by the gameplay assembly, or included in the player package. The
+legacy build/validation entry points report `NOT RUN` rather than calling the
+retired bridge publisher.

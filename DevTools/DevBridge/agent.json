@@ -1,9 +1,11 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "packageId": "lan.aquaculture.fishing",
-  "adapterDirectory": "DevTools/BridgeAdapters",
-  "adapterSource": "DevTools/BridgeAdapter/AquacultureBridgeAdapter.cs",
-  "buildEntrypoint": "DevTools/Build-HotBridgeAdapter.ps1",
-  "validateEntrypoint": "DevTools/Test-BridgeAdapter.ps1",
-  "runtimeGuide": "DevTools/DEVBRIDGE_AGENT.md"
+  "coordinator": "DevBridge2",
+  "runtimeGuide": "DevTools/DEVBRIDGE2_AGENT.md",
+  "requestDirectory": "<DEVBRIDGE2_ROOT>/Runtime",
+  "requestProtocol": "AquacultureFishing.InGameTestRequest.<runId>.json",
+  "resultProtocol": "AquacultureFishing.InGameTestResult.<runId>.json",
+  "legacyAdapter": "DevTools/BridgeAdapter/AquacultureBridgeAdapter.cs",
+  "legacyAdapterStatus": "historical-only-not-registered-by-DevBridge2"
 }

@@ -7,7 +7,7 @@ This is the final validation boundary for Aquaculture on RimWorld 1.6. It separa
 | Area | Status | Setup and action | Expected result and failure evidence |
 | --- | --- | --- | --- |
 | Release gameplay assembly | Verified automatically | Clean `Source/AquacultureFishing.csproj` Release build. Confirm the output is `1.6/Assemblies/AquacultureFishing.dll`. | Build succeeds with no errors. Record warnings separately and compare the output identity with the loaded/deployed assembly. |
-| Release adapter assembly | Verified automatically | Clean `DevTools/BridgeAdapter/AquacultureFishing.BridgeAdapter.csproj` Release build and owner verification. | The adapter manifest names package `lan.aquaculture.fishing`, has one current generation, and matches the DLL size and SHA256. |
+| Historical adapter source | NOT RUN | DevBridge2 has no standalone adapter-registration protocol. The old adapter source is retained only for the mod-owned diagnostic implementation and is not a player-package input. | No historical publisher or adapter manifest is authoritative. The supported live path is the mod-owned request/result protocol below. |
 | XML and Def startup, core dependencies | Verified in RimWorld | Temporary list containing RimWorld core, Harmony, Knowledge Framework, Deferred Reality Framework, VFE, and Aquaculture. Launch with a temporary savedata folder. | RimWorld reaches startup with zero Aquaculture XML/Def errors and zero Aquaculture unresolved references. Any unrelated unresolved reference is recorded separately. |
 | XML and Def startup, Fishing Treasures | Verified in RimWorld | Add Fishing Treasures to the isolated core list. | Startup reaches the main menu with no Aquaculture errors and preserves enhanced VFE behavior. |
 | XML and Def startup, Odyssey | Verified in RimWorld | Add Odyssey to the isolated core list. | Startup reaches the main menu with no Aquaculture errors. Optional reflection paths either patch available methods or safely no-op. |
@@ -44,10 +44,10 @@ This is the final validation boundary for Aquaculture on RimWorld 1.6. It separa
 
 ## Automated Evidence Collected
 
-- Gameplay Release build succeeded after a clean with zero warnings and zero errors; the obsolete Knowledge Framework staleness/category APIs were removed from the adapter.
+- Production gameplay Release build (`-p:AquacultureDeveloperTests=false`) and explicit developer-test Release build both succeeded with zero warnings and zero errors; the default project build is production-safe.
 - Trait/recovery/commission executable tests passed sequentially.
-- Knowledge Framework behavioral harness passed 29 production pure checks and all public API baseline/regression audits; game-state and manual-UI layers were unavailable without an active game/map.
-- Bridge adapter Release build succeeded.
+- Knowledge Framework behavioral harness passed its pure production/API audits; live game-state and manual-UI layers were not run in this pass. Its full verification still reports local transient bin/obj/PDB artifacts.
+- The historical adapter source compiled, but DevBridge2 registration was NOT RUN because no such coordinator API exists. Mod-owned read-only diagnostics passed on generation 105: `AQUA_ADAPTER_STATUS`, `AQUA_PONDS`, `AQUA_DEFERRED_REALITY`, and `AQUA_SETTINGS`.
 - Fishing rod verification passed 34 checks; fishing expertise verification passed 16 checks.
 - Natural population, pond, processing, Def-mutation, and visual regression scripts passed after updating two stale contracts: the conservation script now checks pre-bite warnings, and the migration script reads the extracted recovery-rule file.
 - Isolated RimWorld startup reached the menu for core-only, Fishing Treasures, and Odyssey configurations with zero Aquaculture errors and zero unresolved references.
@@ -75,4 +75,12 @@ manual runtime cases unless an isolated live bridge is available.
 | Failure injection ordering | Requires manual RimWorld validation | The pure ledger models before/after mutation and retry behavior. Live exception injection before/after DRF and Knowledge commit still requires a diagnostic bridge session. |
 | Save/load and provider restoration | Requires manual RimWorld validation | Durable IDs, ledgers, migration markers, and opaque-provider behavior are covered by contracts; an old provider-state save and restored-provider load have not been exercised. |
 | Multiple maps and long run | Requires manual RimWorld validation | Deterministic map/region IDs and bounded ledgers are tested; no controlled multi-map elapsed simulation has been completed. |
-| Dev Bridge diagnostic report | Blocked, with reason | `AQUA_DEFERRED_REALITY` is implemented and the adapter builds, but Dev Bridge discovery was unavailable, so no live command report was collected. |
+| DevBridge2 mod-owned diagnostic report | PASS | Generation 105 reports were returned through atomic mod-owned request/result files. `AQUA_DEFERRED_REALITY` reported provider `lan.aquaculture.natural-water`, API/schema 2, DRF save schema 5, 52 populations/processes, and zero failures/quarantines/duplicates; `AQUA_PONDS` completed in 1.71 ms with zero ponds on the quicktest map. |
+
+## Current RC verdict
+
+**BLOCKED — not ready for external RC/beta testing**
+
+See [RC_STATUS.md](Validation/RC_STATUS.md) and [ART_REQUIREMENTS.md](ART_REQUIREMENTS.md)
+for the current evidence ledger, package identity, open live-validation gates, and
+dedicated-art blocker.

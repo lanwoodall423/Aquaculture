@@ -1,0 +1,23 @@
+# Local build intermediates
+**/bin/
+**/obj/
+Build/
+**/Build/
+DevTools/BridgeAdapter/Build/
+
+# Timestamped diagnostic artifacts are never player-package inputs.
+DevTools/BridgeAdapters/*.dll
+DevTools/BridgeAdapters/*.manifest.json
+
+# Machine-local IDE and MSBuild files
+*.user
+*.suo
+*.csproj.user
+
+# Local test output and reports
+DevTools/TestResults/
+
+# Local reverse-engineering tool cache; authored .tura/script checks remain tracked.
+.tura/tools/
+DevTools/Runtime/
+Source/CompatibilityValidation/

@@ -490,14 +490,15 @@ namespace AquacultureFishing
             {
                 "adapter=" + typeof(AquacultureBridgeAdapter).Assembly.GetName().Name,
                 "gameplayAssembly=" + typeof(CompFishTraits).Assembly.GetName().Name,
-                "hotReload=True",
+                "coordinator=DevBridge2",
+                "hotReload=False",
                 "commands=" + BridgeCommandSpecs().Length,
-                "scope=on-demand diagnostics, validation, test actions, and existing UI"
+                "scope=read-only on-demand diagnostics; no bridge registration or gameplay mutation"
             };
         }
 
         public static string BridgeAdapterInfo() =>
-            "AquacultureFishing|1.6.0|Natural food webs, living habitat, journal, breed, ecology, performance, and validation diagnostics.";
+            "AquacultureFishing|1.6.0|DevBridge2-coordinated read-only diagnostics for ponds, fish, ecology, journal, breeds, settings, and validation.";
 
         private static List<string> Performance(Map map)
         {

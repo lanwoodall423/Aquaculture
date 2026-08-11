@@ -320,6 +320,12 @@ namespace AquacultureFishing
         public IReadOnlyList<NaturalWaterPopulation> Populations => populations;
         public bool IsInitializedForDeferredReality => initializedAllBodies;
 
+        internal void InitializeForDevTest()
+        {
+            InitializeAllWaterBodies();
+            ScheduleNextBalance(Find.TickManager?.TicksGame ?? 0);
+        }
+
         public override void ExposeData()
         {
             base.ExposeData();

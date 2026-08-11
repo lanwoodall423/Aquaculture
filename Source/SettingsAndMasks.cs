@@ -294,7 +294,21 @@ namespace AquacultureFishing
         private Vector2 traitScroll;
         private Vector2 fishingScroll;
 
-        public AquacultureMod(ModContentPack content) : base(content) { Settings = GetSettings<AquacultureSettings>(); }
+        public AquacultureMod(ModContentPack content) : base(content)
+        {
+            Settings = GetSettings<AquacultureSettings>();
+            try
+            {
+                // Install the test lifecycle hook from the guaranteed mod-construction
+                // path. The startup attribute remains useful for normal initialization,
+                // but is not the only discovery mechanism for the mod-owned test runner.
+                AquacultureInGameTestTickPatch.Install(Harmony);
+            }
+            catch (Exception exception)
+            {
+                Log.Error("[Aquaculture - Fishing] Could not install automatic in-game test hooks: " + exception);
+            }
+        }
         public override string SettingsCategory() => "Aquaculture - Fishing";
 
         public override void DoSettingsWindowContents(Rect inRect)

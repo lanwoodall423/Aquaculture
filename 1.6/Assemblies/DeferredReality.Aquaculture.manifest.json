@@ -1,24 +1,22 @@
-﻿{
-    "schema":  1,
-    "providerId":  "lan.aquaculture.natural-water",
-    "assemblyName":  "DeferredReality.Aquaculture",
-    "assemblyVersion":  "1.0.0.0",
-    "sourceCommit":  "6b4f81ca7f6d7965c73dd671f26e0ffedcb38519",
-    "sourceDirty":  true,
-    "sha256":  "5FC2CD81B36CD02F492061D0CA48581FC3A5193A554BCCA973EBCFDAE72C9464",
-    "semanticApiVersion":  2,
-    "providerSchemaVersion":  2,
-    "deferredRealitySaveSchema":  5,
-    "capabilities":  [
-                         "Regions",
-                         "Populations",
-                         "Processes",
-                         "Anchors",
-                         "Diagnostics"
-                     ],
-    "operationRetentionTicks":  -1,
-    "compactableOperationKinds":  [
-
-                                  ],
-    "exactlyOnceSequenceDomain":  "natural-water-population"
+{
+  "schema": 1,
+  "providerId": "lan.aquaculture.natural-water",
+  "assemblyName": "DeferredReality.Aquaculture",
+  "assemblyVersion": "1.0.0.0",
+  "sourceCommit": "455de9a8891c4f26aba6b59140bcf397a99177a8",
+  "sourceDirty": true,
+  "sha256": "CFF8E123DB45A9CBCFF9F671585DEF25F25EF0B3C6D617D38E8BB4067E45DE9B",
+  "semanticApiVersion": 2,
+  "providerSchemaVersion": 2,
+  "deferredRealitySaveSchema": 5,
+  "capabilities": [
+    "Regions",
+    "Populations",
+    "Processes",
+    "Anchors",
+    "Diagnostics"
+  ],
+  "operationRetentionTicks": -1,
+  "compactableOperationKinds": [],
+  "exactlyOnceSequenceDomain": "natural-water-population"
 }

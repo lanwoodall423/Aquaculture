@@ -1,9 +1,9 @@
 # Aquaculture Fishing
 
 - Package ID: `lan.aquaculture.fishing`.
-- Adapter source: `DevTools/BridgeAdapter/AquacultureBridgeAdapter.cs`; package output: `DevTools/BridgeAdapters`.
-- Build: `DevTools\Build-HotBridgeAdapter.ps1`; validate: `DevTools\Test-BridgeAdapter.ps1`.
-- Query live Dev Bridge context with `DevTools\devbridge.ps1` from the Dev Bridge checkout before runtime tests.
-- Adapter-only changes can reload the adapter; gameplay, defs, Harmony, serialized types, or core changes require a full restart.
-- This integration and its adapter distribution are Aquaculture-controlled. Dev Bridge remains optional.
-- Full workflow: `DevTools/DEVBRIDGE_AGENT.md`.
+- DevBridge2 is the only supported live-test coordinator. Use `C:\Games\Steam\steamapps\common\RimWorld\Mods\DevBridge2\DevBridge.cmd` for status, leases, restart, and readiness.
+- Mod-owned test source: `Source/AquacultureInGameTests.cs`; coordinator harness: `DevTools\Run-AquacultureInGameTests.ps1`.
+- DevBridge2 does not currently expose an adapter-registration protocol. The old standalone adapter source is retained only as historical development code and is not a release input.
+- Gameplay, defs, Harmony, serialized types, or core changes require a full DevBridge2 restart; request/result-only diagnostics do not.
+- DevBridge2 remains optional and must never be a player dependency.
+- Full workflow: `DevTools/DEVBRIDGE2_AGENT.md`.

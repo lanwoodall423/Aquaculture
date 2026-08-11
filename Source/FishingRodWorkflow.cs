@@ -91,6 +91,7 @@ namespace AquacultureFishing
 
         public override void GameComponentTick()
         {
+            AquacultureInGameTestTickPatch.PollFromExistingComponent();
             int ticks = Verse.Find.TickManager?.TicksGame ?? -1;
             if (ticks < 0 || ticks % 60 != 0) return;
             foreach (FishingRodSession session in sessions.ToList())

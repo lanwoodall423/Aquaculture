@@ -89,7 +89,7 @@ Species receive inferred ecology and economy profiles covering food demand, spee
 
 ## Development Diagnostics
 
-When RimWorld Dev Bridge is loaded, Aquaculture exposes read-only commands for compact summaries, pond and fish inspection, species aggregates, active settings, scheduler scale, and state validation. The integration is reflection-discovered and does not make the bridge a dependency.
+During development, the DevBridge2-coordinated mod-owned test protocol exposes read-only summaries, pond and fish inspection, species aggregates, active settings, scheduler scale, and state validation. DevBridge2 is not a player dependency.
 
 Runtime Def changes are now scoped. Recognized fish retain only the Def-backed state required for individual lifecycle, rendering, stats, and save behavior. Food provenance is attached to relevant recipe output Things instead of every ingestible Def, while a temporary load-only compatibility pass preserves old serialized food components. Vanilla foods, unrelated modded ingestibles, storage, trade, and unrelated recipes are not modified.
 

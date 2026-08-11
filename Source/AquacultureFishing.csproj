@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup><OutputType>Library</OutputType><TargetFramework>net472</TargetFramework><RootNamespace>AquacultureFishing</RootNamespace><AssemblyName>AquacultureFishing</AssemblyName><LangVersion>latest</LangVersion><Deterministic>true</Deterministic><AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath><GenerateAssemblyInfo>false</GenerateAssemblyInfo></PropertyGroup>
+  <PropertyGroup><OutputType>Library</OutputType><TargetFramework>net472</TargetFramework><RootNamespace>AquacultureFishing</RootNamespace><AssemblyName>AquacultureFishing</AssemblyName><LangVersion>latest</LangVersion><Deterministic>true</Deterministic><AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath><GenerateAssemblyInfo>false</GenerateAssemblyInfo><AquacultureDeveloperTests Condition="'$(AquacultureDeveloperTests)' == ''">false</AquacultureDeveloperTests></PropertyGroup>
+  <PropertyGroup Condition="'$(AquacultureDeveloperTests)' == 'true'"><DefineConstants>$(DefineConstants);AQUACULTURE_DEV_TESTS</DefineConstants></PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|AnyCPU'"><Optimize>true</Optimize><OutputPath>..\1.6\Assemblies\</OutputPath><DebugType>none</DebugType></PropertyGroup>
   <ItemGroup>
     <Compile Remove="DeferredRealityProvider\**" />
+    <Compile Include="..\DevTools\BridgeAdapter\AquacultureBridgeAdapter.cs" Link="Development\AquacultureBridgeAdapter.cs" Condition="'$(AquacultureDeveloperTests)' == 'true'" />
     <EmbeddedResource Remove="DeferredRealityProvider\**" />
     <None Remove="DeferredRealityProvider\**" />
   </ItemGroup>

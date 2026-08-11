@@ -129,12 +129,12 @@ policy, and the last error. DRF diagnostics additionally report quarantines,
 paused processes, pending migrations, operation records, and identity audit
 failures.
 
-The optional Dev Bridge command `AQUA_DEFERRED_REALITY` exposes the bounded
+The mod-owned DevBridge2 diagnostic request/result protocol exposes bounded
 provider diagnostics on demand, including registration/capability status,
 active map ownership, paused processes, quarantines, retained exactly-once
 markers, recent correlated operations, migration counts, and the last mismatch.
-Reconciliation is synchronous in this provider, so the command reports no
-queued reconciliation work rather than inventing a separate queue.
+DevBridge2 itself only coordinates lifecycle/readiness/leases; it does not
+execute this diagnostic command or become a player dependency.
 
 ## Build and Manifest
 
