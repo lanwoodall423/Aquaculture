@@ -103,7 +103,10 @@ null. A subsequent DevBridge2-only retry reached READY. This is external
 Horticulture/graphics startup noise, not an Aquaculture failure; it is recorded
 as an environment `FAIL` in `About/Validation/RC_STATUS.md`. The historical
 `VFET_ResearchSpot` reference was traced to installed VFE Tribals content, not
-Aquaculture.
+Aquaculture. After the generation-151 evidence was captured, a separate shared
+agent requested generation 152 and retained lease `AFCE`; the coordinator is
+currently DRAINING generation 151. That shared restart was not touched and is
+not a new Aquaculture test result.
 
 ## Release decision
 
