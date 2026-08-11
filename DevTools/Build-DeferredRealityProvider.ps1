@@ -13,13 +13,13 @@ $manifest = Join-Path $repositoryRoot '1.6\Assemblies\DeferredReality.Aquacultur
 if (-not (Test-Path -LiteralPath $project)) { throw "Provider project not found: $project" }
 if (-not (Test-Path -LiteralPath $HarmonyPath)) { throw "Harmony assembly not found: $HarmonyPath" }
 
+$sourceCommit = (& git -C $repositoryRoot rev-parse HEAD).Trim()
+$sourceDirty = @(& git -C $repositoryRoot status --porcelain --untracked-files=all).Count -gt 0
+
 & dotnet build $project --configuration $Configuration "-p:HarmonyPath=$HarmonyPath"
-if (-not $?) { throw 'Deferred Reality provider build failed.' }
+if ($LASTEXITCODE -ne 0) { throw 'Deferred Reality provider build failed.' }
 if (-not (Test-Path -LiteralPath $assembly)) { throw "Provider output not found: $assembly" }
 
-$sourceCommit = (& git -C $repositoryRoot rev-parse HEAD).Trim()
-& git -C $repositoryRoot diff --quiet -- .
-$dirty = $LASTEXITCODE -ne 0
 $hash = (Get-FileHash -LiteralPath $assembly -Algorithm SHA256).Hash
 $assemblyName = [Reflection.AssemblyName]::GetAssemblyName($assembly)
 $manifestObject = [ordered]@{
@@ -28,7 +28,7 @@ $manifestObject = [ordered]@{
     assemblyName = $assemblyName.Name
     assemblyVersion = $assemblyName.Version.ToString()
     sourceCommit = $sourceCommit
-    sourceDirty = $dirty
+    sourceDirty = $sourceDirty
     sha256 = $hash
     semanticApiVersion = 2
     providerSchemaVersion = 2
