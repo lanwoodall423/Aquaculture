@@ -1,89 +1,114 @@
-# Release Readiness Test Matrix
+# Release-readiness test matrix
 
-This is the final validation boundary for Aquaculture on RimWorld 1.6. It separates executable, static, and startup evidence from behavior that still requires an operator to play a controlled test map. The isolated configurations described here use temporary savedata folders and must not replace the player's normal `ModsConfig.xml` or saves.
+Candidate: `7e7e86cd4c5c35509005ec9a0711f4065f53738e`
 
-## Evidence Status
+Current live evidence: DevBridge2 generation 151, launch
+`bdceb514f14748f48f8195bfbd2d9ea7`, coordinator-owned PID 88676.
+Current verdict: **BLOCKED — not ready for external RC/beta testing**.
 
-| Area | Status | Setup and action | Expected result and failure evidence |
-| --- | --- | --- | --- |
-| Release gameplay assembly | Verified automatically | Clean `Source/AquacultureFishing.csproj` Release build. Confirm the output is `1.6/Assemblies/AquacultureFishing.dll`. | Build succeeds with no errors. Record warnings separately and compare the output identity with the loaded/deployed assembly. |
-| Historical adapter source | NOT RUN | DevBridge2 has no standalone adapter-registration protocol. The old adapter source is retained only for the mod-owned diagnostic implementation and is not a player-package input. | No historical publisher or adapter manifest is authoritative. The supported live path is the mod-owned request/result protocol below. |
-| XML and Def startup, core dependencies | Verified in RimWorld | Temporary list containing RimWorld core, Harmony, Knowledge Framework, Deferred Reality Framework, VFE, and Aquaculture. Launch with a temporary savedata folder. | RimWorld reaches startup with zero Aquaculture XML/Def errors and zero Aquaculture unresolved references. Any unrelated unresolved reference is recorded separately. |
-| XML and Def startup, Fishing Treasures | Verified in RimWorld | Add Fishing Treasures to the isolated core list. | Startup reaches the main menu with no Aquaculture errors and preserves enhanced VFE behavior. |
-| XML and Def startup, Odyssey | Verified in RimWorld | Add Odyssey to the isolated core list. | Startup reaches the main menu with no Aquaculture errors. Optional reflection paths either patch available methods or safely no-op. |
-| XML and Def startup, additional fish pack | Verified in RimWorld with environment caveat | Add the installed additional fish pack with and without Fishing Treasures. | Aquaculture reports no errors. The tested fish-pack environment produced unrelated Alpha Animals/VFE dependency errors and is not a clean compatibility result. |
-| Normal user configuration | Verified in RimWorld with environment caveat | Do not modify the normal configuration. Run the DevBridge2-managed definition smoke test only; never launch or kill RimWorld directly. | Aquaculture produced zero definition errors; the current log had one unrelated missing `VFET_ResearchSpot` reference from Progression Warrants. A fresh candidate restart remains blocked by an unmanaged process. |
-| Localization keys and raw key detection | Verified automatically | Run `DevTools/Test-AquacultureLocalization.ps1`. | Every source-referenced key exists in each supported language, with no duplicate keys. Latest result: 1 language and 279 keys. |
-| Knowledge Framework contract | Verified automatically; Requires manual RimWorld validation | Run the pure contract tests and the Knowledge Framework behavioral harness. In an isolated game, exercise registration retry, event duplication, context fallback, migration retry, and dynamic-subject limits. | API/capability gating uses generation 3, Balanced aggregation is explicit, one logical event produces one transaction, migration commits durably before cleanup, and registration/context/relation failures retry without partial readiness. |
-| New-game settings defaults | Requires manual RimWorld validation | Start a fresh temporary colony, open mod settings, inspect trait, pond, fishing, rod, commission, and conservation defaults, then save and reload. | Defaults match the documented values; no legacy migration path overwrites new-game defaults. Failure evidence is the settings screen and `Player.log`. |
-| Legacy settings migration | Verified automatically; Requires manual RimWorld validation | Use an old save containing `globalMutationRate`, `maxMutations`, and earlier capacity/settings fields. Load in an isolated folder. | Legacy values map once to wild exceptional chance and inherited cap; current values remain stable after a second save/load. Capture before/after settings and log errors. |
-| Fish, breeds, histories, provenance | Requires manual RimWorld validation | Load a copy of a save containing fish traits, registered breeds, breed histories, commissions, food provenance, rods, and journal records. | Fish, traits, generations, breed evidence, provenance, journal entries, and rod state remain present and usable. Capture save-load log and representative inspect panels. |
-| Overstocked ponds | Requires manual RimWorld validation | Load or create a large over-capacity pond with mixed species, stress, low food, and breeding blockers. Inspect at Pondkeeping, Managed, and Industrial tiers. | Safety information is visible at Pondkeeping; advanced controls remain gated; no per-frame scan or log spam occurs; affected-fish counts are coherent. Capture each tier. |
-| Pondkeeping safety | Requires manual RimWorld validation | At Pondkeeping, test healthy, starving, wrong-water, dangerous-temperature, lethal-habitat, overcrowded, and reproduction-blocked ponds. | Cached safety summary prioritizes lethal, starvation, severe stress, reproduction blockers, then advice. Healthy ponds show the healthy state. |
-| Managed pond controls | Requires manual RimWorld validation | Research Managed Aquaculture and inspect the same ponds. | Management controls and cached causal details become available without changing the Pondkeeping safety result. |
-| Industrial pond controls and alerts | Requires manual RimWorld validation | Research Industrial Aquaculture; toggle pond alerts; inspect a pond with each causal priority. | Industrial analytics and automation appear; alerts use cached lethal through reproduction issues and do not require Industrial research. |
-| Missing research definitions | Verified automatically; Requires manual RimWorld validation | Use a controlled list with a research Def intentionally unavailable, then inspect progression-gated surfaces. | Missing research fails closed unless progression is explicitly disabled; no accidental advanced access or exception. |
-| Conservation status | Requires manual RimWorld validation | Create populations at zero, below floor, exactly at floor, one above floor, and safely above floor. | UI shows approximate population, breeding floor, trend, breeding state, migration context, and one-fish consequence without implying exact knowledge. |
-| Risky manual fishing selection | Requires manual RimWorld validation | Select a species whose next catch crosses its breeding floor. | Only the explicit risky selection gets confirmation if that interaction exists; sustainable selections do not produce repetitive modal warnings. |
-| Automatic fishing selection | Requires manual RimWorld validation | Fish where automatic selection chooses a species near its floor. | A deduplicated nonmodal warning appears before bite resolution; a miss does not consume a fish or alter the status incorrectly. |
-| Regional migration with source | Verified automatically; Requires manual RimWorld validation | Executable recovery tests cover every habitat pair. In-game, create a below-floor River, Coastal, and Ocean population with a positive same-category source. | Recovery occurs only for the matching species/category and cache/UI migration context updates after the next simulation pass. |
-| Regional migration without source | Verified automatically; Requires manual RimWorld validation | Remove or exhaust the source, test closed Pond/Lake/Marsh, zero source, cross-category source, and destination at/above floor. | No species is created from nowhere; closed and incompatible destinations do not recover; source-extinction status and pressure update after invalidation. |
-| Migration/cache invalidation | Requires manual RimWorld validation | Perform catches, births, deaths, stocking, topology split/merge, terrain changes, source extinction, and save/load. | Prepared summaries and conservation statuses update without stale source promises or repeated whole-map scans. Capture before/after population/status panels. |
-| Wild traits | Requires manual RimWorld validation | Generate wild fish across ordinary and modded species, including traitless and malformed/outlier definitions where available. | Wild exceptional chance is independent, capped, compatible, and safe at zero/full probabilities; caught fish preserve generated traits. |
-| Offspring inheritance and mutation | Verified automatically; Requires manual RimWorld validation | Executable tests cover probabilities, dual-parent advantage, caps, incompatibility, mutation filtering, and boundaries. Breed ordinary, identical, traitless, and incompatible parents in-game. | Parental union rolls independently, caps apply after rolls, mutations are separate and filtered, and demographic/ecology traits are not exceptional mutations. |
-| Registered-breed stability | Verified automatically; Requires manual RimWorld validation | Pure tests cover success-rate stability and generation contribution. Produce matching and failed qualifying births in-game. | UI evidence matches matching births, qualifying births, success rate, generation contribution, and resulting stability; low stability does not guarantee every defining trait. |
-| Commission generation | Verified automatically; Requires manual RimWorld validation | Pure tests cover capability, reachable generation, not-already-satisfied filtering, impossible combinations, duplicates, deadlines, and bounded rewards. Register a breed, wait through cooldown, and inspect letters. | No immediate founder-sale request; only one reachable improvement is requested; already-satisfied and impossible goals are skipped. |
-| Commission delivery | Verified automatically; Requires manual RimWorld validation | Pure tests cover active/specimen/reward/consumption gates. Deliver with a qualifying fish, then try dead, sold, missing, wrong, interrupted, and expired specimens. | Exactly one living specimen is consumed only after reward placement succeeds; invalid attempts do not complete; expiry records a failure and applies cooldown. |
-| Commission save/load | Verified automatically; Requires manual RimWorld validation | Pure tests cover valid legacy active state and malformed state rejection. Save with an active commission, reload, and deliver. | Valid active requirements/deadline/reward survive; transient index rebuilds; malformed references are discarded without clearing history. |
-| Fishing rods: success/failure | Verified automatically; Requires manual RimWorld validation | Executable verifier covers structure; in-game fish successfully and miss/fail a bite. | Rod is selected/reserved, temporary equipment restores on both outcomes, and no weapon duplication or loss occurs. |
-| Fishing rods: drafting/interruption/danger | Requires manual RimWorld validation | Draft the pawn, interrupt the job, trigger danger, cancel the job, and move maps during preparation. | Reservation/session cleanup restores the prior weapon and rod to a valid location without stranded sessions. |
-| Fishing rods: destruction/save-load | Requires manual RimWorld validation | Destroy the rod while prepared, save/load during preparation, and remove the pawn or target. | Stale sessions are cleaned; destroyed equipment is not recreated; previous equipment uses the documented inventory/drop fallback. |
-| Size-based processing | Verified automatically; Requires manual RimWorld validation | Existing checks cover minimum, normal, large, outlier sizes and the supported processing route. Process fish through every supported fish recipe with representative sizes. | Only supported fish products receive the size/meat-yield calculation; unrelated recipes remain unchanged and stacks stay valid. |
-| Visual assets and rotations | Blocked, with reason | Inspect all ThingDefs, blueprints, north/east/south/west rotations, damage/snow overlays, item icons, and common terrain/pond-water backgrounds. | Only `FishingRod.png` is owned production art. Feeder, aerator, culture, container, habitat, feed, egg, and breeding-product art remains unavailable because image generation was unavailable; do not ship placeholders. |
-| Large ponds and multiple maps | Requires manual RimWorld validation | Use large ponds, many individual fish, multiple maps, numerous registered breeds, and visible schools; observe over multiple ecology/school ticks. | Cached summaries and indexes update in batches, schools remain visible, allocations/logs remain bounded, and no repeated per-tick whole-map scans appear. |
+Status values in this matrix are exactly `PASS`, `FAIL`, `BLOCKED`, or `NOT RUN`.
+`PASS` means the named check actually ran and passed; source inspection and a
+main-menu or quicktest startup do not prove the corresponding gameplay gate.
 
-## Automated Evidence Collected
+## Automatic checks
 
-- Production gameplay Release build (`-p:AquacultureDeveloperTests=false`) and explicit developer-test Release build both succeeded with zero warnings and zero errors; the default project build is production-safe.
-- Candidate source/package commit is `12424c68b4010e29822ed203fb6e02279fb83993`; production DLL SHA is `A79F258F948B0D884BC6896AF730D7A7113958DE140BED510CEF68BDC33D2D73`; provider DLL SHA is `6672DAF709D9F41C4F020FE633AD2DFF4451D092AEF34F5DCAC2FBF796AA4BBE`.
-- The allowlisted player package passed with 25 entries, package SHA `12A9205E84345C5C5D1DE284D5C190BB31ABA9E35BD3A934660BA98549CB6D62`, and manifest `sourceDirty=false`.
-- 15 authored pure/regression checks passed after the definition-load check was converted to DevBridge2-only coordination: commissions, mutation scope, rod/job/workflow, processing, conservation/migration/population/performance/scaling, pond capacity/causal/swimming, and visual assets. The coordinator-managed startup scan is BLOCKED while DevBridge2 reports an unmanaged RimWorld process (PID 59372); its earlier log scan reported one unrelated `VFET_ResearchSpot` reference.
-- Trait/recovery/commission executable tests passed sequentially.
-- Knowledge Framework behavioral harness passed 34 pure production/API checks; live game-state and manual-UI layers were unavailable. Full verification passed after ignored local transient output was separated from tracked/package contamination.
-- The historical adapter source compiled, but DevBridge2 registration was NOT RUN because no such coordinator API exists. Generation-105 mod-owned diagnostics remain historical and are not current-candidate proof.
-- Fishing rod verification passed 34 checks; fishing expertise verification passed 16 checks.
-- Natural population, pond, processing, Def-mutation, and visual regression scripts passed after updating two stale contracts: the conservation script now checks pre-bite warnings, and the migration script reads the extracted recovery-rule file.
-- Historical isolated RimWorld startup checks reached the menu for core-only, Fishing Treasures, and Odyssey configurations with zero Aquaculture errors; they are not current-candidate live proof. The current DevBridge2-managed log scan found zero Aquaculture errors and one unrelated `VFET_ResearchSpot` reference.
-- Historical additional-fish-pack configurations reached startup with zero Aquaculture errors but 245 unrelated Alpha Animals/VFE unresolved references; no current-candidate compatibility claim is made.
+| Gate | Status | Evidence / automatic command |
+|---|---|---|
+| Production gameplay assembly | PASS | `dotnet build Source/AquacultureFishing.csproj --configuration Release --no-restore -p:AquacultureDeveloperTests=false`; 0 warnings/errors; `AquacultureFishing.dll` SHA `A79F258F948B0D884BC6896AF730D7A7113958DE140BED510CEF68BDC33D2D73`. |
+| Developer test assembly | PASS | Same build with `AquacultureDeveloperTests=true`; 0 warnings/errors. Developer source is excluded from the player package. |
+| Framework provider build/contract | PASS | Deferred Reality provider build and contract checks passed with API 2/schema 2/save schema 5; provider manifest `sourceDirty=false`. |
+| Knowledge behavioral suite | PASS | 34 pure behavioral checks passed; live game-state and manual UI portions remain separate gates. |
+| Def mutation/save compatibility | PASS | 22 scoped checks passed. |
+| Trait inheritance and mutation | PASS | 31 checks passed, including parental independence, caps, mutation bounds, and registered-breed evidence. |
+| Breed stability | PASS | 12 checks passed. |
+| Natural populations | PASS | 44 checks passed. |
+| Migration/recovery | PASS | 28 checks passed. |
+| Conservation | PASS | 41 checks passed. |
+| Pond capacity and safety | PASS | 13 capacity/safety checks passed. |
+| Pond causal/swimming behavior | PASS | 43 causal and 19 swimming checks passed. |
+| Processing | PASS | 16 checks passed. |
+| Rod revision/workflow/job guards | PASS | 17, 17, and 7 checks passed respectively; these are not live item no-loss proof. |
+| Performance/scaling contracts | PASS | 16 performance checks and 70-cell/500-cell scaling checks passed. |
+| XML/localization/optional content | PASS | XML startup checks, one language/279 referenced keys, and Fishing Treasures contract passed. |
+| Generated-file/package hygiene | PASS | Local verifier passed; player package contract passed with 25 entries and no source/tests/DevTools/PDB/cache/bridge files. |
+| Current mod-owned baseline | PASS | `DevTools/Run-AquacultureInGameTests.ps1 -SkipRestart`: generation 151 baseline 17/17. |
+| Current mod-owned golden path | PASS | Same run, two inhabited-pond runs, 7/7 each: `76282a60976342209486c0cda864f04e` and `8ffb2da2f1dc44aeaeae3d2e612a6c44`. |
+| Current read-only diagnostics | PASS | Eleven sequential `DevTools/Run-AquacultureDiagnostic.ps1` requests passed: `AQUA_ADAPTER_STATUS`, `AQUA_PONDS`, `AQUA_DEFERRED_REALITY`, `AQUA_VALIDATE`, `AQUA_PERFORMANCE`, `AQUA_SETTINGS`, `AQUACULTURE`, `AQUA_SPECIES`, `AQUA_CATALOG`, `AQUA_JOURNAL`, and `AQUA_OPPORTUNITIES`. |
 
-## Release Gate
+## Automatic in-game test plan
 
-Do not call the mod release-ready until the `Requires manual RimWorld validation` cases have been run on a controlled map and the visual-art blocker is resolved or explicitly accepted by the project owner. Startup success proves XML/Def loading only; it does not prove save migration, gameplay behavior, UI clarity, performance under load, delivery semantics, or visual integration.
-## Deferred Reality Provider
+The following commands are the repeatable development-only plan. The mod owns
+setup, simulation, assertions, cleanup, atomic requests, and atomic results;
+DevBridge2 only owns lifecycle, readiness, generation/launch identity, and the
+exact test lease.
 
-Automated provider-rule and DRF behavioral tests cover deterministic IDs,
-finite normalization, exact-once duplicate/retry behavior, schema/API
-registration, and population mutation rollback. Provider Release build and
-manifest/hash validation are automated. RimWorld map activation/deactivation,
-active-to-latent reconciliation, provider removal/restoration, old-save
-migration, long elapsed simulation, and multi-map population projection remain
-manual runtime cases unless an isolated live bridge is available.
+```powershell
+dotnet build Source\AquacultureFishing.csproj --configuration Release --no-restore -p:AquacultureDeveloperTests=true
+DevTools\Run-AquacultureInGameTests.ps1 -DevBridgeRoot C:\Games\Steam\steamapps\common\RimWorld\Mods\DevBridge2 -Runs 2
+DevTools\Run-AquacultureDiagnostic.ps1 -DevBridgeRoot C:\Games\Steam\steamapps\common\RimWorld\Mods\DevBridge2 -Command AQUA_ADAPTER_STATUS
+DevTools\Run-AquacultureDiagnostic.ps1 -DevBridgeRoot C:\Games\Steam\steamapps\common\RimWorld\Mods\DevBridge2 -Command AQUA_PONDS
+DevTools\Run-AquacultureDiagnostic.ps1 -DevBridgeRoot C:\Games\Steam\steamapps\common\RimWorld\Mods\DevBridge2 -Command AQUA_DEFERRED_REALITY
+DevTools\Run-AquacultureDiagnostic.ps1 -DevBridgeRoot C:\Games\Steam\steamapps\common\RimWorld\Mods\DevBridge2 -Command AQUA_VALIDATE
+DevTools\Run-AquacultureDiagnostic.ps1 -DevBridgeRoot C:\Games\Steam\steamapps\common\RimWorld\Mods\DevBridge2 -Command AQUA_PERFORMANCE
+DevTools\Run-AquacultureDiagnostic.ps1 -DevBridgeRoot C:\Games\Steam\steamapps\common\RimWorld\Mods\DevBridge2 -Command AQUA_SETTINGS
+```
 
-## Framework End-to-End Evidence
+Run a full DevBridge2 restart after gameplay, Defs, Harmony, serialized types,
+provider, or core changes. Use no direct RimWorld launch/kill, no normal-save
+mutation, no normal-config edits, no Windows Control, and no player dependency
+on DevBridge2. No supported adapter-registration or hot-reload protocol exists.
 
-| Area | Status | Evidence boundary |
-| --- | --- | --- |
-| Correlation IDs and exactly-once invariants | Verified automatically | `FrameworkIntegrationRules` executable tests cover distinct pawns/maps/events, duplicate population/Knowledge/expertise/journal operations, failed-operation retry, save restoration, provider absence/restoration, map ownership removal, and finite/nonnegative state. |
-| Cross-framework event routing | Requires manual RimWorld validation | Static routing covers hooked/caught/escaped/stocked/born/died/survey/ecology events and DRF latent migration. A live map must verify one operation group and one Knowledge group at each boundary. |
-| Failure injection ordering | Requires manual RimWorld validation | The pure ledger models before/after mutation and retry behavior. Live exception injection before/after DRF and Knowledge commit still requires a diagnostic bridge session. |
-| Save/load and provider restoration | Requires manual RimWorld validation | Durable IDs, ledgers, migration markers, and opaque-provider behavior are covered by contracts; an old provider-state save and restored-provider load have not been exercised. |
-| Multiple maps and long run | Requires manual RimWorld validation | Deterministic map/region IDs and bounded ledgers are tested; no controlled multi-map elapsed simulation has been completed. |
-| DevBridge2 mod-owned diagnostic report | NOT RUN | Generation-105 reports were returned through atomic mod-owned request/result files, but no current-candidate report was run because DevBridge2 could not restart safely while unmanaged PID 59372 remained. |
+## Live gameplay and persistence gates
 
-## Current RC verdict
+| Gate | Status | Required evidence still missing or current boundary |
+|---|---|---|
+| Fresh isolated colony and sane settings/tooltips | NOT RUN | The quicktest is not a player colony and no complete settings/tooltip review ran. |
+| Research progression and fail-closed missing Defs | NOT RUN | Baseline only confirms the four-project chain is loaded; unresearched/Pondkeeping/Managed/Industrial play was not run. |
+| Save/reload and legacy migration | NOT RUN | No copied fixture or second/third load was exercised. |
+| Pond health priority and player advice | NOT RUN | No deterministic healthy/starving/wrong-water/temperature/lethal/overcrowded/reproduction-blocked multi-problem UI review. |
+| Natural population zero/floor/above-floor behavior | NOT RUN | Pure conservation checks and a provider snapshot are not live population proof. |
+| Manual/automatic risky catch warnings | NOT RUN | No live selection, modal timing, deduplication, or failed-catch conservation run. |
+| Migration sources and cache invalidation | NOT RUN | River/coast/ocean/pond/lake/marsh, source exhaustion, split/merge, terrain change, map removal, and save/load cases remain unrun. |
+| Live fish generation and outlier species | NOT RUN | No live standard/modded/traitless/malformed species generation matrix. |
+| Live breeding and multi-generation inheritance | NOT RUN | Golden path covers one deterministic inheritance fixture, not the full ordinary/matching/traitless/incompatible/mutation matrix. |
+| Live rods and equipment/item safety | NOT RUN | Success/miss/bite failure, drafting, cancellation, danger, transfer, destruction, save/load, pawn/target removal, exact-once restoration, and no duplication/loss remain unrun. |
+| Live commissions | NOT RUN | Reachability, impossible filtering, deadlines, delivery interruption, reward placement, save/load, and exactly-one specimen consumption remain unrun. |
+| Live Knowledge integration | NOT RUN | Registration/retry, capability gating, contexts, bounded subjects, event hooks, save/load retry, two pawns/maps, same-tick duplicates, and exactly-one consequence remain unrun. |
+| Live Deferred Reality integration | NOT RUN | Registration, active/latent transition, save during transition, reload, map removal, provider loss/restoration, long intervals, and duplicate durable operations remain unrun. |
+| Cross-framework correlation/failure injection | NOT RUN | No supported failure-injection trace has followed one identity through Aquaculture, DRF, Knowledge, and Journal. |
+| Long-run performance and memory | NOT RUN | No large pond, many fish/breeds/schools, multi-map, repeated UI, repeated Knowledge, long elapsed interval, memory, or log-volume run. |
+| Complete player-facing UX review | NOT RUN | Settings, research, build menu, inspect panes, pond/fish UI, journal, Knowledge, conservation, alerts, commissions, rods, processing, and failure text were not reviewed end to end. |
+| Production artwork and provenance | BLOCKED | See `About/ART_REQUIREMENTS.md`; dedicated art is incomplete and borrowed/unlicensed placeholders cannot ship. |
+| Clean temporary package install/player smoke | NOT RUN | ZIP contract passed, but clean install with core dependencies, optional fish packs, start/catch/inspect/save/reload/catch-again was not run. |
 
-**BLOCKED — not ready for external RC/beta testing**
+## Current runtime evidence and boundaries
 
-See [RC_STATUS.md](Validation/RC_STATUS.md) and [ART_REQUIREMENTS.md](ART_REQUIREMENTS.md)
-for the current evidence ledger, package identity, open live-validation gates, and
-dedicated-art blocker.
+The generation-151 baseline passed 17/17 at game tick 60. It found the required
+game/map components, 32 configured fish definitions, 61 traits, the research
+chain, valid fish state, pond/capacity rules, 33 natural-water populations,
+journal/breed state, commission state, finite settings, Knowledge species view,
+and repeatable snapshot caches. The map had no pond proxies; this is a healthy
+empty quicktest fixture, not evidence for every player scenario.
+
+The current Deferred Reality diagnostic reported API/schema 2, required
+Regions/Processes/Populations/Anchors/Diagnostics capabilities, one world and
+one active map, no pauses/failures/quarantine/reconciliation/duplicate
+operations, and no last error. The performance diagnostic reported cached,
+event/batched scheduling and no diagnostic-added tick work. These are point-in-
+time diagnostics and do not replace live save/load or long-run gates.
+
+One earlier coordinator-managed retry exited with code `-2147483645` in
+Horticulture Novel Seeds `PlantAutoMaskCache` while the graphics device was
+null. A subsequent DevBridge2-only retry reached READY. This is external
+Horticulture/graphics startup noise, not an Aquaculture failure; it is recorded
+as an environment `FAIL` in `About/Validation/RC_STATUS.md`. The historical
+`VFET_ResearchSpot` reference was traced to installed VFE Tribals content, not
+Aquaculture.
+
+## Release decision
+
+The candidate remains **BLOCKED**. PASS results above are retained as current
+evidence, but the missing live matrix, clean-install/player smoke, external
+environment failures, and incomplete production art prevent a PASS verdict.
+Do not create `About/BETA_TEST_PLAN.md` until those blockers are cleared and the
+verdict is exactly `PASS — ready for external RC/beta testing`.
