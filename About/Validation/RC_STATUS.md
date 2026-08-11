@@ -17,7 +17,7 @@ Status values are limited to PASS, FAIL, BLOCKED, and NOT RUN.
 | VFE Fishing | PASS | `VanillaExpanded.VCEF`, VCE-Fishing.dll 43,008 bytes; `AE30EE82F732862688B712174372554D716044840F80BEDFAF6D5FB7DD89F36D` |
 | Deferred Reality Framework | PASS | upstream SHA `9ca3f959d9efd4784dc229723fbb77265a8078af`; local documentation commit `764d932`; provider contract reports API 2/schema 2/DRF save schema 5 |
 | Knowledge Framework | PASS | `3.1.0-beta.1`, assembly 3.1.0.0; upstream SHA `8c2b98b66071e069f5afafceff14448fe22f8c11`; local workflow head `1847dc0`, verifier fix `13dbdaf`; DLL SHA `538981B18CE3C6A41FBD90F3D663DECD80E9F2F4D6CAC47BA7EF048D7BE5013B` |
-| DevBridge2 | PASS | source SHA `8f234e2a2474d47687e434c690a9b3247e607479`; generation 144 READY, launch `f5100e2aeef0468eae8ffddefa04c021`, zero active tests; lifecycle/lease-only coordinator. Doctor reports unmanaged PID 59372, so no restart was attempted. |
+| DevBridge2 | BLOCKED | source SHA `8f234e2a2474d47687e434c690a9b3247e607479`; generation 144 is ERROR, launch `3a2f58571f7f45c48b2adab67cf0e680`, zero active tests; doctor reports unmanaged PID 59372 and requires closure through Steam before restart. |
 | Aquaculture production build | PASS | Release, `AquacultureDeveloperTests=false`, 0 warnings/errors; DLL 550,912 bytes; SHA `A79F258F948B0D884BC6896AF730D7A7113958DE140BED510CEF68BDC33D2D73` |
 | Aquaculture developer build | PASS | Release, explicit `AquacultureDeveloperTests=true`, 0 warnings/errors; live test evidence below |
 | Natural-water provider build | PASS | 0 warnings/errors; DLL 45,056 bytes; SHA `6672DAF709D9F41C4F020FE633AD2DFF4451D092AEF34F5DCAC2FBF796AA4BBE`; manifest source commit `61549759e840f6597e4e2df65e6113507f0dc145`, `sourceDirty=false` |
@@ -28,11 +28,11 @@ Status values are limited to PASS, FAIL, BLOCKED, and NOT RUN.
 |---|---|---|
 | Mod-owned inhabited-pond golden path | NOT RUN | Historical generation-104 runs passed, but they predate the current candidate identity and are not promoted as proof. A new developer-process run is blocked by unmanaged RimWorld PID 59372; no direct kill or launch was used. |
 | DevBridge2 mod-owned diagnostics | NOT RUN | Historical generation-105 diagnostics passed, but no current-candidate diagnostic was run because the developer assembly could not be loaded without a restart. |
-| Trait/processing/rod regression scripts | PASS | Trait rules passed; processing 16 checks; rod revision 17; rod workflow 17; job guards 7. |
+| Trait/processing/rod regression scripts | PASS | 15 authored pure/regression scripts passed; processing 16 checks; rod revision 17; rod workflow 17; job guards 7. |
 | Natural population/conservation/migration/performance/scaling | PASS | Pure contracts passed: 44, 28, 41, 16, and scaling 70-cell/500-cell cases. These are not live map proof. |
 | Pond safety/capacity/causal/swimming | PASS | Pure contracts passed: 13, 43, and 19 checks. |
 | Def mutation and compatibility | PASS | 22 scoped mutation/save-compatibility checks. |
-| RimWorld definition startup | NOT RUN | The coordinator-only definition check passed against the current managed log with 0 Aquaculture errors and one unrelated VFE research cross-reference, but a fresh candidate restart was not run. |
+| RimWorld definition startup | BLOCKED | Coordinator-only definition check correctly refused to run while DevBridge2 was ERROR due to unmanaged PID 59372. The earlier managed-log scan found 0 Aquaculture errors and one unrelated VFE research cross-reference, but is not fresh candidate proof. |
 | Localization contract | PASS | One language file and 279 referenced keys. |
 | Optional Fishing Treasures contract | PASS | No forbidden optional-content references. |
 | Player package contract | PASS | 25 entries; package 347,082 bytes, SHA `12A9205E84345C5C5D1DE284D5C190BB31ABA9E35BD3A934660BA98549CB6D62`; manifest SHA `B47F638AB39C4AB9909F7AA1BA895B7148ADBB2640D4DF0C043598C81DE412CF`; package manifest records source commit `12424c68b4010e29822ed203fb6e02279fb83993` and `sourceDirty=false`. |
