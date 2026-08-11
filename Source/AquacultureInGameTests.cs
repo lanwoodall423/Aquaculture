@@ -32,7 +32,6 @@ namespace AquacultureFishing
 
         public override void GameComponentTick()
         {
-            if (completed) return;
             // Read the launch gate at tick time. Game components can be constructed
             // while the title/map bootstrap is still settling; the coordinator
             // environment is authoritative once the playable quicktest is running.
@@ -143,6 +142,7 @@ namespace AquacultureFishing
         private static readonly HashSet<string> ProcessedRunIds = new HashSet<string>(StringComparer.Ordinal);
         private static readonly HashSet<string> ProcessedDiagnosticIds = new HashSet<string>(StringComparer.Ordinal);
         private static int requestedPollCooldown;
+        private static float nextDiagnosticPollAt;
 
         internal static bool AutoRunRequested
         {
@@ -187,10 +187,18 @@ namespace AquacultureFishing
             // only needs a live Game and current Map; requiring GenScene/TickManager
             // here would strand requests after the baseline report.
             if (!AutoRunRequested || Verse.Current.Game == null || Find.CurrentMap == null) return;
+            // Diagnostics are on-demand and must not inherit the slow game-tick
+            // throttle used for fixture runs.  Pace the filesystem check by real
+            // time so a paused or heavily modded quicktest remains responsive
+            // without doing an idle per-frame map scan.
+            if (Time.realtimeSinceStartup >= nextDiagnosticPollAt)
+            {
+                nextDiagnosticPollAt = Time.realtimeSinceStartup + 0.5f;
+                ProcessDiagnosticRequests();
+            }
             if (requestedPollCooldown++ < 15) return;
             requestedPollCooldown = 0;
             ProcessRequestedRuns();
-            ProcessDiagnosticRequests();
         }
 
         internal static bool IsPlayable()
