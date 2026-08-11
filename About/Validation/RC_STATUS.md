@@ -2,7 +2,7 @@
 
 Date: 2026-08-11
 Branch: `main`  
-Aquaculture candidate code SHA: `85a5218` (`Route definition checks through DevBridge2`)
+Aquaculture candidate/package source SHA: `12424c68b4010e29822ed203fb6e02279fb83993` (`Record clean provider release output`)
 Verdict: **BLOCKED — not ready for external RC/beta testing**
 
 This is an evidence ledger, not a claim that static checks prove gameplay.
@@ -20,7 +20,7 @@ Status values are limited to PASS, FAIL, BLOCKED, and NOT RUN.
 | DevBridge2 | PASS | source SHA `8f234e2a2474d47687e434c690a9b3247e607479`; generation 144 READY, launch `f5100e2aeef0468eae8ffddefa04c021`, zero active tests; lifecycle/lease-only coordinator. Doctor reports unmanaged PID 59372, so no restart was attempted. |
 | Aquaculture production build | PASS | Release, `AquacultureDeveloperTests=false`, 0 warnings/errors; DLL 550,912 bytes; SHA `A79F258F948B0D884BC6896AF730D7A7113958DE140BED510CEF68BDC33D2D73` |
 | Aquaculture developer build | PASS | Release, explicit `AquacultureDeveloperTests=true`, 0 warnings/errors; live test evidence below |
-| Natural-water provider build | PASS | 0 warnings/errors; DLL 45,056 bytes; SHA `730BD905406D332D44AA9AB010E895C5F2D01BDC207425F5599C12778FA4323D` |
+| Natural-water provider build | PASS | 0 warnings/errors; DLL 45,056 bytes; SHA `6672DAF709D9F41C4F020FE633AD2DFF4451D092AEF34F5DCAC2FBF796AA4BBE`; manifest source commit `61549759e840f6597e4e2df65e6113507f0dc145`, `sourceDirty=false` |
 
 ## Completed evidence
 
@@ -35,7 +35,7 @@ Status values are limited to PASS, FAIL, BLOCKED, and NOT RUN.
 | RimWorld definition startup | NOT RUN | The coordinator-only definition check passed against the current managed log with 0 Aquaculture errors and one unrelated VFE research cross-reference, but a fresh candidate restart was not run. |
 | Localization contract | PASS | One language file and 279 referenced keys. |
 | Optional Fishing Treasures contract | PASS | No forbidden optional-content references. |
-| Player package contract | NOT RUN | The prior 25-entry package passed its allowlist, but it was generated before the current candidate and recorded `sourceDirty=true`; a clean candidate package is pending. |
+| Player package contract | PASS | 25 entries; package 347,082 bytes, SHA `12A9205E84345C5C5D1DE284D5C190BB31ABA9E35BD3A934660BA98549CB6D62`; manifest SHA `B47F638AB39C4AB9909F7AA1BA895B7148ADBB2640D4DF0C043598C81DE412CF`; package manifest records source commit `12424c68b4010e29822ed203fb6e02279fb83993` and `sourceDirty=false`. |
 | Git hygiene rules | PASS | `.gitignore` covers build intermediates, tool cache, timestamped adapter outputs, and local test output; generated intermediates were removed from the index without deleting working files. |
 
 ## Release gates not evidenced
@@ -61,7 +61,7 @@ Status values are limited to PASS, FAIL, BLOCKED, and NOT RUN.
 |---|---|---|
 | Dedicated player art | BLOCKED | `About/ART_REQUIREMENTS.md` records the gap. Only `1.6/Textures/Things/Item/Equipment/FishingRod.png` is owned production art; the remaining player-facing visual Defs borrow vanilla/VFE assets or lack dedicated art. Placeholders/unlicensed art are not acceptable for release. |
 | Complete live release matrix | BLOCKED | The unrun live/save-load/no-duplication/cross-framework/performance/UX gates above are release-blocking under the matrix. |
-| Clean release provenance | BLOCKED | The current candidate package has not yet been regenerated after the committed stabilization work; final evidence must show `sourceDirty=false` and a clean tree. |
+| Clean release provenance | PASS | Candidate source/artifact commit `12424c68b4010e29822ed203fb6e02279fb83993`; package manifest reports `sourceDirty=false`; generated/local staging output is ignored and the repository is clean after the evidence commit. |
 | Unrelated startup warning | FAIL | Fresh definition load left one unresolved `VFET_ResearchSpot` cross-reference from another mod. It is not an Aquaculture Def error, but the dependency combination needs a compatibility decision before external testing. |
 | Knowledge verification artifact hygiene | PASS | Verifier fix `13dbdaf` distinguishes ignored local bin/obj/PDB directories from tracked or packaged contamination. Full verification passed with `tracked=0 packaged=0`; ignored local directories were reported separately. |
 | DevBridge2 restart ownership | BLOCKED | DevBridge2 doctor reports unmanaged RimWorld PID 59372 and requires closure through Steam before the next restart. No direct process control was used. |
