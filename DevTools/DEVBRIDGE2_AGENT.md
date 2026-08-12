@@ -22,7 +22,12 @@ using atomic request/result JSON under DevBridge2's `Runtime` directory.
 After a gameplay/Defs/Harmony/core build, use the coordinator-managed restart:
 
 ```powershell
-dotnet build Source\AquacultureFishing.csproj --configuration Release --no-restore -p:AquacultureDeveloperTests=true
+dotnet build Source\AquacultureFishing.csproj --configuration Release --no-restore `
+  -p:AquacultureDeveloperTests=true `
+  -p:RimWorldDir="C:\Games\Steam\steamapps\common\RimWorld" `
+  -p:HarmonyPath="<path-to-0Harmony.dll>" `
+  -p:InsightCanvasDir="<InsightCanvas-checkout>" `
+  -p:KnowledgeFrameworkAssemblyPath="<KnowledgeFramework.dll>"
 & 'C:\Games\Steam\steamapps\common\RimWorld\Mods\DevBridge2\DevBridge.cmd' restart
 & 'C:\Games\Steam\steamapps\common\RimWorld\Mods\DevBridge2\DevBridge.cmd' wait-ready
 & .\DevTools\Run-AquacultureInGameTests.ps1 -DevBridgeRoot 'C:\Games\Steam\steamapps\common\RimWorld\Mods\DevBridge2' -Runs 2

@@ -6,12 +6,13 @@
   <supportedVersions><li>1.6</li></supportedVersions>
   <modDependencies>
     <li><packageId>brrainz.harmony</packageId><displayName>Harmony</displayName><steamWorkshopUrl>steam://url/CommunityFilePage/2009463077</steamWorkshopUrl></li>
+    <li><packageId>lan.insightcanvas</packageId><displayName>Insight Canvas</displayName><downloadUrl>https://github.com/lanwoodall423/InsightCanvas</downloadUrl></li>
     <li><packageId>lan.knowledgeframework</packageId><displayName>Knowledge Framework</displayName><downloadUrl>https://github.com/lanwoodall423/Knowledge-Framework</downloadUrl></li>
     <li><packageId>lan.deferredreality.framework</packageId><displayName>Deferred Reality Framework</displayName><downloadUrl>https://github.com/lanwoodall423/DeferredRealityFramework</downloadUrl></li>
     <li><packageId>VanillaExpanded.VCEF</packageId><displayName>Vanilla Fishing Expanded</displayName><steamWorkshopUrl>steam://url/CommunityFilePage/1914064942</steamWorkshopUrl></li>
   </modDependencies>
   <loadAfter>
-    <li>brrainz.harmony</li><li>lan.knowledgeframework</li><li>lan.deferredreality.framework</li><li>VanillaExpanded.VCEF</li><li>VanillaExpanded.VCEFAddon</li><li>Nightmare.Aquariums</li>
+    <li>brrainz.harmony</li><li>lan.insightcanvas</li><li>lan.knowledgeframework</li><li>lan.deferredreality.framework</li><li>VanillaExpanded.VCEF</li><li>VanillaExpanded.VCEFAddon</li><li>Nightmare.Aquariums</li>
   </loadAfter>
   <description>Adds individual living fish, inheritable visual and behavioral traits, configurable variegation masks, growth and selective breeding, species-specific schooling, sustainable natural pond food webs, named aquatic plants and invertebrates, industrial aeration and feeding, pond recreation and Natural meditation, freshwater, saltwater, and brackishwater ecology, hunger, predation, temperature needs, live-fish containers, pond beauty, research progression, and fish processing.</description>
 </ModMetaData>

@@ -108,6 +108,15 @@ agent requested generation 152 and retained lease `AFCE`; the coordinator is
 currently DRAINING generation 151. That shared restart was not touched and is
 not a new Aquaculture test result.
 
+## Prompt 1 Insight Canvas settings gate
+
+| Gate | Status | Evidence |
+|---|---|---|
+| Insight Canvas 2.1.0.0 reference/build | PASS | Release build against the installed/current `InsightCanvas.dll`; local framework checkout HEAD is `93a09005fa15190009daee625352cf4004974472` with preserved uncommitted 2.1 changes documented in the architecture record; 0 warnings/errors; no bundled framework DLL. |
+| Snapshot/stable-ID/responsive contracts | PASS | `DevTools/Test-InsightCanvasUi.ps1`; immutable-copy, revision, duplicate-ID, rail/compact, metadata, serialized-key, build-path, and package-boundary checks. |
+| Existing pure/localization/package checks | PASS | Trait breeding executable, localization validator, and 25-entry player-package contract passed. |
+| DevBridge2 live settings validation | BLOCKED | The earlier generation-201 attempt was blocked by unmanaged PID 30604. After DevBridge2 later reported generation 202 `READY`, the supported harness requested a coordinator restart, but the durable generation-203 `WAITING_FOR_BRIDGE` deadline expired with no launch attempt while another agent's lease `9F8D` remained active. This run acquired/released no lease. No direct process control or Windows Computer Use was performed. Re-run when the coordinator is unoccupied, then exercise repeated open/close, all six categories, persistence, resize/keyboard/accessibility, duplicate-ID diagnostics, render/log checks, and diagnostics. |
+
 ## Release decision
 
 The candidate remains **BLOCKED**. PASS results above are retained as current

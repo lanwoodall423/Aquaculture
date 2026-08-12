@@ -319,4 +319,119 @@ Deliver the living fish through the breed record in the Aquaculture Journal. Del
   <AquacultureFishing.GenerationContribution>Generation contribution</AquacultureFishing.GenerationContribution>
   <AquacultureFishing.GenerationEstablished>Generation {0} established on {1}.</AquacultureFishing.GenerationEstablished>
   <AquacultureFishing.BreedTraitsConflict>The defining traits must not conflict with one another.</AquacultureFishing.BreedTraitsConflict>
+  <AquacultureFishing.SettingsTitle>Aquaculture - Fishing</AquacultureFishing.SettingsTitle>
+  <AquacultureFishing.SettingsSubtitle>These settings are owned by Aquaculture. The screen keeps its layout, focus, and temporary feedback local to this document.</AquacultureFishing.SettingsSubtitle>
+  <AquacultureFishing.SettingsAccessibleDescription>Aquaculture settings</AquacultureFishing.SettingsAccessibleDescription>
+  <AquacultureFishing.SettingsGameplay>Gameplay</AquacultureFishing.SettingsGameplay>
+  <AquacultureFishing.SettingsGameplaySubtitle>Core player-facing controls bound directly to the authoritative settings.</AquacultureFishing.SettingsGameplaySubtitle>
+  <AquacultureFishing.SettingsResearchProgression>Research progression</AquacultureFishing.SettingsResearchProgression>
+  <AquacultureFishing.SettingsResearchProgressionTip>Require aquaculture research for pond construction, management, diagnostics, breeding controls, and automation.</AquacultureFishing.SettingsResearchProgressionTip>
+  <AquacultureFishing.SettingsPondAlerts>Pond alerts</AquacultureFishing.SettingsPondAlerts>
+  <AquacultureFishing.SettingsPondAlertsTip>Show alerts for starving fish, incompatible water, dangerous temperatures, or overcrowding.</AquacultureFishing.SettingsPondAlertsTip>
+  <AquacultureFishing.SettingsFishingDuration>Wait and reel duration</AquacultureFishing.SettingsFishingDuration>
+  <AquacultureFishing.SettingsFishingDurationTip>Cast time remains fixed; this value scales waiting and reeling only.</AquacultureFishing.SettingsFishingDurationTip>
+  <AquacultureFishing.SettingsAnimaFishPerTree>Anima fish per tree</AquacultureFishing.SettingsAnimaFishPerTree>
+  <AquacultureFishing.SettingsAnimaFishPerTreeTip>Number of fish associated with one anima tree.</AquacultureFishing.SettingsAnimaFishPerTreeTip>
+  <AquacultureFishing.SettingsGameplayScope>Gameplay scope</AquacultureFishing.SettingsGameplayScope>
+  <AquacultureFishing.SettingsGameplayScopeBody>This migration changes presentation only. Fishing, ecology, breeding, saves, and balance remain owned by their existing systems.</AquacultureFishing.SettingsGameplayScopeBody>
+  <AquacultureFishing.SettingsResetGameplay>Reset gameplay</AquacultureFishing.SettingsResetGameplay>
+  <AquacultureFishing.SettingsFishing>Fishing</AquacultureFishing.SettingsFishing>
+  <AquacultureFishing.SettingsSearchFish>Search fish</AquacultureFishing.SettingsSearchFish>
+  <AquacultureFishing.SettingsFishingExplanation>A fish must be present in the shared natural-water population and meet the colonist's minimum expertise before it can bite. Novice is the default requirement.</AquacultureFishing.SettingsFishingExplanation>
+  <AquacultureFishing.SettingsExpertise>Expertise</AquacultureFishing.SettingsExpertise>
+  <AquacultureFishing.SettingsExpertiseTip>Minimum expertise required before this species can bite.</AquacultureFishing.SettingsExpertiseTip>
+  <AquacultureFishing.SettingsEcology>Pond ecology</AquacultureFishing.SettingsEcology>
+  <AquacultureFishing.SettingsEcologySubtitle>Simulation and safety thresholds. These controls preserve the existing ranges and saved values.</AquacultureFishing.SettingsEcologySubtitle>
+  <AquacultureFishing.SettingsCapacityTransition>Capacity transition</AquacultureFishing.SettingsCapacityTransition>
+  <AquacultureFishing.SettingsSimulationInterval>Simulation interval</AquacultureFishing.SettingsSimulationInterval>
+  <AquacultureFishing.SettingsSimulationIntervalTip>Hours between ecology updates.</AquacultureFishing.SettingsSimulationIntervalTip>
+  <AquacultureFishing.SettingsFoodDemand>Food demand</AquacultureFishing.SettingsFoodDemand>
+  <AquacultureFishing.SettingsFoodDemandTip>Global food demand multiplier.</AquacultureFishing.SettingsFoodDemandTip>
+  <AquacultureFishing.SettingsAlgaeGrowth>Algae growth</AquacultureFishing.SettingsAlgaeGrowth>
+  <AquacultureFishing.SettingsAlgaeGrowthTip>Global algae growth multiplier.</AquacultureFishing.SettingsAlgaeGrowthTip>
+  <AquacultureFishing.SettingsStarvationTime>Starvation time</AquacultureFishing.SettingsStarvationTime>
+  <AquacultureFishing.SettingsStarvationTimeTip>Hours before starvation becomes lethal.</AquacultureFishing.SettingsStarvationTimeTip>
+  <AquacultureFishing.SettingsWaterStress>Wrong-water survival</AquacultureFishing.SettingsWaterStress>
+  <AquacultureFishing.SettingsWaterStressTip>Hours fish survive incompatible water.</AquacultureFishing.SettingsWaterStressTip>
+  <AquacultureFishing.SettingsTemperatureStress>Temperature survival</AquacultureFishing.SettingsTemperatureStress>
+  <AquacultureFishing.SettingsTemperatureStressTip>Hours fish survive unsafe temperature.</AquacultureFishing.SettingsTemperatureStressTip>
+  <AquacultureFishing.SettingsFeedValue>Feed value per unit</AquacultureFishing.SettingsFeedValue>
+  <AquacultureFishing.SettingsFeedValueTip>Nutritional value of one feed unit.</AquacultureFishing.SettingsFeedValueTip>
+  <AquacultureFishing.SettingsFeederRange>Automatic feeder range</AquacultureFishing.SettingsFeederRange>
+  <AquacultureFishing.SettingsFeederRangeTip>Maximum feeder reach in cells.</AquacultureFishing.SettingsFeederRangeTip>
+  <AquacultureFishing.SettingsGlobalPredation>Global predation</AquacultureFishing.SettingsGlobalPredation>
+  <AquacultureFishing.SettingsGlobalPredationTip>Allows predation unless a pond's own predation policy disables it.</AquacultureFishing.SettingsGlobalPredationTip>
+  <AquacultureFishing.SettingsResetEcology>Reset ecology</AquacultureFishing.SettingsResetEcology>
+  <AquacultureFishing.SettingsBreeding>Breeding and lifespan</AquacultureFishing.SettingsBreeding>
+  <AquacultureFishing.SettingsBreedingSubtitle>Breeding controls retain the existing ranges, caps, and authoritative settings fields.</AquacultureFishing.SettingsBreedingSubtitle>
+  <AquacultureFishing.SettingsEnableBreeding>Enable breeding</AquacultureFishing.SettingsEnableBreeding>
+  <AquacultureFishing.SettingsEnableBreedingTip>Allow compatible adult male and female fish to reproduce in ponds.</AquacultureFishing.SettingsEnableBreedingTip>
+  <AquacultureFishing.SettingsBreedingInterval>Days between breeding</AquacultureFishing.SettingsBreedingInterval>
+  <AquacultureFishing.SettingsBreedingIntervalTip>Minimum interval between breeding events.</AquacultureFishing.SettingsBreedingIntervalTip>
+  <AquacultureFishing.SettingsEggHatch>Egg hatch time</AquacultureFishing.SettingsEggHatch>
+  <AquacultureFishing.SettingsEggHatchTip>Days before an egg hatches.</AquacultureFishing.SettingsEggHatchTip>
+  <AquacultureFishing.SettingsMinimumOffspring>Minimum offspring</AquacultureFishing.SettingsMinimumOffspring>
+  <AquacultureFishing.SettingsMinimumOffspringTip>Lower bound for a qualifying birth.</AquacultureFishing.SettingsMinimumOffspringTip>
+  <AquacultureFishing.SettingsMaximumOffspring>Maximum offspring</AquacultureFishing.SettingsMaximumOffspring>
+  <AquacultureFishing.SettingsMaximumOffspringTip>Upper bound for a qualifying birth.</AquacultureFishing.SettingsMaximumOffspringTip>
+  <AquacultureFishing.SettingsMinimumLifespan>Minimum lifespan</AquacultureFishing.SettingsMinimumLifespan>
+  <AquacultureFishing.SettingsMinimumLifespanTip>Lower lifespan bound in days.</AquacultureFishing.SettingsMinimumLifespanTip>
+  <AquacultureFishing.SettingsMaximumLifespan>Maximum lifespan</AquacultureFishing.SettingsMaximumLifespan>
+  <AquacultureFishing.SettingsMaximumLifespanTip>Upper lifespan bound in days.</AquacultureFishing.SettingsMaximumLifespanTip>
+  <AquacultureFishing.SettingsResetBreeding>Reset breeding</AquacultureFishing.SettingsResetBreeding>
+  <AquacultureFishing.SettingsWaterTypeTint>Water type tint</AquacultureFishing.SettingsWaterTypeTint>
+  <AquacultureFishing.SettingsWaterTypeTintTip>Distinct freshwater, saltwater, and brackishwater coloration.</AquacultureFishing.SettingsWaterTypeTintTip>
+  <AquacultureFishing.SettingsAlgaeTint>Algae tint</AquacultureFishing.SettingsAlgaeTint>
+  <AquacultureFishing.SettingsAlgaeTintTip>Water becomes greener as algae biomass rises.</AquacultureFishing.SettingsAlgaeTintTip>
+  <AquacultureFishing.SettingsDepthShading>Depth shading</AquacultureFishing.SettingsDepthShading>
+  <AquacultureFishing.SettingsDepthShadingTip>Darkens cells farther from the shoreline.</AquacultureFishing.SettingsDepthShadingTip>
+  <AquacultureFishing.SettingsShoreline>Shoreline</AquacultureFishing.SettingsShoreline>
+  <AquacultureFishing.SettingsShorelineTip>Adds a narrow natural rim and shallow-water highlight.</AquacultureFishing.SettingsShorelineTip>
+  <AquacultureFishing.SettingsDecorations>Decorations</AquacultureFishing.SettingsDecorations>
+  <AquacultureFishing.SettingsDecorationsTip>Shows deterministic lily pads, reeds, and stones.</AquacultureFishing.SettingsDecorationsTip>
+  <AquacultureFishing.SettingsFishShadows>Fish shadows</AquacultureFishing.SettingsFishShadows>
+  <AquacultureFishing.SettingsFishShadowsTip>Shows soft submerged shadows beneath swimming fish.</AquacultureFishing.SettingsFishShadowsTip>
+  <AquacultureFishing.SettingsUnderwaterFishTint>Underwater fish tint</AquacultureFishing.SettingsUnderwaterFishTint>
+  <AquacultureFishing.SettingsUnderwaterFishTintTip>Blends fish toward their pond's water color while preserving trait visuals.</AquacultureFishing.SettingsUnderwaterFishTintTip>
+  <AquacultureFishing.SettingsSurfaceOverlay>Surface overlay</AquacultureFishing.SettingsSurfaceOverlay>
+  <AquacultureFishing.SettingsSurfaceOverlayTip>Draws a translucent water surface above fish and below pawns.</AquacultureFishing.SettingsSurfaceOverlayTip>
+  <AquacultureFishing.SettingsCaustics>Caustics</AquacultureFishing.SettingsCaustics>
+  <AquacultureFishing.SettingsCausticsTip>Adds restrained animated light bands across the water surface.</AquacultureFishing.SettingsCausticsTip>
+  <AquacultureFishing.SettingsPseudoDepth>Pseudo-depth</AquacultureFishing.SettingsPseudoDepth>
+  <AquacultureFishing.SettingsPseudoDepthTip>Fish periodically move between shallow and deeper visual states.</AquacultureFishing.SettingsPseudoDepthTip>
+  <AquacultureFishing.SettingsRipples>Ripples</AquacultureFishing.SettingsRipples>
+  <AquacultureFishing.SettingsRipplesTip>Shows occasional surface ripples near shallow fish.</AquacultureFishing.SettingsRipplesTip>
+  <AquacultureFishing.SettingsAdditionalPondVisuals>Additional pond visuals</AquacultureFishing.SettingsAdditionalPondVisuals>
+  <AquacultureFishing.SettingsAppearance>Appearance</AquacultureFishing.SettingsAppearance>
+  <AquacultureFishing.SettingsAppearanceSubtitle>Rendering-only options. Disabling enhanced visuals leaves the underlying RimWorld water visible.</AquacultureFishing.SettingsAppearanceSubtitle>
+  <AquacultureFishing.SettingsEnhancedPondVisuals>Enable enhanced pond visuals</AquacultureFishing.SettingsEnhancedPondVisuals>
+  <AquacultureFishing.SettingsEnhancedPondVisualsTip>Enable Aquaculture's additional pond rendering.</AquacultureFishing.SettingsEnhancedPondVisualsTip>
+  <AquacultureFishing.SettingsOpenMaskPainter>Open mask painter</AquacultureFishing.SettingsOpenMaskPainter>
+  <AquacultureFishing.SettingsMaskPainterTip>The native mask editor remains available as a focused editing tool and manages its own texture lifecycle.</AquacultureFishing.SettingsMaskPainterTip>
+  <AquacultureFishing.SettingsSearchTraits>Search traits</AquacultureFishing.SettingsSearchTraits>
+  <AquacultureFishing.SettingsDensityComfortable>Comfortable</AquacultureFishing.SettingsDensityComfortable>
+  <AquacultureFishing.SettingsDensityNormal>Normal</AquacultureFishing.SettingsDensityNormal>
+  <AquacultureFishing.SettingsDensityCompact>Compact</AquacultureFishing.SettingsDensityCompact>
+  <AquacultureFishing.SettingsAdvanced>Advanced</AquacultureFishing.SettingsAdvanced>
+  <AquacultureFishing.SettingsAdvancedSubtitle>Trait rules and document-local presentation preferences. Legacy migration fields remain serialized and are not renamed or removed.</AquacultureFishing.SettingsAdvancedSubtitle>
+  <AquacultureFishing.SettingsWildExceptionalTip>Chance for an exceptional wild trait.</AquacultureFishing.SettingsWildExceptionalTip>
+  <AquacultureFishing.SettingsParentalInheritanceTip>Chance for eligible parental traits to be inherited.</AquacultureFishing.SettingsParentalInheritanceTip>
+  <AquacultureFishing.SettingsMaximumInheritedTip>Maximum inherited trait count.</AquacultureFishing.SettingsMaximumInheritedTip>
+  <AquacultureFishing.SettingsOffspringMutationTip>Chance for a new offspring mutation.</AquacultureFishing.SettingsOffspringMutationTip>
+  <AquacultureFishing.SettingsMaximumMutationsTip>Maximum new mutations per offspring.</AquacultureFishing.SettingsMaximumMutationsTip>
+  <AquacultureFishing.SettingsBreedReliabilityTip>Reliability of registered breed-defining traits.</AquacultureFishing.SettingsBreedReliabilityTip>
+  <AquacultureFishing.SettingsPresentation>Presentation</AquacultureFishing.SettingsPresentation>
+  <AquacultureFishing.SettingsPresentationSubtitle>These preferences belong to this document and are not serialized gameplay settings.</AquacultureFishing.SettingsPresentationSubtitle>
+  <AquacultureFishing.SettingsHighContrast>High contrast</AquacultureFishing.SettingsHighContrast>
+  <AquacultureFishing.SettingsHighContrastTip>Use the document's accessibility-adjusted theme.</AquacultureFishing.SettingsHighContrastTip>
+  <AquacultureFishing.SettingsReducedMotion>Reduced motion</AquacultureFishing.SettingsReducedMotion>
+  <AquacultureFishing.SettingsReducedMotionTip>Suppress document-local animated transitions.</AquacultureFishing.SettingsReducedMotionTip>
+  <AquacultureFishing.SettingsMigrationBoundary>Migration boundary</AquacultureFishing.SettingsMigrationBoundary>
+  <AquacultureFishing.SettingsMigrationBoundaryBody>Journal, pond, fish traits, stocking planner, commission, and other substantial dialogs remain on their existing owners until later prompts.</AquacultureFishing.SettingsMigrationBoundaryBody>
+  <AquacultureFishing.SettingsResetTraitRules>Reset trait rules</AquacultureFishing.SettingsResetTraitRules>
+  <AquacultureFishing.SettingsTraitWeight>Weight</AquacultureFishing.SettingsTraitWeight>
+  <AquacultureFishing.SettingsHoursValue>{0} h</AquacultureFishing.SettingsHoursValue>
+  <AquacultureFishing.SettingsMultiplierValue>{0}x</AquacultureFishing.SettingsMultiplierValue>
+  <AquacultureFishing.SettingsCellsValue>{0} cells</AquacultureFishing.SettingsCellsValue>
+  <AquacultureFishing.SettingsDaysValue>{0} days</AquacultureFishing.SettingsDaysValue>
 </LanguageData>
