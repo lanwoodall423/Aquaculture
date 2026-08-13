@@ -511,7 +511,9 @@ namespace AquacultureFishing
     {
         private readonly CompFishTraits founder;
         private string breedName = string.Empty;
-        private bool focusName = true;
+        private AquacultureBreedRegistrationDocument insightDocument;
+        private bool canAcceptForUi;
+        private string validationMessageForUi = string.Empty;
 
         public override Vector2 InitialSize => new Vector2(520f, 240f);
 
@@ -521,39 +523,67 @@ namespace AquacultureFishing
             doCloseX = true;
             closeOnAccept = false;
             absorbInputAroundWindow = true;
+            insightDocument = new AquacultureBreedRegistrationDocument(this);
         }
 
         public override void DoWindowContents(Rect inRect)
         {
-            Text.Font = GameFont.Medium;
-            Widgets.Label(new Rect(inRect.x, inRect.y, inRect.width, 34f), "Register Fish Breed");
-            Text.Font = GameFont.Small;
-            Widgets.Label(new Rect(inRect.x, inRect.y + 42f, inRect.width, 48f),
-                "Name this stable breeding population. The name begins blank and must be unique.");
-            GUI.SetNextControlName("AquacultureBreedName");
-            breedName = Widgets.TextField(new Rect(inRect.x, inRect.y + 98f, inRect.width, 34f), breedName ?? string.Empty);
-            if (focusName)
-            {
-                UI.FocusControl("AquacultureBreedName", this);
-                focusName = false;
-            }
-            bool valid = !breedName.NullOrEmpty() && !AquacultureJournalComponent.Current.Breeds
-                .Any(breed => breed.name.Equals(breedName.Trim(), StringComparison.OrdinalIgnoreCase));
-            if (Widgets.ButtonText(new Rect(inRect.xMax - 220f, inRect.yMax - 42f, 100f, 36f), "Cancel")) Close();
-            if (Widgets.ButtonText(new Rect(inRect.xMax - 110f, inRect.yMax - 42f, 110f, 36f), "Register", active: valid))
-                Accept();
-            if (Event.current.type == EventType.KeyDown && Event.current.keyCode == KeyCode.Return)
+            insightDocument.Draw(inRect);
+            if (canAcceptForUi && Event.current.type == EventType.KeyDown &&
+                (Event.current.keyCode == KeyCode.Return || Event.current.keyCode == KeyCode.KeypadEnter))
             {
                 Event.current.Use();
-                if (valid) Accept();
+                AcceptForUi();
             }
         }
 
-        private void Accept()
+        public override void PostClose()
+        {
+            insightDocument?.PostClose();
+            base.PostClose();
+        }
+
+        internal string BreedNameForUi => breedName ?? string.Empty;
+        internal bool CanAcceptForUi => canAcceptForUi;
+        internal string ValidationMessageForUi => validationMessageForUi ?? string.Empty;
+
+        internal void SetBreedNameForUi(string value)
+        {
+            breedName = value ?? string.Empty;
+        }
+
+        internal void RefreshValidationForUi()
+        {
+            string trimmed = (breedName ?? string.Empty).Trim();
+            if (trimmed.NullOrEmpty())
+            {
+                canAcceptForUi = false;
+                validationMessageForUi = "AquacultureFishing.BreedRegistrationEnterName".Translate().ToString();
+                return;
+            }
+            if (AquacultureJournalComponent.Current?.Breeds?.Any(breed =>
+                string.Equals(breed.name, trimmed, StringComparison.OrdinalIgnoreCase)) == true)
+            {
+                canAcceptForUi = false;
+                validationMessageForUi = "AquacultureFishing.BreedRegistrationDuplicate".Translate().ToString();
+                return;
+            }
+            string reason = null;
+            List<CompFishTraits> cohort;
+            canAcceptForUi = AquacultureJournalComponent.Current != null &&
+                AquacultureJournalComponent.Current.CanRegisterBreed(founder, out reason, out cohort);
+            validationMessageForUi = canAcceptForUi
+                ? "AquacultureFishing.BreedRegistrationReady".Translate().ToString()
+                : (reason ?? "AquacultureFishing.BreedRegistrationUnavailable".Translate().ToString());
+        }
+
+        internal void AcceptForUi()
         {
             FishBreedRecord breed = AquacultureJournalComponent.Current?.RegisterBreed(founder, breedName);
             if (breed != null) Close();
         }
+
+        internal void CancelForUi() => Close();
     }
 
     public sealed class MainTabWindow_AquacultureJournal : MainTabWindow
@@ -566,6 +596,7 @@ namespace AquacultureFishing
         private string selectedSpecies;
         private string selectedBreed;
         private readonly KnowledgeMenuState expertiseState = new KnowledgeMenuState();
+        private AquacultureJournalWorkspaceDocument insightWorkspaceDocument;
 
         public override Vector2 InitialSize => new Vector2(Mathf.Min(1180f, UI.screenWidth * 0.96f), Mathf.Min(720f, UI.screenHeight * 0.90f));
 
@@ -577,6 +608,8 @@ namespace AquacultureFishing
             if (button.TabWindow is MainTabWindow_AquacultureJournal journal)
             {
                 journal.page = JournalPage.Expertise;
+                journal.insightWorkspaceDocument?.PostClose();
+                journal.insightWorkspaceDocument = null;
                 journal.expertiseState.scope = KnowledgeMenuScope.Colonist;
                 journal.expertiseState.selectedPawn = pawn;
             }
@@ -591,6 +624,7 @@ namespace AquacultureFishing
             {
                 journal.page = JournalPage.Species;
                 journal.selectedSpecies = fishDef?.defName;
+                journal.insightWorkspaceDocument?.SelectSpecies(fishDef?.defName);
             }
         }
 
@@ -602,69 +636,37 @@ namespace AquacultureFishing
                 Widgets.Label(inRect, "No aquaculture journal is available.");
                 return;
             }
-            AquacultureJournalViewSnapshot viewSnapshot = AquacultureSnapshotCache.Journal(null, true);
-            DrawHeader(new Rect(inRect.x, inRect.y, inRect.width, 70f), journal, viewSnapshot);
-            Rect content = new Rect(inRect.x, inRect.y + 78f, inRect.width, inRect.height - 78f);
-            bool breedsAvailable = AquacultureProgression.IsAvailable("AF_SelectiveBreeding");
-            if (!breedsAvailable && page == JournalPage.Breeds) page = JournalPage.Species;
-            if (page == JournalPage.Expertise)
+
+            // Knowledge expertise remains intentionally routed to the canonical Knowledge Framework
+            // browser. The other Journal surfaces are owned by the document-scoped workspace.
+            if (page != JournalPage.Expertise)
             {
-                KnowledgeMenuUI.Draw(content, expertiseState, ExpertiseModelFor, ExpertiseFor);
-                return;
-            }
-            if (page == JournalPage.Waters)
-            {
-                DrawWaters(content, viewSnapshot);
-                return;
-            }
-            if (page == JournalPage.Ponds)
-            {
-                DrawPonds(content);
-                return;
-            }
-            if (page == JournalPage.Anglers)
-            {
-                DrawAnglers(content);
-                return;
-            }
-            if (page == JournalPage.Records)
-            {
-                DrawRecords(content, journal);
-                return;
-            }
-            if (content.width < 760f)
-            {
-                float splitHeight = Mathf.Max(180f, (content.height - 12f) * 0.42f);
-                Rect list = new Rect(content.x, content.y, content.width, splitHeight);
-                Rect detail = new Rect(content.x, list.yMax + 12f, content.width, content.height - splitHeight - 12f);
-                Widgets.DrawMenuSection(list);
-                Widgets.DrawMenuSection(detail);
-                if (page == JournalPage.Species)
+                bool firstWorkspaceDraw = insightWorkspaceDocument == null;
+                if (firstWorkspaceDraw) insightWorkspaceDocument = new AquacultureJournalWorkspaceDocument();
+                if (firstWorkspaceDraw)
                 {
-                    DrawSpeciesList(list.ContractedBy(10f), journal, viewSnapshot);
-                    DrawSpeciesDetail(detail.ContractedBy(14f), journal, viewSnapshot);
+                    if (!selectedSpecies.NullOrEmpty())
+                        insightWorkspaceDocument.SelectSpecies(selectedSpecies);
+                    else
+                        insightWorkspaceDocument.SelectPage(page == JournalPage.Ponds ? "ponds" :
+                            page == JournalPage.Waters ? "conservation" :
+                            page == JournalPage.Breeds ? "breeds" : "overview");
                 }
-                else
-                {
-                    DrawBreedList(list.ContractedBy(10f), journal);
-                    DrawBreedDetail(detail.ContractedBy(14f), journal);
-                }
+                insightWorkspaceDocument.Draw(inRect);
                 return;
             }
-            Rect left = new Rect(content.x, content.y, 380f, content.height);
-            Rect right = new Rect(left.xMax + 12f, content.y, content.width - left.width - 12f, content.height);
-            Widgets.DrawMenuSection(left);
-            Widgets.DrawMenuSection(right);
-            if (page == JournalPage.Species)
+            if (insightWorkspaceDocument != null)
             {
-                DrawSpeciesList(left.ContractedBy(10f), journal, viewSnapshot);
-                DrawSpeciesDetail(right.ContractedBy(14f), journal, viewSnapshot);
+                insightWorkspaceDocument.PostClose();
+                insightWorkspaceDocument = null;
             }
-            else
-            {
-                DrawBreedList(left.ContractedBy(10f), journal);
-                DrawBreedDetail(right.ContractedBy(14f), journal);
-            }
+            KnowledgeMenuUI.Draw(inRect, expertiseState, ExpertiseModelFor, ExpertiseFor);
+        }
+
+        public override void PostClose()
+        {
+            insightWorkspaceDocument?.PostClose();
+            base.PostClose();
         }
 
         private void DrawHeader(Rect rect, AquacultureJournalComponent journal, AquacultureJournalViewSnapshot viewSnapshot)

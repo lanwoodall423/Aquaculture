@@ -2,6 +2,11 @@
 
 Candidate: `7e7e86cd4c5c35509005ec9a0711f4065f53738e`
 
+Prompt 2 continuation branch: `ui/insightcanvas-v2-overhaul`. The Prompt 2
+implementation ledger is `About/PROMPT2_UI_VALIDATION.md`; it records the new
+workspace/planner/dossier/registration surfaces and the post-change DevBridge2
+process-inspection blocker separately from this older release evidence.
+
 Current live evidence: DevBridge2 generation 151, launch
 `bdceb514f14748f48f8195bfbd2d9ea7`, coordinator-owned PID 88676.
 Current verdict: **BLOCKED — not ready for external RC/beta testing**.

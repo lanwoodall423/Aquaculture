@@ -10,5 +10,5 @@
 - Insight Canvas 2.x settings architecture: `About/INSIGHT_CANVAS_UI_ARCHITECTURE.md`.
 - Portable UI contract tests: `DevTools\Test-InsightCanvasUi.ps1` (no RimWorld process required).
 - Build the player assembly with configurable `RimWorldDir`, `HarmonyPath`, `InsightCanvasDir`, and `KnowledgeFrameworkAssemblyPath`; the installed Insight Canvas DLL is referenced with `Private=false` and is never packaged.
-- Prompt 1 migrates settings only. Journal, pond, fish-traits, stocking planner, commission, rod, Knowledge browsing, and Deferred Reality UI migrations remain intentionally incomplete.
+- Prompt 1 migrated settings. Prompt 2 adds the Journal-owned Insight Canvas workspace, hybrid fish dossier, responsive planner, and breed-registration document; native pond tabs, tiny FloatMenus/gizmos, rod UI, and canonical Knowledge browsing remain intentionally native or deferred.
 - Insight Canvas owner-license selection is unresolved and remains a release blocker.

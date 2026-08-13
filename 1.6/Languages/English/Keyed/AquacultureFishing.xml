@@ -319,6 +319,15 @@ Deliver the living fish through the breed record in the Aquaculture Journal. Del
   <AquacultureFishing.GenerationContribution>Generation contribution</AquacultureFishing.GenerationContribution>
   <AquacultureFishing.GenerationEstablished>Generation {0} established on {1}.</AquacultureFishing.GenerationEstablished>
   <AquacultureFishing.BreedTraitsConflict>The defining traits must not conflict with one another.</AquacultureFishing.BreedTraitsConflict>
+  <AquacultureFishing.BreedRegistrationTitle>Register fish breed</AquacultureFishing.BreedRegistrationTitle>
+  <AquacultureFishing.BreedRegistrationSubtitle>Name a stable breeding population. The name must be unique.</AquacultureFishing.BreedRegistrationSubtitle>
+  <AquacultureFishing.BreedRegistrationName>Breed name</AquacultureFishing.BreedRegistrationName>
+  <AquacultureFishing.BreedRegistrationRegister>Register</AquacultureFishing.BreedRegistrationRegister>
+  <AquacultureFishing.BreedRegistrationCancel>Cancel</AquacultureFishing.BreedRegistrationCancel>
+  <AquacultureFishing.BreedRegistrationEnterName>Enter a name to continue.</AquacultureFishing.BreedRegistrationEnterName>
+  <AquacultureFishing.BreedRegistrationDuplicate>That breed name is already in use.</AquacultureFishing.BreedRegistrationDuplicate>
+  <AquacultureFishing.BreedRegistrationReady>The founding population is ready to register.</AquacultureFishing.BreedRegistrationReady>
+  <AquacultureFishing.BreedRegistrationUnavailable>Registration requirements are not met.</AquacultureFishing.BreedRegistrationUnavailable>
   <AquacultureFishing.SettingsTitle>Aquaculture - Fishing</AquacultureFishing.SettingsTitle>
   <AquacultureFishing.SettingsSubtitle>These settings are owned by Aquaculture. The screen keeps its layout, focus, and temporary feedback local to this document.</AquacultureFishing.SettingsSubtitle>
   <AquacultureFishing.SettingsAccessibleDescription>Aquaculture settings</AquacultureFishing.SettingsAccessibleDescription>
@@ -434,4 +443,133 @@ Deliver the living fish through the breed record in the Aquaculture Journal. Del
   <AquacultureFishing.SettingsMultiplierValue>{0}x</AquacultureFishing.SettingsMultiplierValue>
   <AquacultureFishing.SettingsCellsValue>{0} cells</AquacultureFishing.SettingsCellsValue>
   <AquacultureFishing.SettingsDaysValue>{0} days</AquacultureFishing.SettingsDaysValue>
+  <AquacultureFishing.PondPlannerAvailableSubtitle>Choose species to add to the plan.</AquacultureFishing.PondPlannerAvailableSubtitle>
+  <AquacultureFishing.PondPlannerForecast>Forecast</AquacultureFishing.PondPlannerForecast>
+  <AquacultureFishing.PondPlannerForecastSubtitle>Capacity, food pressure, and compatibility before stocking.</AquacultureFishing.PondPlannerForecastSubtitle>
+  <AquacultureFishing.PondPlannerPlannedSubtitle>Adjust the intended population before saving.</AquacultureFishing.PondPlannerPlannedSubtitle>
+  <AquacultureFishing.PondPlannerRisk>Predation risk</AquacultureFishing.PondPlannerRisk>
+  <AquacultureFishing.PondPlannerSearch>Search species</AquacultureFishing.PondPlannerSearch>
+  <AquacultureFishing.PondPlannerWarnings>Support notes</AquacultureFishing.PondPlannerWarnings>
+  <AquacultureFishing.WorkspaceTitle>Aquaculture workspace</AquacultureFishing.WorkspaceTitle>
+  <AquacultureFishing.WorkspaceSubtitle>Read-only summaries and direct controls for the living aquaculture systems.</AquacultureFishing.WorkspaceSubtitle>
+  <AquacultureFishing.WorkspaceOverview>Overview</AquacultureFishing.WorkspaceOverview>
+  <AquacultureFishing.WorkspaceOverviewSubtitle>Colony-level discoveries, waters, ponds, and current requests.</AquacultureFishing.WorkspaceOverviewSubtitle>
+  <AquacultureFishing.WorkspacePonds>Ponds</AquacultureFishing.WorkspacePonds>
+  <AquacultureFishing.WorkspacePondsSubtitle>Prioritize habitat risks, then adjust the authoritative pond controls.</AquacultureFishing.WorkspacePondsSubtitle>
+  <AquacultureFishing.WorkspaceSpecies>Species</AquacultureFishing.WorkspaceSpecies>
+  <AquacultureFishing.WorkspaceSpeciesSubtitle>Search discovered species without exposing Knowledge-hidden identity.</AquacultureFishing.WorkspaceSpeciesSubtitle>
+  <AquacultureFishing.WorkspaceBreeds>Breeds</AquacultureFishing.WorkspaceBreeds>
+  <AquacultureFishing.WorkspaceBreedsSubtitle>Registered populations, lineage metrics, and defining traits.</AquacultureFishing.WorkspaceBreedsSubtitle>
+  <AquacultureFishing.WorkspaceConservation>Conservation</AquacultureFishing.WorkspaceConservation>
+  <AquacultureFishing.WorkspaceConservationSubtitle>Prepared natural-water views and recovery context.</AquacultureFishing.WorkspaceConservationSubtitle>
+  <AquacultureFishing.WorkspaceCommissions>Commissions</AquacultureFishing.WorkspaceCommissions>
+  <AquacultureFishing.WorkspaceCommissionsSubtitle>Current collector requirements and eligibility status.</AquacultureFishing.WorkspaceCommissionsSubtitle>
+  <AquacultureFishing.WorkspaceDiscovered>Species discovered</AquacultureFishing.WorkspaceDiscovered>
+  <AquacultureFishing.WorkspacePondCount>Ponds</AquacultureFishing.WorkspacePondCount>
+  <AquacultureFishing.WorkspaceWaterCount>Prepared waters</AquacultureFishing.WorkspaceWaterCount>
+  <AquacultureFishing.WorkspaceActiveCommission>Active commission</AquacultureFishing.WorkspaceActiveCommission>
+  <AquacultureFishing.WorkspaceNone>None</AquacultureFishing.WorkspaceNone>
+  <AquacultureFishing.WorkspaceAvailable>Available</AquacultureFishing.WorkspaceAvailable>
+  <AquacultureFishing.WorkspaceKnowledgeTitle>Knowledge disclosure</AquacultureFishing.WorkspaceKnowledgeTitle>
+  <AquacultureFishing.WorkspaceKnowledgeBody>Knowledge Framework remains the canonical source for evidence, expertise, and browsing. This workspace only presents the current operational snapshot.</AquacultureFishing.WorkspaceKnowledgeBody>
+  <AquacultureFishing.WorkspaceKnowledgeCanonical>Knowledge Framework disclosure</AquacultureFishing.WorkspaceKnowledgeCanonical>
+  <AquacultureFishing.WorkspaceKnowledgeHidden>Identity is not yet known.</AquacultureFishing.WorkspaceKnowledgeHidden>
+  <AquacultureFishing.WorkspaceHealthLegend>Priority order: lethal habitat, starvation, severe stress, reproduction blocker, advice, then healthy. Warnings also use text and controls, not color alone.</AquacultureFishing.WorkspaceHealthLegend>
+  <AquacultureFishing.WorkspaceNoPonds>No ponds are currently available.</AquacultureFishing.WorkspaceNoPonds>
+  <AquacultureFishing.WorkspaceWorstPond>Highest-priority pond</AquacultureFishing.WorkspaceWorstPond>
+  <AquacultureFishing.WorkspacePondHealthy>Healthy</AquacultureFishing.WorkspacePondHealthy>
+  <AquacultureFishing.WorkspacePondStatus>Priority</AquacultureFishing.WorkspacePondStatus>
+  <AquacultureFishing.WorkspaceSearchPonds>Search ponds</AquacultureFishing.WorkspaceSearchPonds>
+  <AquacultureFishing.WorkspaceSearchSpecies>Search species</AquacultureFishing.WorkspaceSearchSpecies>
+  <AquacultureFishing.WorkspaceSearchBreeds>Search breeds</AquacultureFishing.WorkspaceSearchBreeds>
+  <AquacultureFishing.WorkspaceSearchWater>Search prepared waters</AquacultureFishing.WorkspaceSearchWater>
+  <AquacultureFishing.WorkspaceSelectPond>Select a pond</AquacultureFishing.WorkspaceSelectPond>
+  <AquacultureFishing.WorkspaceSelectSpecies>Select a species</AquacultureFishing.WorkspaceSelectSpecies>
+  <AquacultureFishing.WorkspaceSelectBreed>Select a breed</AquacultureFishing.WorkspaceSelectBreed>
+  <AquacultureFishing.WorkspaceSelectWater>Select a prepared water</AquacultureFishing.WorkspaceSelectWater>
+  <AquacultureFishing.WorkspacePondDetail>Pond detail</AquacultureFishing.WorkspacePondDetail>
+  <AquacultureFishing.WorkspacePondDetailSubtitle>Health causes are captured before rendering; controls call the pond authority.</AquacultureFishing.WorkspacePondDetailSubtitle>
+  <AquacultureFishing.WorkspaceFeedReserve>Feed reserve</AquacultureFishing.WorkspaceFeedReserve>
+  <AquacultureFishing.WorkspaceResearchDisclosure>Research-tier disclosure</AquacultureFishing.WorkspaceResearchDisclosure>
+  <AquacultureFishing.WorkspaceResearchDisclosureBody>Controls that affect breeding are disabled until Selective Fish Breeding is available. Existing simulation rules remain authoritative.</AquacultureFishing.WorkspaceResearchDisclosureBody>
+  <AquacultureFishing.WorkspacePondControls>Pond controls</AquacultureFishing.WorkspacePondControls>
+  <AquacultureFishing.WorkspacePondControlsSubtitle>These settings change the selected pond through its existing callbacks.</AquacultureFishing.WorkspacePondControlsSubtitle>
+  <AquacultureFishing.WorkspaceBreedingMode>Breeding mode</AquacultureFishing.WorkspaceBreedingMode>
+  <AquacultureFishing.WorkspaceAdultsOnly>Harvest adults only</AquacultureFishing.WorkspaceAdultsOnly>
+  <AquacultureFishing.WorkspaceProtectFemales>Protect breeding females</AquacultureFishing.WorkspaceProtectFemales>
+  <AquacultureFishing.WorkspaceAutomaticFeeding>Automatic feeding</AquacultureFishing.WorkspaceAutomaticFeeding>
+  <AquacultureFishing.WorkspacePredation>Allow predation</AquacultureFishing.WorkspacePredation>
+  <AquacultureFishing.WorkspaceSurplusHarvest>Harvest surplus automatically</AquacultureFishing.WorkspaceSurplusHarvest>
+  <AquacultureFishing.WorkspaceSpeciesDetail>Species detail</AquacultureFishing.WorkspaceSpeciesDetail>
+  <AquacultureFishing.WorkspaceBreedDetail>Breed detail</AquacultureFishing.WorkspaceBreedDetail>
+  <AquacultureFishing.WorkspaceConservationAuthority>Deferred Reality authority</AquacultureFishing.WorkspaceConservationAuthority>
+  <AquacultureFishing.WorkspaceConservationAuthorityBody>Natural-water abundance, recovery, and regional context remain owned by Deferred Reality and the conservation map component. This page presents prepared views only.</AquacultureFishing.WorkspaceConservationAuthorityBody>
+  <AquacultureFishing.WorkspaceCommissionRules>Commission authority</AquacultureFishing.WorkspaceCommissionRules>
+  <AquacultureFishing.WorkspaceCommissionRulesBody>Eligibility, requirements, deadlines, rewards, and delivery remain owned by the commission component.</AquacultureFishing.WorkspaceCommissionRulesBody>
+  <AquacultureFishing.WorkspaceCommissionDisclosure>Knowledge and commission records are not duplicated here; use their owner for canonical browsing and delivery.</AquacultureFishing.WorkspaceCommissionDisclosure>
+  <AquacultureFishing.WorkspaceBreedRules>Breed rules</AquacultureFishing.WorkspaceBreedRules>
+  <AquacultureFishing.WorkspaceBreedRulesBody>Registration and inheritance continue to use the authoritative journal and breeding rules.</AquacultureFishing.WorkspaceBreedRulesBody>
+  <AquacultureFishing.WorkspaceBreedMetrics>Breed metrics</AquacultureFishing.WorkspaceBreedMetrics>
+  <AquacultureFishing.WorkspaceGeneration>Generation</AquacultureFishing.WorkspaceGeneration>
+  <AquacultureFishing.WorkspaceSuccess>Success rate</AquacultureFishing.WorkspaceSuccess>
+  <AquacultureFishing.WorkspaceDefiningTraits>Defining traits</AquacultureFishing.WorkspaceDefiningTraits>
+  <AquacultureFishing.WorkspaceNoDefiningTraits>No defining traits recorded.</AquacultureFishing.WorkspaceNoDefiningTraits>
+  <AquacultureFishing.WorkspaceWaterDetails>Water summary</AquacultureFishing.WorkspaceWaterDetails>
+  <AquacultureFishing.WorkspaceSpeciesCount>species</AquacultureFishing.WorkspaceSpeciesCount>
+  <AquacultureFishing.WorkspaceCommissionActive>Commission active</AquacultureFishing.WorkspaceCommissionActive>
+  <AquacultureFishing.WorkspaceNoActiveCommission>No active commission.</AquacultureFishing.WorkspaceNoActiveCommission>
+  <AquacultureFishing.WorkspaceNoCommissionRequirements>No commission requirements are active.</AquacultureFishing.WorkspaceNoCommissionRequirements>
+  <AquacultureFishing.WorkspaceEligibleSpecimens>Eligible specimens</AquacultureFishing.WorkspaceEligibleSpecimens>
+  <AquacultureFishing.WorkspaceKnownFacets>Known facets</AquacultureFishing.WorkspaceKnownFacets>
+  <AquacultureFishing.WorkspaceNoKnownFacets>No known facets are recorded.</AquacultureFishing.WorkspaceNoKnownFacets>
+  <AquacultureFishing.WorkspaceKnowledgeStage>Knowledge stage</AquacultureFishing.WorkspaceKnowledgeStage>
+  <AquacultureFishing.WorkspaceConfidence>Confidence</AquacultureFishing.WorkspaceConfidence>
+  <AquacultureFishing.WorkspaceUnknownSpecies>Unknown species</AquacultureFishing.WorkspaceUnknownSpecies>
+  <AquacultureFishing.WorkspaceUnnamed>Unnamed breed</AquacultureFishing.WorkspaceUnnamed>
+  <AquacultureFishing.WorkspaceUnknown>Unknown</AquacultureFishing.WorkspaceUnknown>
+  <AquacultureFishing.WorkspaceUnregistered>Unregistered</AquacultureFishing.WorkspaceUnregistered>
+  <AquacultureFishing.WorkspaceBreed>Breed</AquacultureFishing.WorkspaceBreed>
+  <AquacultureFishing.WorkspaceSex>Sex</AquacultureFishing.WorkspaceSex>
+  <AquacultureFishing.WorkspaceLifeStage>Life stage</AquacultureFishing.WorkspaceLifeStage>
+  <AquacultureFishing.WorkspaceLifeStageFry>Fry</AquacultureFishing.WorkspaceLifeStageFry>
+  <AquacultureFishing.WorkspaceLifeStageJuvenile>Juvenile</AquacultureFishing.WorkspaceLifeStageJuvenile>
+  <AquacultureFishing.WorkspaceLifeStageAdult>Adult</AquacultureFishing.WorkspaceLifeStageAdult>
+  <AquacultureFishing.WorkspaceLifeStageElder>Elder</AquacultureFishing.WorkspaceLifeStageElder>
+  <AquacultureFishing.WorkspaceCondition>Condition</AquacultureFishing.WorkspaceCondition>
+  <AquacultureFishing.WorkspaceProduction>Production</AquacultureFishing.WorkspaceProduction>
+  <AquacultureFishing.WorkspaceTraits>Traits</AquacultureFishing.WorkspaceTraits>
+  <AquacultureFishing.WorkspaceTraitsSubtitle>Known traits are ordered consistently and shown without changing the fish.</AquacultureFishing.WorkspaceTraitsSubtitle>
+  <AquacultureFishing.WorkspaceFishDossier>Fish dossier</AquacultureFishing.WorkspaceFishDossier>
+  <AquacultureFishing.WorkspaceFishDossierSubtitle>Operational fish details inside the native inspection tab.</AquacultureFishing.WorkspaceFishDossierSubtitle>
+  <AquacultureFishing.WorkspaceOpenKnowledge>Open Knowledge view</AquacultureFishing.WorkspaceOpenKnowledge>
+  <AquacultureFishing.WorkspaceFoodReserve>Food reserve</AquacultureFishing.WorkspaceFoodReserve>
+  <AquacultureFishing.WorkspaceHabitatFit>Habitat fit</AquacultureFishing.WorkspaceHabitatFit>
+  <AquacultureFishing.WorkspaceStarvation>starvation pressure</AquacultureFishing.WorkspaceStarvation>
+  <AquacultureFishing.WorkspaceMeatYield>Expected meat</AquacultureFishing.WorkspaceMeatYield>
+  <AquacultureFishing.WorkspaceSterilized>Sterilized</AquacultureFishing.WorkspaceSterilized>
+  <AquacultureFishing.WorkspaceYes>Yes</AquacultureFishing.WorkspaceYes>
+  <AquacultureFishing.WorkspaceNo>No</AquacultureFishing.WorkspaceNo>
+  <AquacultureFishing.WorkspaceDead>Dead</AquacultureFishing.WorkspaceDead>
+  <AquacultureFishing.WorkspaceFemale>Female</AquacultureFishing.WorkspaceFemale>
+  <AquacultureFishing.WorkspaceMale>Male</AquacultureFishing.WorkspaceMale>
+  <AquacultureFishing.WorkspaceDaysRemaining>days remaining</AquacultureFishing.WorkspaceDaysRemaining>
+  <AquacultureFishing.WorkspaceBreedingNatural>Natural</AquacultureFishing.WorkspaceBreedingNatural>
+  <AquacultureFishing.WorkspaceBreedingPaused>Paused</AquacultureFishing.WorkspaceBreedingPaused>
+  <AquacultureFishing.WorkspaceBreedingEncouraged>Encouraged</AquacultureFishing.WorkspaceBreedingEncouraged>
+  <AquacultureFishing.WorkspaceBreedingIntensive>Intensive</AquacultureFishing.WorkspaceBreedingIntensive>
+  <AquacultureFishing.WorkspacePriorityLethal>Lethal habitat</AquacultureFishing.WorkspacePriorityLethal>
+  <AquacultureFishing.WorkspacePriorityStarvation>Starvation</AquacultureFishing.WorkspacePriorityStarvation>
+  <AquacultureFishing.WorkspacePrioritySevereStress>Severe stress</AquacultureFishing.WorkspacePrioritySevereStress>
+  <AquacultureFishing.WorkspacePriorityReproduction>Reproduction blocker</AquacultureFishing.WorkspacePriorityReproduction>
+  <AquacultureFishing.WorkspacePriorityAdvice>Advice</AquacultureFishing.WorkspacePriorityAdvice>
+  <AquacultureFishing.WorkspacePriorityHealthy>Healthy</AquacultureFishing.WorkspacePriorityHealthy>
+  <AquacultureFishing.WorkspaceWaterFreshwater>Freshwater</AquacultureFishing.WorkspaceWaterFreshwater>
+  <AquacultureFishing.WorkspaceWaterSaltwater>Saltwater</AquacultureFishing.WorkspaceWaterSaltwater>
+  <AquacultureFishing.WorkspaceWaterBrackishwater>Brackishwater</AquacultureFishing.WorkspaceWaterBrackishwater>
+  <AquacultureFishing.WorkspaceDietHerbivore>Plant-eater</AquacultureFishing.WorkspaceDietHerbivore>
+  <AquacultureFishing.WorkspaceDietCarnivore>Predator</AquacultureFishing.WorkspaceDietCarnivore>
+  <AquacultureFishing.WorkspaceDietOmnivore>Mixed diet</AquacultureFishing.WorkspaceDietOmnivore>
+  <AquacultureFishing.WorkspaceDietDetritivore>Detritus feeder</AquacultureFishing.WorkspaceDietDetritivore>
+  <AquacultureFishing.WorkspaceDietFilterFeeder>Filter feeder</AquacultureFishing.WorkspaceDietFilterFeeder>
+  <AquacultureFishing.WorkspaceDietMixed>Mixed diet</AquacultureFishing.WorkspaceDietMixed>
 </LanguageData>
