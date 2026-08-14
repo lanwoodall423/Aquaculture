@@ -2,7 +2,7 @@
 
 Date: 2026-08-14
 Branch: `ui/insightcanvas-v2-overhaul`
-Aquaculture candidate source SHA: `c047773` (`Complete Insight Canvas UI overhaul and release validation`)
+Aquaculture candidate source SHA: `e407b656cc3071a38a81e111a53657d0f52a5fb7` (`Apply GPLv3 licensing and waive production art gate`)
 Verdict: **BLOCKED — not ready for external RC/beta testing**
 
 This is an evidence ledger, not a claim that static checks prove gameplay.
@@ -12,31 +12,31 @@ Status values are exactly `PASS`, `FAIL`, `BLOCKED`, `NOT RUN`, or `WAIVED`.
 
 | Item | Status | Evidence |
 |---|---|---|
-| RimWorld | PASS | `1.6.4871`; the current coordinator-managed quicktest reached a playable map on generation 151. |
+| RimWorld | PASS | `1.6.4871`; DevBridge2 generation 260 remained READY with a coordinator-managed playable quicktest map. |
 | Harmony | PASS | 2.4.1.0; `353DAAFEC180BB8E7BBE4DA78F2A7CDC78067392E3A4E79DC8E7AF295F2371E6` |
 | VFE Fishing | PASS | `VanillaExpanded.VCEF`, VCE-Fishing.dll 43,008 bytes; `AE30EE82F732862688B712174372554D716044840F80BEDFAF6D5FB7DD89F36D` |
 | Deferred Reality Framework | PASS | upstream SHA `9ca3f959d9efd4784dc229723fbb77265a8078af`; local documentation commit `764d932`; provider contract API 2/schema 2/DRF save schema 5; installed DLL SHA `36ECC9AA4335C868A355C2FE1ED8827B2B52339C7C8D4E6FBACF58C1A932C72B`. |
 | Knowledge Framework | PASS | `3.1.0-beta.1`, assembly 3.1.0.0; upstream SHA `8c2b98b66071e069f5afafceff14448fe22f8c11`; local workflow head `1847dc0`, verifier fix `13dbdaf`; installed DLL SHA `538981B18CE3C6A41FBD90F3D663DECD80E9F2F4D6CAC47BA7EF048D7BE5013B`; obsolete `<modClass>` metadata removed locally. |
-| DevBridge2 | PASS | source SHA `8f234e2a2474d47687e434c690a9b3247e607479`; evidence run was READY on generation 151, coordinator-owned RimWorld PID 88676, launch `bdceb514f14748f48f8195bfbd2d9ea7`; no Aquaculture lease was left active. At final handoff a separate shared agent held lease `AFCE` and had already requested generation 152, so the coordinator was DRAINING; that restart was not touched. |
-| Aquaculture production build | PASS | Release, `AquacultureDeveloperTests=false`, 0 warnings/errors; DLL 550,912 bytes; SHA `A79F258F948B0D884BC6896AF730D7A7113958DE140BED510CEF68BDC33D2D73`. |
+| DevBridge2 | PASS | source SHA `8f234e2a2474d47687e434c690a9b3247e607479`; generation 260, coordinator-owned RimWorld PID 29324, launch `723898827e50405ba7fead446d944b38`; final status/doctor were READY with no active tests, lease, restart, or terminal failure. |
+| Aquaculture production build | PASS | Release, `AquacultureDeveloperTests=false`, 0 warnings/errors; DLL 640,000 bytes; SHA `2593CBF49DC79CD573C2D25951D5C19D511A84C361502D0FA96E980C23134960`. |
 | Aquaculture developer build | PASS | Release, explicit `AquacultureDeveloperTests=true`, 0 warnings/errors; used only for the mod-owned quicktest harness and diagnostics. |
-| Natural-water provider build | PASS | 0 warnings/errors; DLL 45,056 bytes; SHA `6672DAF709D9F41C4F020FE633AD2DFF4451D092AEF34F5DCAC2FBF796AA4BBE`; manifest SHA `4020F18AF6D809BFC2454DAED053AFCF8A7485C57DE8E7D514E6F50E93313034`; `sourceDirty=false`. |
+| Natural-water provider build | PASS | 0 warnings/errors; DLL 45,568 bytes; SHA `BDBAEE940E0EEEA487C691257C3E2749054A7D863B20F9EB4862E5C6C48F7E9F`; manifest SHA `DDD715E596AE04A7CED2A8AD4B603D8AC558E8BB440CDEA82C2094E692F97850`; `sourceDirty=false`. |
 
 ## Current completed evidence
 
 | Area | Status | Evidence |
 |---|---|---|
-| Mod-owned automatic baseline and inhabited-pond golden path | PASS | Current launch `bdceb514f14748f48f8195bfbd2d9ea7`, generation 151, PID 88676: baseline 17/17; run `76282a60976342209486c0cda864f04e` passed 7/7; run `8ffb2da2f1dc44aeaeae3d2e612a6c44` passed 7/7. Exact lease was released. |
-| Current mod-owned diagnostics | PASS | Eleven read-only commands returned current-generation PASS results: adapter status, ponds, Deferred Reality, validation, performance, settings, Aquaculture summary, species, catalog, journal, and opportunities. All used launch `bdceb514f14748f48f8195bfbd2d9ea7`/generation 151 and atomic mod-owned request/results. |
+| Prompt 3 mod-owned automatic baseline and inhabited-pond golden path | PASS | Generation 259, launch `73e7b345c9ed4552b5b115f08ec62da5`, baseline 17/17; two golden runs passed 7/7 each. The exact lease was released. |
+| Historical mod-owned diagnostics | PASS | Eleven read-only commands returned PASS results on the earlier generation-151 launch; these remain historical evidence and are not represented as current-generation results. |
 | Deferred Reality live provider snapshot | PASS | API 2/schema 2; 1 world, 1 active map; the diagnostic reported 23 populations/processes and the same required capabilities; no paused processes, failures, quarantine, reconciliation, duplicate operations, or last error. The baseline separately observed 33 prepared natural-water populations. |
 | Trait/processing/rod regression scripts | PASS | Fifteen authored pure/regression scripts passed; processing 16 checks; rod revision 17; rod workflow 17; job guards 7. These are not live rod no-loss proof. |
 | Natural population/conservation/migration/performance/scaling | PASS | Pure contracts passed: 44, 28, 41, 16, and scaling 70-cell/500-cell cases. These are not live map proof. |
 | Pond safety/capacity/causal/swimming | PASS | Pure contracts passed: 13, 43, and 19 checks. |
 | Def mutation and compatibility | PASS | 22 scoped mutation/save-compatibility checks. |
-| Current quicktest XML/Def startup | PASS | Generation 151 reached a playable map; current Aquaculture baseline found required Defs and zero Aquaculture-specific errors. The old Knowledge `<modClass>` error is absent after the metadata fix. |
-| Localization contract | PASS | One language file and 279 referenced keys. |
+| Prompt 3 quicktest XML/Def startup | PASS | The generation-259 Aquaculture baseline reached a playable map, found required Defs, and reported zero Aquaculture-specific errors. The old Knowledge `<modClass>` error is absent after the metadata fix. |
+| Localization contract | PASS | One language file and 534 referenced keys. |
 | Optional Fishing Treasures contract | PASS | No forbidden optional-content references. |
-| Player package contract | PASS | 26 entries including the GPL license file; the allowlist and package contract pass. Final committed-package manifest must report `sourceDirty=false` and include `license=GPL-3.0-or-later` with Copyright (C) 2026 lanwoodall423. |
+| Player package contract | PASS | Final package from commit `e407b656cc3071a38a81e111a53657d0f52a5fb7`: 26 entries including `LICENSE`, package SHA `D364F68C1D365D9236D1634E50660DA1048894C30E2F75960CCD24DBB3260A1B`, manifest `sourceDirty=false`, `license=GPL-3.0-or-later`, and Copyright (C) 2026 lanwoodall423. |
 | Git hygiene rules | PASS | `.gitignore` covers build intermediates, tool cache, timestamped adapter outputs, local test output, PDBs, generated executables, and machine files while retaining authored source, tests, runtime assemblies, Defs, languages, textures, and required docs. |
 
 ## Release gates not evidenced
@@ -63,7 +63,7 @@ Status values are exactly `PASS`, `FAIL`, `BLOCKED`, `NOT RUN`, or `WAIVED`.
 | Dedicated player art | WAIVED | Per owner instruction dated 2026-08-14, the dedicated production-art requirement is skipped for this candidate. No art was generated or changed; existing vanilla/VFE/dependency-owned sources retain their original terms. |
 | Complete live release matrix | BLOCKED | The unrun live/save-load/no-duplication/cross-framework/performance/UX gates above are release-blocking under the matrix. |
 | Aquaculture/dependency license accounting | PASS | Aquaculture source/package is `GPL-3.0-or-later`, Copyright (C) 2026 lanwoodall423; the installed Insight Canvas checkout separately declares GPLv3.0. |
-| Clean release provenance | PASS | Closure implementation baseline `c047773`; the final package manifest records the exact license/waiver commit, `sourceDirty=false`, and only allowlisted player files. |
+| Clean release provenance | PASS | Closure implementation baseline `c047773`; final license/waiver commit `e407b656cc3071a38a81e111a53657d0f52a5fb7` is recorded by the package manifest with `sourceDirty=false` and only allowlisted player files. |
 | Unrelated dependency startup warning | FAIL | The earlier `VFET_ResearchSpot` unresolved reference belongs to installed VFE Tribals content, not Aquaculture. It remains an environment compatibility failure to resolve or explicitly exclude before external testing. |
 | External quicktest graphics failure | FAIL | One coordinator-managed generation-151 restart attempt exited `-2147483645` in Horticulture Novel Seeds `PlantAutoMaskCache` while the graphics device was null. A subsequent DevBridge2 retry reached READY; no Aquaculture stack or error was implicated. |
 | Knowledge verification artifact hygiene | PASS | Verifier fix `13dbdaf` distinguishes ignored local bin/obj/PDB directories from tracked or packaged contamination; full verification passed with `tracked=0 packaged=0`. |
@@ -125,11 +125,18 @@ released its lease but produced no result within 120 seconds. DevBridge2
 terminal failure. The request is not counted as a pass and no restart was
 performed for this documentation/package-only change.
 
+The subsequent coordinator-owned `Run-AquacultureInGameTests.ps1
+-SkipRestart -Runs 2` attempt on generation 260 acquired lease `640B`, but
+the baseline result file was not produced within its 120-second bound. The
+harness released the lease and DevBridge2 returned READY with zero active
+tests; this attempt is not counted as a pass.
+
 The clean player package contract also passed: 26 allowlisted entries including
 the GPL license file, no
 DevBridge2/source/tests/caches/PDBs or duplicate InsightCanvas DLL, and
-the pre-commit validation manifest recorded `sourceDirty=true`; the final
-committed-package manifest must record `sourceDirty=false`.
+package SHA `D364F68C1D365D9236D1634E50660DA1048894C30E2F75960CCD24DBB3260A1B`.
+The committed manifest records `sourceDirty=false` for commit
+`e407b656cc3071a38a81e111a53657d0f52a5fb7`.
 
 The required fresh-colony natural UX interaction was not performed before
 DevBridge2 manipulation, so it remains `NOT RUN` and is not inferred from the

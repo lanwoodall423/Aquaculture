@@ -3,7 +3,7 @@
 > **Prompt 3 closure supersession (current candidate):** This historical matrix
 > contains older-candidate evidence and is not a current release claim. The
 > current closure candidate is branch `ui/insightcanvas-v2-overhaul` at
-> `c047773` (the prior clean closure commit). Insight Canvas evidence is source SHA
+> `e407b656cc3071a38a81e111a53657d0f52a5fb7`. Insight Canvas evidence is source SHA
 > `93a09005fa15190009daee625352cf4004974472`, installed version `2.1.0.0`.
 > Prompt 3 requires reopening UI, accessibility, package, and player-first gates;
 > only evidence explicitly identified in the closure section below is current.
@@ -15,7 +15,7 @@
 | Gate | Current status | Evidence/boundary |
 | --- | --- | --- |
 | Prompt 2 exact result | PASS | Prior result ended exactly `Prompt 2, PASS`. |
-| Clean branch baseline | PASS | `ui/insightcanvas-v2-overhaul`, clean at `c047773` before this license/waiver update. |
+| Clean branch baseline | PASS | `ui/insightcanvas-v2-overhaul`, clean at `e407b656cc3071a38a81e111a53657d0f52a5fb7` after the license/waiver update. |
 | Release build | PASS | Configured RimWorld/Harmony/Insight Canvas/Knowledge Framework build; 0 warnings/errors. |
 | Portable Insight Canvas contracts | PASS | `DevTools/Test-InsightCanvasUi.ps1`; closure adds commission and dead-Journal checks. |
 | Trait rules/localization | PASS | Existing executable trait suite and localization validator; current closure keys are included. |
@@ -24,20 +24,24 @@
 | Fresh-colony natural UX | NOT RUN | Requires player-first interaction and cannot be inferred from source or quicktest fixtures. |
 | Accessibility matrix | NOT RUN | Portable contracts cover semantics; density/contrast/motion/focus/narrow-layout review remains a live gate. |
 | Multi-map/save-load/performance | NOT RUN | Requires fresh isolated player validation; no stale older-candidate PASS is reused. |
-| Clean player package | PASS | `New-PlayerPackage.ps1` plus `Test-PlayerPackage.ps1`: 26 entries including the GPL license file, no DevBridge2/source/tests/caches/PDBs/duplicate InsightCanvas DLL, and the committed-package manifest must report `sourceDirty=false`. |
+| Clean player package | PASS | `New-PlayerPackage.ps1` plus `Test-PlayerPackage.ps1`: final commit `e407b656cc3071a38a81e111a53657d0f52a5fb7`, 26 entries including `LICENSE`, package SHA `D364F68C1D365D9236D1634E50660DA1048894C30E2F75960CCD24DBB3260A1B`, no DevBridge2/source/tests/caches/PDBs/duplicate InsightCanvas DLL, and manifest `sourceDirty=false`. |
 | Production artwork | WAIVED | Owner instruction dated 2026-08-14 waives the dedicated production-art requirement; no art was generated or changed. Third-party ownership and terms remain separate. |
 | Mod/dependency licensing | PASS | Aquaculture source/package: `GPL-3.0-or-later`, Copyright (C) 2026 lanwoodall423; installed Insight Canvas separately declares GPLv3.0. |
 
-Candidate: `7e7e86cd4c5c35509005ec9a0711f4065f53738e`
+Candidate: `e407b656cc3071a38a81e111a53657d0f52a5fb7`
 
 Prompt 2 continuation branch: `ui/insightcanvas-v2-overhaul`. The Prompt 2
 implementation ledger is `About/PROMPT2_UI_VALIDATION.md`; it records the new
 workspace/planner/dossier/registration surfaces and the post-change DevBridge2
 process-inspection blocker separately from this older release evidence.
 
-Current live evidence: DevBridge2 generation 259, launch
-`73e7b345c9ed4552b5b115f08ec62da5`, coordinator-owned Aquaculture PID 14576;
-baseline/golden/provider results are recorded in the Prompt 3 closure ledger.
+Historical Prompt 2 live evidence retained in the Prompt 3 closure ledger is
+DevBridge2 generation 259, launch `73e7b345c9ed4552b5b115f08ec62da5`;
+baseline/golden/provider results are recorded there. Current generation 260
+status and doctor checks both returned READY with zero active tests, no lease,
+no restart pending, and no terminal failure. The generation-260 adapter and
+golden-harness requests timed out within their bounded waits and are not
+counted as feature passes.
 Current verdict: **BLOCKED — not ready for external RC/beta testing**.
 
 Status values in this matrix are exactly `PASS`, `FAIL`, `BLOCKED`, `NOT RUN`, or `WAIVED`.
@@ -64,7 +68,7 @@ main-menu or quicktest startup do not prove the corresponding gameplay gate.
 | Rod revision/workflow/job guards | PASS | 17, 17, and 7 checks passed respectively; these are not live item no-loss proof. |
 | Performance/scaling contracts | PASS | 16 performance checks and 70-cell/500-cell scaling checks passed. |
 | XML/localization/optional content | PASS | XML startup checks, one language/279 referenced keys, and Fishing Treasures contract passed. |
-| Generated-file/package hygiene | PASS | Local verifier passed; player package contract passed with 25 entries and no source/tests/DevTools/PDB/cache/bridge files. |
+| Generated-file/package hygiene | PASS | Historical local verifier passed; current player package contract passed with 26 entries and no source/tests/DevTools/PDB/cache/bridge files. |
 | Current mod-owned baseline | PASS | `DevTools/Run-AquacultureInGameTests.ps1 -SkipRestart`: generation 151 baseline 17/17. |
 | Current mod-owned golden path | PASS | Same run, two inhabited-pond runs, 7/7 each: `76282a60976342209486c0cda864f04e` and `8ffb2da2f1dc44aeaeae3d2e612a6c44`. |
 | Current read-only diagnostics | PASS | Eleven sequential `DevTools/Run-AquacultureDiagnostic.ps1` requests passed: `AQUA_ADAPTER_STATUS`, `AQUA_PONDS`, `AQUA_DEFERRED_REALITY`, `AQUA_VALIDATE`, `AQUA_PERFORMANCE`, `AQUA_SETTINGS`, `AQUACULTURE`, `AQUA_SPECIES`, `AQUA_CATALOG`, `AQUA_JOURNAL`, and `AQUA_OPPORTUNITIES`. |
@@ -148,8 +152,8 @@ not a new Aquaculture test result.
 |---|---|---|
 | Insight Canvas 2.1.0.0 reference/build | PASS | Release build against the installed/current `InsightCanvas.dll`; local framework checkout HEAD is `93a09005fa15190009daee625352cf4004974472` with preserved uncommitted 2.1 changes documented in the architecture record; 0 warnings/errors; no bundled framework DLL. |
 | Snapshot/stable-ID/responsive contracts | PASS | `DevTools/Test-InsightCanvasUi.ps1`; immutable-copy, revision, duplicate-ID, rail/compact, metadata, serialized-key, build-path, and package-boundary checks. |
-| Existing pure/localization/package checks | PASS | Trait breeding executable, localization validator, and 25-entry player-package contract passed. |
-| DevBridge2 live settings validation | BLOCKED | The earlier generation-201 attempt was blocked by unmanaged PID 30604. After DevBridge2 later reported generation 202 `READY`, the supported harness requested a coordinator restart, but the durable generation-203 `WAITING_FOR_BRIDGE` deadline expired with no launch attempt while another agent's lease `9F8D` remained active. This run acquired/released no lease. No direct process control or Windows Computer Use was performed. Re-run when the coordinator is unoccupied, then exercise repeated open/close, all six categories, persistence, resize/keyboard/accessibility, duplicate-ID diagnostics, render/log checks, and diagnostics. |
+| Existing pure/localization/package checks | PASS | Trait breeding executable, localization validator, and the historical 25-entry player-package contract passed; current Prompt 3 package evidence is the 26-entry result above. |
+| DevBridge2 live settings validation | NOT RUN | The older generation-201/203 attempt is historical. A generation-260 `AQUA_SETTINGS` request was not completed after the bounded diagnostic retry; no direct process control or Windows Computer Use was performed. |
 
 ## Release decision
 
