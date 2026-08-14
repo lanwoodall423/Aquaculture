@@ -11,6 +11,11 @@ using atomic request/result JSON under DevBridge2's `Runtime` directory.
 - Do not launch, kill, or control RimWorld directly.
 - Use `C:\Games\Steam\steamapps\common\RimWorld\Mods\DevBridge2\DevBridge.cmd`.
 - Query `status` before acting and use `wait-ready` after an interrupted command.
+- Register a session-owned Aquaculture intent with a unique registration ID before requesting a
+  restart or test. Register immediately even when other project intents or tests are active: DevBridge
+  combines them into an aggregate profile. Active tests delay the replacement launch or test start,
+  not registration. Wait for an exclusive profile only to reproduce a baseline, isolate a combined-run
+  failure, or honor a known incompatibility.
 - Acquire a lease with `test begin` before interacting with the live map.
 - Release exactly the lease printed by that command with `test end <lease>`.
 - Never release another agent's lease.
@@ -28,6 +33,10 @@ dotnet build Source\AquacultureFishing.csproj --configuration Release --no-resto
   -p:HarmonyPath="<path-to-0Harmony.dll>" `
   -p:InsightCanvasDir="<InsightCanvas-checkout>" `
   -p:KnowledgeFrameworkAssemblyPath="<KnowledgeFramework.dll>"
+$env:DEVBRIDGE_AGENT = "codex-aquaculture-<unique-run>"
+$env:DEVBRIDGE_SESSION = "codex-aquaculture-<unique-run>-session"
+$registrationId = "codex-aquaculture-<unique-run>"
+& 'C:\Games\Steam\steamapps\common\RimWorld\Mods\DevBridge2\DevBridge.cmd' project register aquaculture --id $registrationId --json
 & 'C:\Games\Steam\steamapps\common\RimWorld\Mods\DevBridge2\DevBridge.cmd' restart
 & 'C:\Games\Steam\steamapps\common\RimWorld\Mods\DevBridge2\DevBridge.cmd' wait-ready
 & .\DevTools\Run-AquacultureInGameTests.ps1 -DevBridgeRoot 'C:\Games\Steam\steamapps\common\RimWorld\Mods\DevBridge2' -Runs 2
@@ -61,9 +70,11 @@ adapter hot-reload API, so no adapter reload command is used.
 
 - **Build:** use the explicit developer property for live tests. Use the
   default (false) property for the player assembly and package.
-- **Register:** there is no DevBridge2 adapter-registration command. Do not
-  publish or register the historical standalone adapter. The loaded developer
-  assembly installs the mod-owned request/result runner itself.
+- **Register:** set a session-owned `DEVBRIDGE_AGENT`, `DEVBRIDGE_SESSION`, and unique registration
+  `--id`, then register the `aquaculture` project intent before testing so it joins the aggregate
+  profile. There is no separate adapter-registration command: do not publish or register the
+  historical standalone adapter. The loaded developer assembly installs the mod-owned request/result
+  runner itself.
 - **Query:** use `DevBridge.cmd status` for lifecycle identity and
   `Run-AquacultureDiagnostic.ps1` for read-only mod diagnostics. Results are
   atomic files under `DevBridge2\Runtime` and are matched by run ID, launch ID,
