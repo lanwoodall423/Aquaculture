@@ -698,16 +698,13 @@ namespace AquacultureFishing
     {
         private readonly AquacultureCommissionComponent component;
         private readonly AquacultureCommissionRecord commission;
-        private readonly List<Thing> specimens;
-        private Vector2 scrollPosition;
+        private AquacultureCommissionDeliveryDocument insightDocument;
 
         public Dialog_DeliverAquacultureCommission(AquacultureCommissionComponent component,
             AquacultureCommissionRecord commission)
         {
             this.component = component;
             this.commission = commission;
-            component?.RefreshEligibleSpecimens();
-            specimens = component?.EligibleSpecimens(commission)?.ToList() ?? new List<Thing>();
             forcePause = true;
             absorbInputAroundWindow = true;
             doCloseX = true;
@@ -715,47 +712,64 @@ namespace AquacultureFishing
             resizeable = false;
             draggable = true;
             layer = WindowLayer.Dialog;
+            insightDocument = new AquacultureCommissionDeliveryDocument(this);
         }
 
-        public override Vector2 InitialSize => new Vector2(620f, Mathf.Clamp(180f + specimens.Count * 58f, 240f, 680f));
+        public override Vector2 InitialSize => new Vector2(
+            Mathf.Clamp(UI.screenWidth * 0.58f, 560f, 760f),
+            Mathf.Clamp(UI.screenHeight * 0.64f, 360f, 620f));
 
         public override void DoWindowContents(Rect inRect)
         {
-            Text.Font = GameFont.Medium;
-            Widgets.Label(new Rect(inRect.x, inRect.y, inRect.width, 32f),
-                "AquacultureFishing.CommissionDeliverTitle".Translate());
-            Text.Font = GameFont.Small;
-            Widgets.Label(new Rect(inRect.x, inRect.y + 36f, inRect.width, 42f),
-                "AquacultureFishing.CommissionDeliverInstruction".Translate(
-                    commission?.FishDef?.LabelCap ?? "AquacultureFishing.CommissionUnknown".Translate()).ToString());
-            Rect outRect = new Rect(inRect.x, inRect.y + 84f, inRect.width, inRect.height - 84f);
-            Rect view = new Rect(0f, 0f, outRect.width - 16f, Mathf.Max(outRect.height, specimens.Count * 58f));
-            Widgets.BeginScrollView(outRect, ref scrollPosition, view);
-            for (int i = 0; i < specimens.Count; i++)
-            {
-                Thing specimen = specimens[i];
-                Rect row = new Rect(0f, i * 58f, view.width, 52f);
-                Widgets.DrawHighlightIfMouseover(row);
-                Widgets.ThingIcon(new Rect(row.x + 4f, row.y + 4f, 44f, 44f), specimen);
-                CompFishTraits fish = specimen.TryGetComp<CompFishTraits>();
-                Widgets.Label(new Rect(row.x + 56f, row.y + 4f, view.width * 0.45f, 24f), specimen.LabelCap);
-                Widgets.Label(new Rect(row.x + 56f, row.y + 28f, view.width * 0.45f, 22f),
-                    "AquacultureFishing.CommissionSpecimenDetails".Translate(
-                        fish?.breedGeneration ?? 0, fish?.SizeFactor.ToStringPercent() ?? "-").ToString());
-                if (Widgets.ButtonText(new Rect(view.width - 150f, row.y + 9f, 140f, 34f),
-                    "AquacultureFishing.CommissionDeliverButton".Translate().ToString()))
+            insightDocument.Draw(inRect);
+        }
+
+        public override void PostClose()
+        {
+            insightDocument?.PostClose();
+            base.PostClose();
+        }
+
+        internal string RequirementsForUi => commission?.RequirementsText ??
+            "AquacultureFishing.CommissionNoActive".Translate().ToString();
+
+        internal string PreviewForUi => commission == null
+            ? string.Empty
+            : "AquacultureFishing.CommissionPreview".Translate(
+                commission.DaysRemaining(Find.TickManager?.TicksGame ?? 0), commission.rewardSilver).ToString();
+
+        internal string EligibleCountForUi => "AquacultureFishing.CommissionEligibleCount".Translate(
+            component?.EligibleSpecimenCount ?? 0).ToString();
+
+        internal IReadOnlyList<AquacultureCommissionDeliverySnapshot> CaptureSpecimensForUi()
+        {
+            component?.RefreshEligibleSpecimens();
+            return (component?.EligibleSpecimens(commission) ?? Enumerable.Empty<Thing>())
+                .Where(specimen => specimen != null && !specimen.Destroyed && specimen.Spawned)
+                .OrderBy(specimen => specimen.thingIDNumber)
+                .Select(specimen =>
                 {
-                    if (component.TryDeliver(specimen, out string reason))
-                    {
-                        Close();
-                        return;
-                    }
-                    Messages.Message(reason, MessageTypeDefOf.RejectInput, false);
-                }
-            }
-            if (specimens.Count == 0)
-                Widgets.Label(new Rect(8f, 8f, view.width - 16f, 32f), "AquacultureFishing.CommissionNoEligible".Translate());
-            Widgets.EndScrollView();
+                    CompFishTraits fish = specimen.TryGetComp<CompFishTraits>();
+                    return new AquacultureCommissionDeliverySnapshot(
+                        AquacultureUiStableIds.For("commission.specimen", specimen.thingIDNumber.ToString()),
+                        specimen.thingIDNumber, specimen.LabelCap,
+                        "AquacultureFishing.CommissionSpecimenDetails".Translate(
+                            fish?.breedGeneration ?? 0, fish?.SizeFactor.ToStringPercent() ?? "-").ToString());
+                }).ToList();
+        }
+
+        internal bool TryDeliverForUi(int thingId, out string reason)
+        {
+            reason = "AquacultureFishing.CommissionSpecimenInvalid".Translate().ToString();
+            Thing specimen = (component?.EligibleSpecimens(commission) ?? Enumerable.Empty<Thing>())
+                .FirstOrDefault(item => item?.thingIDNumber == thingId);
+            if (component == null || specimen == null) return false;
+            return component.TryDeliver(specimen, out reason);
+        }
+
+        internal void CloseForUi()
+        {
+            Close();
         }
     }
 

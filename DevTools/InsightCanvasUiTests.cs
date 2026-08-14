@@ -104,7 +104,8 @@ namespace AquacultureFishing.Tests
                 "Source\\UI\\AquacultureJournalWorkspaceDocument.cs",
                 "Source\\UI\\AquacultureFishDossierDocument.cs",
                 "Source\\UI\\AquacultureStockingPlannerDocument.cs",
-                "Source\\UI\\AquacultureBreedRegistrationDocument.cs"
+                "Source\\UI\\AquacultureBreedRegistrationDocument.cs",
+                "Source\\UI\\AquacultureCommissionDeliveryDocument.cs"
             }.Select(path => File.ReadAllText(Path.Combine(root, path))).ToArray();
             string allUi = string.Join("\n", sourceFiles);
             Check(allUi.Contains("Host.PostClose"), "Prompt 2 documents own transient cleanup");
@@ -112,6 +113,8 @@ namespace AquacultureFishing.Tests
                 "Prompt 2 documents use bounded searchable lists");
             Check(allUi.Contains("KnowledgeHidden") && allUi.Contains("AquaculturePlannerForecastSnapshot"),
                 "Prompt 2 documents preserve Knowledge disclosure and forecast snapshots");
+            Check(allUi.Contains("commission.delivery.specimens") && allUi.Contains("Host.PostClose"),
+                "commission delivery uses a bounded Insight Canvas document with cleanup");
 
             XDocument language = XDocument.Load(Path.Combine(root, "1.6", "Languages", "English", "Keyed", "AquacultureFishing.xml"));
             var localized = new HashSet<string>(language.Root.Elements().Select(element => element.Name.LocalName));
@@ -123,6 +126,13 @@ namespace AquacultureFishing.Tests
             string planner = File.ReadAllText(Path.Combine(root, "Source", "PondStockingPlanner.cs"));
             Check(journal.Contains("KnowledgeMenuUI") && journal.Contains("insightWorkspaceDocument"),
                 "Journal keeps Knowledge browsing native and embeds the workspace");
+            Check(!journal.Contains("DrawHeader") && !journal.Contains("DrawSpeciesList") &&
+                !journal.Contains("listScroll") && !journal.Contains("detailScroll"),
+                "obsolete Journal renderer and scroll state are removed");
+            string commissions = File.ReadAllText(Path.Combine(root, "Source", "AquacultureCommissions.cs"));
+            Check(commissions.Contains("AquacultureCommissionDeliveryDocument") &&
+                commissions.Contains("TryDeliverForUi") && commissions.Contains("TryDeliver("),
+                "commission delivery remains owner-authoritative with an embedded document");
             Check(planner.Contains("CalculateForecast") && planner.Contains("ForecastSnapshot") &&
                 planner.Contains("SetStockingBlueprint"),
                 "planner retains authoritative forecast and blueprint persistence");

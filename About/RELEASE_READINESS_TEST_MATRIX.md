@@ -1,5 +1,30 @@
 # Release-readiness test matrix
 
+> **Prompt 3 closure supersession (current candidate):** This historical matrix
+> contains older-candidate evidence and is not a current release claim. The
+> current closure baseline is branch `ui/insightcanvas-v2-overhaul` at `c50990a`
+> before the closure commit. Insight Canvas evidence is source SHA
+> `93a09005fa15190009daee625352cf4004974472`, installed version `2.1.0.0`.
+> Prompt 3 requires reopening UI, accessibility, package, and player-first gates;
+> only evidence explicitly identified in the closure section below is current.
+
+## Prompt 3 closure evidence ledger
+
+| Gate | Current status | Evidence/boundary |
+| --- | --- | --- |
+| Prompt 2 exact result | PASS | Prior result ended exactly `Prompt 2, PASS`. |
+| Clean branch baseline | PASS | `ui/insightcanvas-v2-overhaul`, clean at `c50990a` before closure edits. |
+| Release build | PASS | Configured RimWorld/Harmony/Insight Canvas/Knowledge Framework build; 0 warnings/errors. |
+| Portable Insight Canvas contracts | PASS | `DevTools/Test-InsightCanvasUi.ps1`; closure adds commission and dead-Journal checks. |
+| Trait rules/localization | PASS | Existing executable trait suite and localization validator; current closure keys are included. |
+| DevBridge2 mod-owned live closure checks | PASS | Generation 259, launch `73e7b345c9ed4552b5b115f08ec62da5`: baseline 17/17; golden runs `b330eb11f27849bc93280f0d5f501523` and `f90aa7b89c47421b8afd23531197d770` each 7/7; `AQUA_DEFERRED_REALITY` passed with API/schema 2, save schema 5, one region/map, 48 populations/processes, zero failures/duplicates, and 48 migrated populations. The harness lease was explicitly released after an owner-identity mismatch. |
+| UI inventory/ownership | PASS | Complete inventory is in `About/INSIGHT_CANVAS_UI_ARCHITECTURE.md`. |
+| Fresh-colony natural UX | NOT RUN | Requires player-first interaction and cannot be inferred from source or quicktest fixtures. |
+| Accessibility matrix | NOT RUN | Portable contracts cover semantics; density/contrast/motion/focus/narrow-layout review remains a live gate. |
+| Multi-map/save-load/performance | NOT RUN | Requires fresh isolated player validation; no stale older-candidate PASS is reused. |
+| Clean player package | PASS | `New-PlayerPackage.ps1` plus `Test-PlayerPackage.ps1`: 25 entries, no DevBridge2/source/tests/caches/PDBs/duplicate InsightCanvas DLL, and manifest `sourceDirty=false`. |
+| Production artwork/license | BLOCKED | Production-art provenance and Insight Canvas owner-license decisions remain owner-controlled blockers. |
+
 Candidate: `7e7e86cd4c5c35509005ec9a0711f4065f53738e`
 
 Prompt 2 continuation branch: `ui/insightcanvas-v2-overhaul`. The Prompt 2
@@ -7,8 +32,9 @@ implementation ledger is `About/PROMPT2_UI_VALIDATION.md`; it records the new
 workspace/planner/dossier/registration surfaces and the post-change DevBridge2
 process-inspection blocker separately from this older release evidence.
 
-Current live evidence: DevBridge2 generation 151, launch
-`bdceb514f14748f48f8195bfbd2d9ea7`, coordinator-owned PID 88676.
+Current live evidence: DevBridge2 generation 259, launch
+`73e7b345c9ed4552b5b115f08ec62da5`, coordinator-owned Aquaculture PID 14576;
+baseline/golden/provider results are recorded in the Prompt 3 closure ledger.
 Current verdict: **BLOCKED — not ready for external RC/beta testing**.
 
 Status values in this matrix are exactly `PASS`, `FAIL`, `BLOCKED`, or `NOT RUN`.

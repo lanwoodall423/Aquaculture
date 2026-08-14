@@ -218,3 +218,40 @@ stocking events, closed/cross-category migration rejection, provider removal
 and restoration, old-save migration, long elapsed time, and multiple maps and
 species. A failed DRF registration must leave the legacy natural-population
 tick active rather than running both authorities.
+
+## Prompt 3 UI closure runbook
+
+The Prompt 3 closure reopens UI-specific release gates invalidated by the
+Insight Canvas overhaul. Start with a clean player build and a fresh isolated
+colony, interact naturally with settings, the first fish dossier, Journal,
+first pond, and save/reload before using any DevBridge2 state manipulation.
+Then use only `DevBridge2\\DevBridge.cmd` and the mod-owned harness for the
+developer baseline/golden and read-only diagnostics. Do not mutate normal saves,
+ModsConfig.xml, or player package contents during the run.
+
+Record results for: wide/medium/narrow layouts; comfortable/normal/compact
+density; high contrast; reduced motion; mouse and supported keyboard focus;
+multiple maps and same-coordinate ponds; save/reload with transient selections;
+bounded virtual lists and Insight Canvas diagnostics; Knowledge canonical
+browsing; Deferred Reality provider registration/reconciliation; settings
+migration/persistence; commission delivery; and a clean package without
+DevBridge2, source, tests, caches, PDBs, or duplicate InsightCanvas.dll.
+
+The current closure inventory and intentional native/hybrid decisions are in
+`About/INSIGHT_CANVAS_UI_ARCHITECTURE.md`. Missing player-interaction evidence
+must remain explicitly `NOT RUN`; older Prompt 2 quicktest or fixture results
+must not be relabeled as fresh-colony UX evidence.
+
+Prompt 3 live closure evidence (2026-08-14): generation 259, launch
+`73e7b345c9ed4552b5b115f08ec62da5`, passed the mod-owned baseline 17/17 and two
+inhabited-pond golden runs 7/7 each. `AQUA_DEFERRED_REALITY` also passed with
+API/schema 2, save schema 5, one region/map, 48 populations/processes, no
+failure/duplicate/reconciliation issues, and 48 migrated populations. The
+harness initially generated different owner identities during cleanup; the
+lease was verified by read-only status and released with an explicit
+owner-matched `test end`. The fresh-colony natural UX step was not completed
+before DevBridge2 manipulation and remains `NOT RUN`, as do the player-facing
+accessibility, multi-map, save/load, long-run performance, clean-install, and
+full cross-framework failure-injection gates. The post-commit clean package
+contract passed with 25 allowlisted entries, `sourceDirty=false`, and no
+DevBridge2/source/tests/caches/PDBs or duplicate InsightCanvas DLL.

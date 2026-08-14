@@ -288,6 +288,8 @@ Deliver the living fish through the breed record in the Aquaculture Journal. Del
   <AquacultureFishing.CommissionDeliverTitle>Deliver a commission specimen</AquacultureFishing.CommissionDeliverTitle>
   <AquacultureFishing.CommissionDeliverInstruction>Select a healthy living {0}. Delivery consumes the fish and places the reward nearby.</AquacultureFishing.CommissionDeliverInstruction>
   <AquacultureFishing.CommissionSpecimenDetails>Generation {0}; size {1}</AquacultureFishing.CommissionSpecimenDetails>
+  <AquacultureFishing.CommissionEligibleCount>Eligible living specimens: {0}</AquacultureFishing.CommissionEligibleCount>
+  <AquacultureFishing.CommissionDeliverySuccess>Commission specimen delivered successfully.</AquacultureFishing.CommissionDeliverySuccess>
   <AquacultureFishing.CommissionNoEligible>No currently eligible living specimen is available.</AquacultureFishing.CommissionNoEligible>
   <AquacultureFishing.CommissionOtherActive>Another collector commission is active. Complete or wait for it before receiving another request.</AquacultureFishing.CommissionOtherActive>
   <AquacultureFishing.CommissionWaiting>Collector requests arrive occasionally after a registered breed has an eligible living specimen.</AquacultureFishing.CommissionWaiting>

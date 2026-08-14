@@ -89,3 +89,51 @@ candidate gameplay proof and is not attributed to Aquaculture.
   deprecated `Lan.RimWorldDevBridge` load-after entry were removed in the local
   framework checkouts; those framework worktrees still require their own release
   commits/provenance before publication.
+
+## Prompt 3 closure revalidation — current candidate
+
+The older RC entries above are superseded for UI release purposes. Prompt 2
+ended exactly `Prompt 2, PASS`; the closure baseline was clean on
+`ui/insightcanvas-v2-overhaul` at `c50990a`. Current dependency evidence is
+Insight Canvas source SHA `93a09005fa15190009daee625352cf4004974472`, installed
+version `2.1.0.0`, with Knowledge Framework and Deferred Reality retained as
+runtime dependencies.
+
+The closure implementation removes the unreachable duplicate Journal renderer,
+preserves the Knowledge Framework browser callbacks, and embeds a bounded
+Insight Canvas commission-delivery document inside the native delivery Window.
+The commission component remains authoritative for eligibility, delivery,
+reward placement, rollback, and specimen consumption. A complete player-facing
+surface inventory and the decision not to add lineage/timeline/map-bridge
+visualizations are recorded in `About/INSIGHT_CANVAS_UI_ARCHITECTURE.md`.
+
+### Prompt 3 live closure evidence
+
+DevBridge2 generation 259, launch `73e7b345c9ed4552b5b115f08ec62da5`, passed the
+mod-owned baseline 17/17 and two golden runs 7/7 each
+(`b330eb11f27849bc93280f0d5f501523`, `f90aa7b89c47421b8afd23531197d770`). The
+same generation passed `AQUA_DEFERRED_REALITY` with API/schema 2, save schema 5,
+one region/map, 48 populations/processes, zero failure/duplicate/reconciliation
+issues, and 48 migrated populations. The harness lease initially used
+inconsistent generated owner identities; status inspection and an explicit
+owner-matched `test end` released it, leaving zero tests/leases.
+
+The clean player package contract also passed: 25 allowlisted entries, no
+DevBridge2/source/tests/caches/PDBs or duplicate InsightCanvas DLL, and
+manifest `sourceDirty=false`.
+
+The required fresh-colony natural UX interaction was not performed before
+DevBridge2 manipulation, so it remains `NOT RUN` and is not inferred from the
+quicktest fixture. Accessibility, multi-map, save/load, long-run performance,
+clean-install/player-smoke, and full cross-framework failure-injection gates
+also remain `NOT RUN`. Production artwork and Insight Canvas owner licensing
+remain `BLOCKED` owner-controlled release items.
+
+Revalidated local gates: configured Release build (0 warnings/errors), portable
+Insight Canvas contracts, executable trait rules, and localization. DevBridge2
+live baseline/golden/provider evidence from the preceding clean provider
+closure remains valid for unchanged gameplay/provider code, but it does not
+replace the Prompt 3 fresh-colony, accessibility, multi-map, save/load,
+performance, and clean-package gates. Those gates remain `NOT RUN` until a
+fresh isolated player run supplies evidence. Production artwork and Insight
+Canvas owner licensing remain `BLOCKED` owner-controlled release items.

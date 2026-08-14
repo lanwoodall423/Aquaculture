@@ -1,7 +1,8 @@
 # Insight Canvas UI Architecture
 
-Status: Prompt 2 workspace/planner/dossier continuation on top of the Prompt 1
-settings migration. Target: RimWorld 1.6, Insight Canvas 2.1.0.0.
+Status: Prompt 3 closure candidate on top of the Prompt 1 settings migration and
+Prompt 2 workspace/planner/dossier implementation. Target: RimWorld 1.6,
+Insight Canvas 2.1.0.0.
 
 Validation baseline: local Insight Canvas source SHA
 `93a09005fa15190009daee625352cf4004974472`, installed assembly version
@@ -38,6 +39,7 @@ mask revision, clears the visual cache, and writes settings as before.
 - `Source/UI/AquacultureJournalWorkspaceDocument.cs` is the Prompt 2 central Journal document: Overview, Ponds, Species, Breeds, Conservation, and Commissions. It captures pond/journal/water data before paint, applies deterministic health priority, uses searchable virtual lists, and binds controls to `FishPondMapComponent`.
 - `Source/UI/AquacultureFishDossierDocument.cs` embeds the structured fish dossier inside the native `ITab_FishTraits`; `Source/UI/AquacultureStockingPlannerDocument.cs` embeds the planner and caches copied forecasts by plan/water/revision inputs.
 - `Source/UI/AquacultureBreedRegistrationDocument.cs` replaces the substantial breed-registration content while `Dialog_RegisterFishBreed` retains native `Window` ownership and delegates validation/registration to the journal authority.
+- `Source/UI/AquacultureCommissionDeliveryDocument.cs` owns the searchable, virtualized commission-specimen content while `Dialog_DeliverAquacultureCommission` retains native `Window` pause/close ownership and delegates delivery to `AquacultureCommissionComponent.TryDeliver`.
 - `Source/SettingsAndMasks.cs` still owns `AquacultureSettings`, serialization, migration, clamps, cache invalidation, and the native mask window. Its live `DoSettingsWindowContents` delegates to the document host.
 
 ## UI invariants
@@ -91,9 +93,10 @@ breed-registration dialog are hybrid windows whose substantial content is
 Insight Canvas while authoritative state and close behavior remain native.
 
 Journal, pond, fish-traits, planner, commission, rod, Knowledge browsing, and
-Deferred Reality gameplay behavior was not moved or changed. Rod UI and any
-future standalone commission/detailed conservation dialogs remain deferred;
-the workspace presents commission/conservation snapshots and links only.
+Deferred Reality gameplay behavior was not moved or changed. The commission
+delivery dialog is now a documented hybrid surface; rod UI, tiny pond actions,
+and detailed conservation remain intentionally native or workspace-snapshot
+surfaces rather than being migrated for framework coverage alone.
 
 ## Validation and release notes
 
@@ -111,3 +114,41 @@ render-error/log checks, and lease release.
 
 The unresolved Insight Canvas owner license is a release blocker even when all
 automated and DevBridge2 checks pass.
+
+## Prompt 3 closure inventory and decisions
+
+The following is the player-facing ownership inventory for the current closure
+candidate. `Insight Canvas` means the substantial content is document-owned;
+`hybrid` means RimWorld retains the shell and Aquaculture retains authoritative
+callbacks; `native` is intentional because the surface is a compact interaction
+or owns native texture/job/map lifetime; `debug` is not shipped as player UI.
+
+| Surface | Ownership | Closure decision |
+| --- | --- | --- |
+| Aquaculture settings | hybrid | Native ModSettings shell; persistent Insight Canvas document and serialized Aquaculture authority. |
+| Journal Overview/Ponds/Species/Breeds/Conservation/Commissions | Insight Canvas | Snapshot-before-paint workspace with stable IDs, bounded lists, research gates, and authoritative pond callbacks. |
+| Journal Expertise | native/hybrid | Native main-tab shell routes to Knowledge Framework `KnowledgeMenuUI`; canonical browser is not duplicated. |
+| Fish dossier / `ITab_FishTraits` | hybrid | Native ITab selection shell; copied fish dossier document and Knowledge link. |
+| Stocking planner / `Dialog_PondStockingPlanner` | hybrid | Native Window ownership; responsive planner document, cached forecast, and owner blueprint callbacks. |
+| Breed registration / `Dialog_RegisterFishBreed` | hybrid | Native Window lifecycle; document-owned validation presentation; journal owns registration. |
+| Commission delivery / `Dialog_DeliverAquacultureCommission` | hybrid | Native Window lifecycle; document-owned searchable specimen list; commission component owns eligibility, reward, and consumption. |
+| Pond overview/management/breeding ITabs | native | Progressive research visibility and compact map/Thing authority remain with native pond ownership. |
+| Pond inspect strings, water FloatMenus, pond/fish FloatMenus, gizmos, commands | native | Small, context-sensitive actions remain native; no duplicate Canvas shell is justified. |
+| Fishing tackle dialog/rod jobs | native | Native item/job interaction and reservation lifecycle remain authoritative. |
+| Fish-mask editor | native | Native texture editor owns `Texture2D` cleanup and settings persistence. |
+| Knowledge Framework browser | native framework | Knowledge Framework remains canonical for evidence, expertise, confidence, and browsing. |
+| Deferred Reality diagnostics/provider | debug/developer | Provider and diagnostics are framework integration/test surfaces, never player dependencies. |
+
+Optional advanced Canvas features were reviewed. A lineage constellation and
+population timeline are not added: the current authoritative data is better
+explained by the existing breed rows, milestones, and prepared conservation
+snapshots, and a graph/timeline would expose either redundant or hidden exact
+history. The causal pond callout/meter model is retained because it explains
+unsafe conditions without a second visualization. Map focus remains a callback
+concern and is not invoked from paint.
+
+Prompt 2 release evidence is superseded by Prompt 3 closure work. The closure
+candidate baseline is commit `c50990a`; the exact framework evidence remains
+Insight Canvas source SHA `93a09005fa15190009daee625352cf4004974472`, installed
+assembly version `2.1.0.0`. Current closure checks and any unexecuted owner-
+controlled gates are recorded in `About/Validation/RC_STATUS.md`.

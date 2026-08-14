@@ -12,3 +12,4 @@
 - Build the player assembly with configurable `RimWorldDir`, `HarmonyPath`, `InsightCanvasDir`, and `KnowledgeFrameworkAssemblyPath`; the installed Insight Canvas DLL is referenced with `Private=false` and is never packaged.
 - Prompt 1 migrated settings. Prompt 2 adds the Journal-owned Insight Canvas workspace, hybrid fish dossier, responsive planner, and breed-registration document; native pond tabs, tiny FloatMenus/gizmos, rod UI, and canonical Knowledge browsing remain intentionally native or deferred.
 - Insight Canvas owner-license selection is unresolved and remains a release blocker.
+- Prompt 3 closure evidence is tracked in `About/Validation/RC_STATUS.md`; older UI-release evidence is superseded and must not be relabeled as fresh-colony UX, accessibility, multi-map, save/load, performance, or clean-package evidence.
