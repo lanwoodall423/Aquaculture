@@ -2,6 +2,10 @@
 
 This ledger records the Prompt 2 continuation after the explicit user override
 of the recorded Prompt 1 prerequisite. It does not claim release readiness.
+Prompt 3 closure work supersedes its owner-license and production-art entries:
+Aquaculture is `GPL-3.0-or-later` for Copyright (C) 2026 lanwoodall423, and the
+dedicated production-art requirement is waived by owner instruction. The
+Prompt 3 release matrix remains authoritative for the unrun live gates.
 
 ## Implemented surfaces
 
@@ -56,6 +60,5 @@ substituted for this post-change interactive UI pass.
 ## Remaining release blockers
 
 - DevBridge2 process-inspection recovery and the post-change live matrix.
-- Insight Canvas owner-license selection (`Owner license selection required`).
-- Production art/provenance and the broader clean-install/save-load/player UX
-  gates recorded by the release matrix.
+- The broader clean-install/save-load/player UX gates recorded by the release
+  matrix. Production art is waived for the current candidate.

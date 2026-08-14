@@ -1,10 +1,17 @@
 # Release Feature Set
 
+## Licensing and release scope
+
+Aquaculture's original source and packaged artifacts are licensed under
+`GPL-3.0-or-later`, Copyright (C) 2026 lanwoodall423. The Insight Canvas
+dependency separately declares GPLv3.0 in its own checkout license. The owner
+has waived the dedicated production-art requirement for this candidate; no
+production art was generated or changed, and third-party art remains under its
+original owner's terms.
+
 ## Prompt 1 UI foundation
 
 The settings surface now uses an embedded Insight Canvas 2.x document with responsive navigation, stable-ID scopes, document-local aquatic theming, accessibility density options, searchable virtualized fish/trait lists, and direct bindings to the existing authoritative `AquacultureSettings`. Serialization keys, defaults, migrations, clamps, and the native mask painter remain unchanged. Journal, pond, fish-traits, stocking planner, commission, and rod dialogs are intentionally not part of this migration.
-
-The Insight Canvas owner-license selection is unresolved and blocks release until resolved.
 
 ## Progression
 

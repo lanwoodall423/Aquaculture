@@ -12,8 +12,11 @@ those changes were preserved and not included in this Aquaculture commit.
 Insight Canvas is an explicit runtime dependency (`lan.insightcanvas`) and is
 compiled from the installed `1.6/Assemblies/InsightCanvas.dll`. Aquaculture
 does not bundle a second copy, load it through reflection, or change its global
-GUI state. The owner-license selection for Insight Canvas is still unresolved;
-that is a release blocker until the framework owner selects a license.
+GUI state. Aquaculture's original source and packaged artifacts are licensed
+under `GPL-3.0-or-later`, Copyright (C) 2026 lanwoodall423. The installed
+Insight Canvas checkout separately declares GPLv3.0 in its own `LICENSE`; that
+dependency license is confirmed here for release accounting, not implicitly
+relicensed by Aquaculture.
 
 ## Ownership boundaries
 
@@ -112,8 +115,9 @@ dossier/registration scenarios, repeated open/close, persistence, widths,
 keyboard/accessibility, bounded lists, duplicate-ID diagnostics,
 render-error/log checks, and lease release.
 
-The unresolved Insight Canvas owner license is a release blocker even when all
-automated and DevBridge2 checks pass.
+The owner-controlled production-art requirement is explicitly waived for this
+candidate; see `About/ART_REQUIREMENTS.md`. That waiver does not change the
+license or ownership of vanilla, VFE, or other third-party assets.
 
 ## Prompt 3 closure inventory and decisions
 

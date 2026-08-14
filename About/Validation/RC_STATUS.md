@@ -1,12 +1,12 @@
 # Aquaculture Fishing release-candidate status
 
-Date: 2026-08-11
-Branch: `main`
-Aquaculture candidate source SHA: `7e7e86cd4c5c35509005ec9a0711f4065f53738e` (`Keep developer diagnostics responsive after fixture runs`)
+Date: 2026-08-14
+Branch: `ui/insightcanvas-v2-overhaul`
+Aquaculture candidate source SHA: `c047773` (`Complete Insight Canvas UI overhaul and release validation`)
 Verdict: **BLOCKED — not ready for external RC/beta testing**
 
 This is an evidence ledger, not a claim that static checks prove gameplay.
-Status values are exactly `PASS`, `FAIL`, `BLOCKED`, or `NOT RUN`.
+Status values are exactly `PASS`, `FAIL`, `BLOCKED`, `NOT RUN`, or `WAIVED`.
 
 ## Build and dependency identity
 
@@ -36,7 +36,7 @@ Status values are exactly `PASS`, `FAIL`, `BLOCKED`, or `NOT RUN`.
 | Current quicktest XML/Def startup | PASS | Generation 151 reached a playable map; current Aquaculture baseline found required Defs and zero Aquaculture-specific errors. The old Knowledge `<modClass>` error is absent after the metadata fix. |
 | Localization contract | PASS | One language file and 279 referenced keys. |
 | Optional Fishing Treasures contract | PASS | No forbidden optional-content references. |
-| Player package contract | PASS | 25 entries; package 347,082 bytes, SHA `BE61F380F3D53AE1E082F270E3DCD66875BFE8EB954243FE1868EA7FF965D53C`; manifest 1,262 bytes, SHA `D99A9D25FDE522836EDD665CE72F33AD4E902551A77EDB3097D276F9EE5354BD`; manifest source commit `7e7e86cd4c5c35509005ec9a0711f4065f53738e`, `sourceDirty=false`. |
+| Player package contract | PASS | 26 entries including the GPL license file; the allowlist and package contract pass. Final committed-package manifest must report `sourceDirty=false` and include `license=GPL-3.0-or-later` with Copyright (C) 2026 lanwoodall423. |
 | Git hygiene rules | PASS | `.gitignore` covers build intermediates, tool cache, timestamped adapter outputs, local test output, PDBs, generated executables, and machine files while retaining authored source, tests, runtime assemblies, Defs, languages, textures, and required docs. |
 
 ## Release gates not evidenced
@@ -60,9 +60,10 @@ Status values are exactly `PASS`, `FAIL`, `BLOCKED`, or `NOT RUN`.
 
 | Item | Status | Detail |
 |---|---|---|
-| Dedicated player art | BLOCKED | `About/ART_REQUIREMENTS.md` records the gap. Only `1.6/Textures/Things/Item/Equipment/FishingRod.png` is owned production art; remaining player-facing visual Defs borrow vanilla/VFE assets or lack dedicated art. Placeholders/unlicensed art are not acceptable for release. |
+| Dedicated player art | WAIVED | Per owner instruction dated 2026-08-14, the dedicated production-art requirement is skipped for this candidate. No art was generated or changed; existing vanilla/VFE/dependency-owned sources retain their original terms. |
 | Complete live release matrix | BLOCKED | The unrun live/save-load/no-duplication/cross-framework/performance/UX gates above are release-blocking under the matrix. |
-| Clean release provenance | PASS | Candidate source commit `7e7e86cd4c5c35509005ec9a0711f4065f53738e`; package manifest reports `sourceDirty=false` and the package includes only the allowlisted player files. |
+| Aquaculture/dependency license accounting | PASS | Aquaculture source/package is `GPL-3.0-or-later`, Copyright (C) 2026 lanwoodall423; the installed Insight Canvas checkout separately declares GPLv3.0. |
+| Clean release provenance | PASS | Closure implementation baseline `c047773`; the final package manifest records the exact license/waiver commit, `sourceDirty=false`, and only allowlisted player files. |
 | Unrelated dependency startup warning | FAIL | The earlier `VFET_ResearchSpot` unresolved reference belongs to installed VFE Tribals content, not Aquaculture. It remains an environment compatibility failure to resolve or explicitly exclude before external testing. |
 | External quicktest graphics failure | FAIL | One coordinator-managed generation-151 restart attempt exited `-2147483645` in Horticulture Novel Seeds `PlantAutoMaskCache` while the graphics device was null. A subsequent DevBridge2 retry reached READY; no Aquaculture stack or error was implicated. |
 | Knowledge verification artifact hygiene | PASS | Verifier fix `13dbdaf` distinguishes ignored local bin/obj/PDB directories from tracked or packaged contamination; full verification passed with `tracked=0 packaged=0`. |
@@ -94,7 +95,7 @@ candidate gameplay proof and is not attributed to Aquaculture.
 
 The older RC entries above are superseded for UI release purposes. Prompt 2
 ended exactly `Prompt 2, PASS`; the closure baseline was clean on
-`ui/insightcanvas-v2-overhaul` at `c50990a`. Current dependency evidence is
+`ui/insightcanvas-v2-overhaul` at `c047773`. Current dependency evidence is
 Insight Canvas source SHA `93a09005fa15190009daee625352cf4004974472`, installed
 version `2.1.0.0`, with Knowledge Framework and Deferred Reality retained as
 runtime dependencies.
@@ -118,16 +119,25 @@ issues, and 48 migrated populations. The harness lease initially used
 inconsistent generated owner identities; status inspection and an explicit
 owner-matched `test end` released it, leaving zero tests/leases.
 
-The clean player package contract also passed: 25 allowlisted entries, no
+A later read-only `AQUA_ADAPTER_STATUS` request on generation 260 acquired and
+released its lease but produced no result within 120 seconds. DevBridge2
+`doctor --json` then reported READY, zero active tests, no lease, and no
+terminal failure. The request is not counted as a pass and no restart was
+performed for this documentation/package-only change.
+
+The clean player package contract also passed: 26 allowlisted entries including
+the GPL license file, no
 DevBridge2/source/tests/caches/PDBs or duplicate InsightCanvas DLL, and
-manifest `sourceDirty=false`.
+the pre-commit validation manifest recorded `sourceDirty=true`; the final
+committed-package manifest must record `sourceDirty=false`.
 
 The required fresh-colony natural UX interaction was not performed before
 DevBridge2 manipulation, so it remains `NOT RUN` and is not inferred from the
 quicktest fixture. Accessibility, multi-map, save/load, long-run performance,
 clean-install/player-smoke, and full cross-framework failure-injection gates
-also remain `NOT RUN`. Production artwork and Insight Canvas owner licensing
-remain `BLOCKED` owner-controlled release items.
+also remain `NOT RUN`. Production artwork is `WAIVED` by owner instruction;
+Aquaculture and the separately licensed Insight Canvas dependency have recorded
+their applicable GPL terms.
 
 Revalidated local gates: configured Release build (0 warnings/errors), portable
 Insight Canvas contracts, executable trait rules, and localization. DevBridge2
@@ -135,5 +145,6 @@ live baseline/golden/provider evidence from the preceding clean provider
 closure remains valid for unchanged gameplay/provider code, but it does not
 replace the Prompt 3 fresh-colony, accessibility, multi-map, save/load,
 performance, and clean-package gates. Those gates remain `NOT RUN` until a
-fresh isolated player run supplies evidence. Production artwork and Insight
-Canvas owner licensing remain `BLOCKED` owner-controlled release items.
+fresh isolated player run supplies evidence. Production artwork remains
+`WAIVED` by owner instruction and is not an engineering blocker for this
+candidate.

@@ -4,7 +4,7 @@ Add-Type -AssemblyName System.IO.Compression
 $zip = [IO.Compression.ZipFile]::OpenRead((Resolve-Path -LiteralPath $PackagePath))
 try {
     $names = @($zip.Entries | ForEach-Object FullName)
-    $allowed = @('About/', 'LoadFolders.xml', '1.6/')
+    $allowed = @('About/', 'LICENSE', 'LoadFolders.xml', '1.6/')
     $bad = @($names | Where-Object {
         $name = $_
         -not (($allowed | Where-Object { $name -eq $_ -or $name.StartsWith($_) }).Count -gt 0) -or

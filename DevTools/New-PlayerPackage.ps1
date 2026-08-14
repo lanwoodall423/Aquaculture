@@ -30,6 +30,7 @@ function Copy-IfPresent {
 }
 
 Copy-IfPresent 'About\About.xml'
+Copy-IfPresent 'LICENSE'
 Copy-IfPresent 'LoadFolders.xml'
 Copy-IfPresent '1.6\Defs'
 Copy-IfPresent '1.6\Languages'
@@ -64,7 +65,9 @@ $manifest = [ordered]@{
     packageFile = $zip
     packageSha256 = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash
     generatedUtc = [DateTime]::UtcNow.ToString('o')
-    knownReleaseBlockers = @('Dedicated production art is incomplete', 'Manual gameplay/save-load/compatibility/performance gates remain')
+    license = 'GPL-3.0-or-later'
+    copyright = 'Copyright (C) 2026 lanwoodall423'
+    knownReleaseBlockers = @('Manual gameplay/save-load/compatibility/performance gates remain')
 }
 $manifest | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $manifestPath -Encoding UTF8
 Remove-Item -LiteralPath $stage -Recurse -Force

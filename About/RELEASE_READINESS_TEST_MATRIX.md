@@ -2,18 +2,20 @@
 
 > **Prompt 3 closure supersession (current candidate):** This historical matrix
 > contains older-candidate evidence and is not a current release claim. The
-> current closure baseline is branch `ui/insightcanvas-v2-overhaul` at `c50990a`
-> before the closure commit. Insight Canvas evidence is source SHA
+> current closure candidate is branch `ui/insightcanvas-v2-overhaul` at
+> `c047773` (the prior clean closure commit). Insight Canvas evidence is source SHA
 > `93a09005fa15190009daee625352cf4004974472`, installed version `2.1.0.0`.
 > Prompt 3 requires reopening UI, accessibility, package, and player-first gates;
 > only evidence explicitly identified in the closure section below is current.
+> The owner has selected GPL-3.0-or-later for Aquaculture and waived the
+> dedicated production-art requirement for this candidate.
 
 ## Prompt 3 closure evidence ledger
 
 | Gate | Current status | Evidence/boundary |
 | --- | --- | --- |
 | Prompt 2 exact result | PASS | Prior result ended exactly `Prompt 2, PASS`. |
-| Clean branch baseline | PASS | `ui/insightcanvas-v2-overhaul`, clean at `c50990a` before closure edits. |
+| Clean branch baseline | PASS | `ui/insightcanvas-v2-overhaul`, clean at `c047773` before this license/waiver update. |
 | Release build | PASS | Configured RimWorld/Harmony/Insight Canvas/Knowledge Framework build; 0 warnings/errors. |
 | Portable Insight Canvas contracts | PASS | `DevTools/Test-InsightCanvasUi.ps1`; closure adds commission and dead-Journal checks. |
 | Trait rules/localization | PASS | Existing executable trait suite and localization validator; current closure keys are included. |
@@ -22,8 +24,9 @@
 | Fresh-colony natural UX | NOT RUN | Requires player-first interaction and cannot be inferred from source or quicktest fixtures. |
 | Accessibility matrix | NOT RUN | Portable contracts cover semantics; density/contrast/motion/focus/narrow-layout review remains a live gate. |
 | Multi-map/save-load/performance | NOT RUN | Requires fresh isolated player validation; no stale older-candidate PASS is reused. |
-| Clean player package | PASS | `New-PlayerPackage.ps1` plus `Test-PlayerPackage.ps1`: 25 entries, no DevBridge2/source/tests/caches/PDBs/duplicate InsightCanvas DLL, and manifest `sourceDirty=false`. |
-| Production artwork/license | BLOCKED | Production-art provenance and Insight Canvas owner-license decisions remain owner-controlled blockers. |
+| Clean player package | PASS | `New-PlayerPackage.ps1` plus `Test-PlayerPackage.ps1`: 26 entries including the GPL license file, no DevBridge2/source/tests/caches/PDBs/duplicate InsightCanvas DLL, and the committed-package manifest must report `sourceDirty=false`. |
+| Production artwork | WAIVED | Owner instruction dated 2026-08-14 waives the dedicated production-art requirement; no art was generated or changed. Third-party ownership and terms remain separate. |
+| Mod/dependency licensing | PASS | Aquaculture source/package: `GPL-3.0-or-later`, Copyright (C) 2026 lanwoodall423; installed Insight Canvas separately declares GPLv3.0. |
 
 Candidate: `7e7e86cd4c5c35509005ec9a0711f4065f53738e`
 
@@ -37,7 +40,7 @@ Current live evidence: DevBridge2 generation 259, launch
 baseline/golden/provider results are recorded in the Prompt 3 closure ledger.
 Current verdict: **BLOCKED — not ready for external RC/beta testing**.
 
-Status values in this matrix are exactly `PASS`, `FAIL`, `BLOCKED`, or `NOT RUN`.
+Status values in this matrix are exactly `PASS`, `FAIL`, `BLOCKED`, `NOT RUN`, or `WAIVED`.
 `PASS` means the named check actually ran and passed; source inspection and a
 main-menu or quicktest startup do not prove the corresponding gameplay gate.
 
@@ -109,7 +112,7 @@ on DevBridge2. No supported adapter-registration or hot-reload protocol exists.
 | Cross-framework correlation/failure injection | NOT RUN | No supported failure-injection trace has followed one identity through Aquaculture, DRF, Knowledge, and Journal. |
 | Long-run performance and memory | NOT RUN | No large pond, many fish/breeds/schools, multi-map, repeated UI, repeated Knowledge, long elapsed interval, memory, or log-volume run. |
 | Complete player-facing UX review | NOT RUN | Settings, research, build menu, inspect panes, pond/fish UI, journal, Knowledge, conservation, alerts, commissions, rods, processing, and failure text were not reviewed end to end. |
-| Production artwork and provenance | BLOCKED | See `About/ART_REQUIREMENTS.md`; dedicated art is incomplete and borrowed/unlicensed placeholders cannot ship. |
+| Production artwork and provenance | WAIVED | See `About/ART_REQUIREMENTS.md`; the owner waived the dedicated-art requirement and no replacement art was generated. Existing dependency/game-owned assets retain their original terms. |
 | Clean temporary package install/player smoke | NOT RUN | ZIP contract passed, but clean install with core dependencies, optional fish packs, start/catch/inspect/save/reload/catch-again was not run. |
 
 ## Current runtime evidence and boundaries
@@ -151,7 +154,8 @@ not a new Aquaculture test result.
 ## Release decision
 
 The candidate remains **BLOCKED**. PASS results above are retained as current
-evidence, but the missing live matrix, clean-install/player smoke, external
-environment failures, and incomplete production art prevent a PASS verdict.
+evidence, but the missing live matrix, clean-install/player smoke, and external
+environment failures prevent a PASS verdict. Production art is waived for this
+candidate and is not part of the remaining engineering blockers.
 Do not create `About/BETA_TEST_PLAN.md` until those blockers are cleared and the
 verdict is exactly `PASS — ready for external RC/beta testing`.
