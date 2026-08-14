@@ -61,7 +61,7 @@ namespace DeferredReality.Aquaculture
                 ?? Enumerable.Empty<Map>())
             {
                 if (map.GetComponent<NaturalFishPopulationMapComponent>() == null || map.Parent == null) continue;
-                RealityRegionId region = RegionFor(map, context?.World);
+                RealityRegionId region = RegionIdentityFor(map);
                 yield return new RealityRegionDescriptor
                 {
                     regionId = region.ToString(),
@@ -82,7 +82,7 @@ namespace DeferredReality.Aquaculture
             claim = null;
             if (map == null || !map.Tile.Valid || map.Parent == null ||
                 map.GetComponent<NaturalFishPopulationMapComponent>() == null) return false;
-            RealityRegionId region = RegionFor(map);
+            RealityRegionId region = RegionIdentityFor(map);
             claim = new RealityMapIdentityClaim
             {
                 providerId = ProviderId,
@@ -728,6 +728,11 @@ namespace DeferredReality.Aquaculture
                 RealityRegionId registered = owner.RegisterMap(map);
                 if (registered.IsValid) return registered;
             }
+            return RegionIdentityFor(map);
+        }
+
+        private static RealityRegionId RegionIdentityFor(Map map)
+        {
             string stableInstance = map?.Parent?.GetUniqueLoadID();
             return new RealityRegionId((int)map.Tile, RealityLayer.Custom, "natural-water-map", stableInstance, null,
                 ProviderId, "aquaculture-natural-water");
