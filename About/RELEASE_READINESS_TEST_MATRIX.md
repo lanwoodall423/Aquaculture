@@ -3,7 +3,7 @@
 > **Prompt 3 closure supersession (current candidate):** This historical matrix
 > contains older-candidate evidence and is not a current release claim. The
 > current closure candidate is branch `ui/insightcanvas-v2-overhaul` at
-> `e407b656cc3071a38a81e111a53657d0f52a5fb7`. Insight Canvas evidence is source SHA
+> SHA `212a8844851ccc8129bbb513cf2c66422d8c3360` before closure evidence/artifact refresh. Insight Canvas evidence is source SHA
 > `93a09005fa15190009daee625352cf4004974472`, installed version `2.1.0.0`.
 > Prompt 3 requires reopening UI, accessibility, package, and player-first gates;
 > only evidence explicitly identified in the closure section below is current.
@@ -14,16 +14,19 @@
 
 | Gate | Current status | Evidence/boundary |
 | --- | --- | --- |
-| Prompt 2 exact result | PASS | Prior result ended exactly `Prompt 2, PASS`. |
-| Clean branch baseline | PASS | `ui/insightcanvas-v2-overhaul`, clean at `e407b656cc3071a38a81e111a53657d0f52a5fb7` after the license/waiver update. |
+| Prompt 2 exact result | OVERRIDDEN | Owner explicitly instructed Prompt 3 to run regardless of Prompt 2 Pass/Fail; no exact-result inference is made. |
+| Clean branch baseline | PASS | `ui/insightcanvas-v2-overhaul`, clean at `212a8844851ccc8129bbb513cf2c66422d8c3360` before closure evidence/artifact refresh. |
 | Release build | PASS | Configured RimWorld/Harmony/Insight Canvas/Knowledge Framework build; 0 warnings/errors. |
 | Portable Insight Canvas contracts | PASS | `DevTools/Test-InsightCanvasUi.ps1`; closure adds commission and dead-Journal checks. |
 | Trait rules/localization | PASS | Existing executable trait suite and localization validator; current closure keys are included. |
+| Current DevBridge2 live closure checks | PASS | Generation 261, launch `4b7277d3d90642899e3c26dbc2d892a8`, baseline 17/17; golden runs `0c473786e1f94c578f61a11e0a1981f0` and `a6e195f6edab4a90839cd8293f538f87` each 7/7; final status READY with zero tests/leases. |
+| Current read-only diagnostics | PASS | Eleven generation-261 requests passed: `AQUA_ADAPTER_STATUS`, `AQUA_PONDS`, `AQUA_DEFERRED_REALITY`, `AQUA_VALIDATE`, `AQUA_PERFORMANCE`, `AQUA_SETTINGS`, `AQUACULTURE`, `AQUA_SPECIES`, `AQUA_CATALOG`, `AQUA_JOURNAL`, and `AQUA_OPPORTUNITIES`. |
 | DevBridge2 mod-owned live closure checks | PASS | Generation 259, launch `73e7b345c9ed4552b5b115f08ec62da5`: baseline 17/17; golden runs `b330eb11f27849bc93280f0d5f501523` and `f90aa7b89c47421b8afd23531197d770` each 7/7; `AQUA_DEFERRED_REALITY` passed with API/schema 2, save schema 5, one region/map, 48 populations/processes, zero failures/duplicates, and 48 migrated populations. The harness lease was explicitly released after an owner-identity mismatch. |
 | UI inventory/ownership | PASS | Complete inventory is in `About/INSIGHT_CANVAS_UI_ARCHITECTURE.md`. |
 | Fresh-colony natural UX | NOT RUN | Requires player-first interaction and cannot be inferred from source or quicktest fixtures. |
 | Accessibility matrix | NOT RUN | Portable contracts cover semantics; density/contrast/motion/focus/narrow-layout review remains a live gate. |
 | Multi-map/save-load/performance | NOT RUN | Requires fresh isolated player validation; no stale older-candidate PASS is reused. |
+| Current package contract | PASS | 26 entries including `LICENSE`; pre-closure package SHA `66C5E6674B5F9B00218B5DFEA81EEB14A4A6BE08DF70624574BFAA571A9BF887`; a clean-package rebuild is required after the closure commit. |
 | Clean player package | PASS | `New-PlayerPackage.ps1` plus `Test-PlayerPackage.ps1`: final commit `e407b656cc3071a38a81e111a53657d0f52a5fb7`, 26 entries including `LICENSE`, package SHA `D364F68C1D365D9236D1634E50660DA1048894C30E2F75960CCD24DBB3260A1B`, no DevBridge2/source/tests/caches/PDBs/duplicate InsightCanvas DLL, and manifest `sourceDirty=false`. |
 | Production artwork | WAIVED | Owner instruction dated 2026-08-14 waives the dedicated production-art requirement; no art was generated or changed. Third-party ownership and terms remain separate. |
 | Mod/dependency licensing | PASS | Aquaculture source/package: `GPL-3.0-or-later`, Copyright (C) 2026 lanwoodall423; installed Insight Canvas separately declares GPLv3.0. |
@@ -43,6 +46,9 @@ no restart pending, and no terminal failure. The generation-260 adapter and
 golden-harness requests timed out within their bounded waits and are not
 counted as feature passes.
 Current verdict: **BLOCKED — not ready for external RC/beta testing**.
+
+Rows later in this file retain the earlier generation-151/259/260 evidence as
+history. They do not supersede the generation-261 closure rows above.
 
 Status values in this matrix are exactly `PASS`, `FAIL`, `BLOCKED`, `NOT RUN`, or `WAIVED`.
 `PASS` means the named check actually ran and passed; source inspection and a
