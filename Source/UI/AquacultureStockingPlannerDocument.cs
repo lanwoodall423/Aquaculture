@@ -104,13 +104,13 @@ namespace AquacultureFishing
                 index => BuildAvailableRow(filteredSpecies[index]));
             availableList.Overscan = 2;
             availableList.CacheLimit = 64;
-            availableList.SetHeight(InsightLength.Fixed(330f));
+            availableList.SetFlex(1f);
 
             plannedList = InsightUi.VirtualList("planner.planned.list", 0, 52f,
                 index => BuildPlannedRow(planned[index]));
             plannedList.Overscan = 2;
             plannedList.CacheLimit = 64;
-            plannedList.SetHeight(InsightLength.Fixed(250f));
+            plannedList.SetFlex(1f);
 
             PondWaterKind[] waterKinds =
             {

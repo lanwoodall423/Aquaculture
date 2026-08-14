@@ -19,7 +19,7 @@ namespace DeferredReality.Aquaculture
     /// </summary>
     public sealed class AquacultureRealityProvider : IRealityProvider, IRegionDescriptorProvider,
         IRealityMapIdentityProvider, IAnchorProvider, IRealityProcessProvider, IPopulationProvider,
-        IRealityDiagnosticsProvider, IRealityMigrationHandler, IRealityExactlyOnceProvider
+        IRealityDiagnosticsProvider, IRealityExactlyOnceProvider
     {
         public const string ProviderId = DeferredRealityProviderRules.ProviderId;
         public static AquacultureRealityProvider Current { get; private set; }
@@ -27,7 +27,6 @@ namespace DeferredReality.Aquaculture
         private readonly RealityProviderRegistration registration;
         private DeferredRealityWorldComponent world;
         private bool compatible;
-        private bool migrationInProgress;
         private int mappedMaps;
         private int migratedPopulations;
         private int skippedPopulations;
@@ -41,12 +40,13 @@ namespace DeferredReality.Aquaculture
             {
                 providerId = ProviderId,
                 semanticApiVersion = DeferredRealityProviderRules.SemanticApiVersion,
-                schemaVersion = DeferredRealityProviderRules.SchemaVersion,
                 order = 200,
                 dependencies = new List<string> { "lan.deferredreality.framework" },
                 capabilities = RealityProviderCapability.Regions | RealityProviderCapability.Populations |
                     RealityProviderCapability.Processes |
                     RealityProviderCapability.Diagnostics | RealityProviderCapability.Anchors,
+                supportedFidelities = RealityFidelityMask.Statistical | RealityFidelityMask.Materialized,
+                defaultFidelity = RealityFidelity.Statistical,
                 operationRetentionTicks = -1,
                 cancelledProcessRetentionTicks = -1,
                 displayName = "Aquaculture natural-water populations"
@@ -64,15 +64,14 @@ namespace DeferredReality.Aquaculture
                 RealityRegionId region = RegionFor(map, context?.World);
                 yield return new RealityRegionDescriptor
                 {
-                    schemaVersion = DeferredRealityProviderRules.SchemaVersion,
                     regionId = region.ToString(),
                     label = "Aquaculture natural water " + map.Tile,
                     fidelity = RealityFidelity.Materialized,
-                    lifecycle = RealityLifecycleState.Active,
+                    authority = RealityRegionAuthority.LiveProjection,
                     stableSeed = RealityDeterminism.StableHash(region.ToString()),
                     createdTick = context?.Now ?? 0,
                     lastUpdateTick = context?.Now ?? 0,
-                    activeMapUniqueId = map.uniqueID,
+                    projectionMapUniqueId = map.uniqueID,
                     lastKnownWorldTile = (int)map.Tile
                 };
             }
@@ -110,14 +109,6 @@ namespace DeferredReality.Aquaculture
         public void OnRegistered(RealityProviderContext context)
         {
             if (context?.World == null) return;
-            int saveSchema = DeferredRealityWorldComponent.CurrentSaveSchema;
-            if (saveSchema < DeferredRealityProviderRules.MinimumDeferredRealitySchemaVersion)
-            {
-                compatible = false;
-                lastError = "Deferred Reality save schema is older than the provider contract.";
-                return;
-            }
-
             world = context.World;
             compatible = true;
             context.DeclareExactlyOnceDomain("population-operation", DeferredRealityProviderRules.SequenceDomain,
@@ -132,6 +123,65 @@ namespace DeferredReality.Aquaculture
             AquacultureEventRouter.Subscribe(HandleAquacultureEvent);
         }
 
+        public RealityFidelityContract DescribeFidelity(RealityProviderContext context, RealityRegionSnapshot region)
+        {
+            return new RealityFidelityContract
+            {
+                currentFidelity = region?.fidelity ?? registration.defaultFidelity,
+                supportedFidelities = registration.supportedFidelities,
+                transitions = new List<RealityFidelityTransitionRule>
+                {
+                    new RealityFidelityTransitionRule
+                    {
+                        fromFidelity = RealityFidelity.Statistical,
+                        toFidelity = RealityFidelity.Materialized,
+                        mechanism = RealityFidelityTransitionMechanism.Materialization
+                    },
+                    new RealityFidelityTransitionRule
+                    {
+                        fromFidelity = RealityFidelity.Materialized,
+                        toFidelity = RealityFidelity.Statistical,
+                        mechanism = RealityFidelityTransitionMechanism.Compression
+                    }
+                }
+            };
+        }
+
+        public RealityProcessFidelityPolicy DescribeProcessFidelity(RealityProcessRecord process,
+            RealityRegionSnapshot region)
+        {
+            return new RealityProcessFidelityPolicy
+            {
+                legalFidelities = RealityFidelityMask.Statistical,
+                runsWhileLiveProjection = false,
+                mayRequestEscalation = false
+            };
+        }
+
+        public bool CanTransitionFidelity(RealityFidelityTransitionRequest request, IList<RealityVeto> vetoes)
+        {
+            if (request == null || request.providerId != ProviderId)
+            {
+                AddIssue(vetoes, "fidelity.ownership", "The fidelity transition is not owned by Aquaculture.");
+                return false;
+            }
+
+            if (request.fromFidelity == request.toFidelity) return true;
+
+            // Map materialization and compression are transactional framework-owned operations. This
+            // provider supplies the contract for those edges but does not mutate projection state here.
+            AddIssue(vetoes, "fidelity.framework-transition",
+                "Natural-water fidelity transitions are owned by the framework projection services.");
+            return false;
+        }
+
+        public void OnFidelityChanged(RealityProviderContext context, RealityRegionSnapshot region,
+            RealityFidelity previous, RealityFidelity current)
+        {
+            // Projection services synchronize the active map at their transaction boundary. No provider
+            // mutation is required for the detached fidelity notification.
+        }
+
         public bool TryDescribeExactlyOnceDomain(string kind, string domainId, out RealityExactlyOnceDomain domain)
         {
             domain = null;
@@ -144,38 +194,6 @@ namespace DeferredReality.Aquaculture
                 proof = "Stable operation IDs and durable applied-operation markers are retained without compaction."
             };
             return true;
-        }
-
-        public bool TryMigrate(DeferredRealityWorldComponent target, string consumerId, int fromVersion,
-            int toVersion, IList<RealityVeto> issues)
-        {
-            if (!compatible || target == null || target != world || string.IsNullOrEmpty(consumerId))
-            {
-                AddIssue(issues, "provider.incompatible", "Provider migration is unavailable.");
-                return false;
-            }
-            if (toVersion != DeferredRealityProviderRules.SchemaVersion) return false;
-            if (target.IsMigrationCommitted(ProviderId, consumerId, toVersion)) return true;
-            if (migrationInProgress) return false;
-
-            migrationInProgress = true;
-            try
-            {
-                bool migrated = MigrateAllMaps();
-                if (!migrated)
-                {
-                    AddIssue(issues, "provider.migration", lastError ?? "Natural-water migration was incomplete.");
-                    return false;
-                }
-                string checksum = DeferredRealityProviderRules.Stable("migration-checksum", ProviderId,
-                    toVersion.ToString(CultureInfo.InvariantCulture), mappedMaps.ToString(CultureInfo.InvariantCulture),
-                    migratedPopulations.ToString(CultureInfo.InvariantCulture));
-                return target.CommitMigration(ProviderId, consumerId, toVersion, checksum);
-            }
-            finally
-            {
-                migrationInProgress = false;
-            }
         }
 
         private bool MigrateAllMaps()
@@ -203,26 +221,12 @@ namespace DeferredReality.Aquaculture
                 return false;
             }
 
-            string migrationId = DeferredRealityProviderRules.MigrationId(region.ToString());
-            if (world.IsMigrationCommitted(ProviderId, migrationId, DeferredRealityProviderRules.SchemaVersion))
-            {
-                mappedMaps++;
-                SyncMap(map, natural, region);
-                return true;
-            }
-
             List<NaturalWaterPopulation> records = (natural.Populations ?? Array.Empty<NaturalWaterPopulation>())
                 .Where(record => record != null).OrderBy(record => record.anchor.x).ThenBy(record => record.anchor.z)
                 .ThenBy(record => record.deferredRealityStableId, StringComparer.Ordinal).ToList();
             for (int i = 0; i < records.Count; i++)
             {
                 if (!MigrateWater(map, region, records[i])) return false;
-            }
-            if (!world.CommitMigration(ProviderId, migrationId, DeferredRealityProviderRules.SchemaVersion,
-                DeferredRealityProviderRules.Stable("migration", region.ToString())))
-            {
-                lastError = "Natural-water map migration marker could not be committed.";
-                return false;
             }
             mappedMaps++;
             SyncMap(map, natural, region);
@@ -278,7 +282,6 @@ namespace DeferredReality.Aquaculture
                     float capacity = Math.Max(0f, water.carryingCapacity);
                     if (!world.UpsertPopulation(new RealityPopulationRecord
                     {
-                        schemaVersion = DeferredRealityProviderRules.SchemaVersion,
                         populationId = populationId,
                         providerId = ProviderId,
                         kind = DeferredRealityProviderRules.NaturalWaterKind,
@@ -316,7 +319,6 @@ namespace DeferredReality.Aquaculture
         {
             return world.AddConstraint(new RealityConstraint
             {
-                schemaVersion = DeferredRealityProviderRules.SchemaVersion,
                 constraintId = DeferredRealityProviderRules.ConstraintId(region.ToString(), populationId,
                     "breeding-floor"),
                 providerId = ProviderId,
@@ -345,29 +347,38 @@ namespace DeferredReality.Aquaculture
                 {
                     RealityAnchorRecord to = anchors[j]?.record;
                     if (!TryHabitat(to, out NaturalWaterHabitat toHabitat) ||
-                        !DeferredRealityProviderRules.AreCompatibleHabitats(fromHabitat.ToString(), toHabitat.ToString())) continue;
-                    string linkBase = DeferredRealityProviderRules.Stable("topology", ProviderId,
+                        !DeferredRealityProviderRules.AreCompatibleHabitats(fromHabitat.ToString(), toHabitat.ToString()) ||
+                        string.Equals(from.regionId, to.regionId, StringComparison.Ordinal)) continue;
+                    string linkBase = DeferredRealityProviderRules.Stable("connection", ProviderId,
                         from.anchorId, to.anchorId);
-                    if (!world.UpsertTopology(new RealityTopologyLink
+                    if (!RealityRegionId.TryParse(from.regionId, out RealityRegionId fromRegion) ||
+                        !RealityRegionId.TryParse(to.regionId, out RealityRegionId toRegion)) continue;
+                    if (!world.UpsertConnection(new RealityRegionConnection
                     {
-                        schemaVersion = DeferredRealityProviderRules.SchemaVersion,
-                        linkId = linkBase + ":forward",
-                        fromRegionId = from.regionId,
-                        toRegionId = to.regionId,
+                        connectionId = RealityRegionConnection.StableId(fromRegion, toRegion,
+                            RealityRegionConnectionDirection.Directed, "natural-water-migration", ProviderId,
+                            linkBase + ":forward"),
+                        destinationRegionId = to.regionId,
+                        sourceRegionId = from.regionId,
+                        direction = RealityRegionConnectionDirection.Directed,
                         kind = "natural-water-migration",
-                        conditional = false,
-                        travelCost = 1f,
-                        migrationFilter = fromHabitat.ToString()
-                    }) || !world.UpsertTopology(new RealityTopologyLink
+                        traversalCost = 1f,
+                        ownerNamespace = ProviderId,
+                        identityKey = linkBase + ":forward",
+                        providerPayload = fromHabitat.ToString()
+                    }) || !world.UpsertConnection(new RealityRegionConnection
                     {
-                        schemaVersion = DeferredRealityProviderRules.SchemaVersion,
-                        linkId = linkBase + ":reverse",
-                        fromRegionId = to.regionId,
-                        toRegionId = from.regionId,
+                        connectionId = RealityRegionConnection.StableId(toRegion, fromRegion,
+                            RealityRegionConnectionDirection.Directed, "natural-water-migration", ProviderId,
+                            linkBase + ":reverse"),
+                        sourceRegionId = to.regionId,
+                        destinationRegionId = from.regionId,
+                        direction = RealityRegionConnectionDirection.Directed,
                         kind = "natural-water-migration",
-                        conditional = false,
-                        travelCost = 1f,
-                        migrationFilter = toHabitat.ToString()
+                        traversalCost = 1f,
+                        ownerNamespace = ProviderId,
+                        identityKey = linkBase + ":reverse",
+                        providerPayload = toHabitat.ToString()
                     })) return false;
                 }
             }
@@ -391,7 +402,6 @@ namespace DeferredReality.Aquaculture
                 existing.record.kind == RealityProcessKind.ProviderDefined) return true;
             return world.ScheduleProcess(new RealityProcessRecord
             {
-                schemaVersion = DeferredRealityProviderRules.SchemaVersion,
                 processId = processId,
                 providerId = ProviderId,
                 kind = RealityProcessKind.ProviderDefined,
@@ -560,7 +570,7 @@ namespace DeferredReality.Aquaculture
                 "providerSchema=" + DeferredRealityProviderRules.SchemaVersion,
                 "minimumDeferredRealitySaveSchema=" + DeferredRealityProviderRules.MinimumDeferredRealitySchemaVersion,
                 "capabilities=" + registration.capabilities,
-                "registrationInProgress=" + migrationInProgress,
+                "registrationInProgress=false",
                 "operationRetentionTicks=" + registration.operationRetentionTicks,
                 "sequenceDomain=" + DeferredRealityProviderRules.SequenceDomain
             };
@@ -577,7 +587,7 @@ namespace DeferredReality.Aquaculture
 
             int regions = world.RegionSnapshots().Count(item => item.id.ProviderNamespace == ProviderId);
             int activeMaps = world.RegionSnapshots().Count(item => item.id.ProviderNamespace == ProviderId &&
-                item.activeMapUniqueId >= 0);
+                item.projectionMapUniqueId >= 0);
             var populations = world.PopulationSnapshots(providerId: ProviderId,
                 kind: DeferredRealityProviderRules.NaturalWaterKind);
             var processes = world.ProcessSnapshots().Where(item => item?.record?.providerId == ProviderId).ToList();
@@ -596,17 +606,19 @@ namespace DeferredReality.Aquaculture
                 " duplicates=" + duplicateEvents + " recentOperations=" +
                 (applied.Length == 0 ? "none" : string.Join(",", applied)));
             rows.Add("migration=migrated:" + migratedPopulations + " skippedDefs:" + skippedPopulations +
-                " inProgress:" + migrationInProgress);
+                " inProgress:false");
             rows.Add("lastError=" + (lastError ?? "none"));
             return rows.ToArray();
         }
 
         public bool Owns(Map map)
         {
-            if (!compatible || world == null || map == null) return false;
-            RealityRegionId region = RegionFor(map);
-            return world.IsMigrationCommitted(ProviderId, DeferredRealityProviderRules.MigrationId(region.ToString()),
-                DeferredRealityProviderRules.SchemaVersion);
+            if (!compatible || world == null || map == null ||
+                !world.TryRegionForProjectionMapId(map.uniqueID, out RealityRegionId region) ||
+                region.ProviderNamespace != ProviderId ||
+                !world.TryGetRegion(region, out RealityRegionSnapshot snapshot)) return false;
+            return snapshot.projectionMapUniqueId == map.uniqueID &&
+                snapshot.authority == RealityRegionAuthority.LiveProjection;
         }
 
         public void NotifyMapReady(Map map)

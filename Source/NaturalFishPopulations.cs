@@ -279,6 +279,43 @@ namespace AquacultureFishing
         }
     }
 
+    /// <summary>Display-only conservation data copied before an Insight Canvas frame is composed.</summary>
+    public sealed class NaturalFishConservationViewSnapshot
+    {
+        public NaturalFishConservationViewSnapshot(NaturalFishConservationStatus status)
+        {
+            if (status == null) return;
+            fishDef = status.fishDef;
+            approximatePopulation = status.approximatePopulation;
+            breedingFloor = status.breedingFloor;
+            available = status.available;
+            extinct = status.extinct;
+            breedingPossible = status.breedingPossible;
+            catchLikelyCrossesBreedingFloor = status.catchLikelyCrossesBreedingFloor;
+            atRisk = status.BelowBreedingFloor || status.direction == NaturalFishConservationDirection.Declining ||
+                status.catchLikelyCrossesBreedingFloor;
+            recovering = status.direction == NaturalFishConservationDirection.Growing || status.MigrationCanRecover;
+            migrationCanRecover = status.MigrationCanRecover;
+            direction = status.DirectionLabel;
+            migration = status.MigrationTooltip();
+            tooltip = status.Tooltip;
+        }
+
+        public readonly ThingDef fishDef;
+        public readonly int approximatePopulation;
+        public readonly float breedingFloor;
+        public readonly bool available;
+        public readonly bool extinct;
+        public readonly bool breedingPossible;
+        public readonly bool catchLikelyCrossesBreedingFloor;
+        public readonly bool atRisk;
+        public readonly bool recovering;
+        public readonly bool migrationCanRecover;
+        public readonly string direction;
+        public readonly string migration;
+        public readonly string tooltip;
+    }
+
     /// <summary>Prepared, uncertainty-preserving water data for map overlays and journal pages.</summary>
     public sealed class NaturalWaterViewSnapshot
     {
@@ -288,8 +325,16 @@ namespace AquacultureFishing
         public int carryingCapacity;
         public readonly List<ThingDef> species = new List<ThingDef>();
         public readonly Dictionary<ThingDef, int> estimates = new Dictionary<ThingDef, int>();
+        public readonly Dictionary<ThingDef, NaturalFishConservationViewSnapshot> conservation =
+            new Dictionary<ThingDef, NaturalFishConservationViewSnapshot>();
 
         public string AbundanceLabel => "~" + Mathf.RoundToInt(totalPopulation) + " / " + carryingCapacity;
+
+        public NaturalFishConservationViewSnapshot ConservationFor(ThingDef fish)
+        {
+            return fish != null && conservation.TryGetValue(fish, out NaturalFishConservationViewSnapshot status)
+                ? status : null;
+        }
     }
 
     public sealed class NaturalFishPopulationMapComponent : MapComponent
@@ -536,6 +581,8 @@ namespace AquacultureFishing
                         };
                         view.species.AddRange(summary.presentSpecies);
                         foreach (KeyValuePair<ThingDef, int> pair in summary.estimatedPopulation) view.estimates[pair.Key] = pair.Value;
+                        foreach (KeyValuePair<ThingDef, NaturalFishConservationStatus> pair in summary.conservationBySpecies)
+                            view.conservation[pair.Key] = new NaturalFishConservationViewSnapshot(pair.Value);
                         preparedViews.Add(view);
                     }
                     preparedViews.Sort((left, right) => left.anchor.z != right.anchor.z

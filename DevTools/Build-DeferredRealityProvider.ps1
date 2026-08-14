@@ -2,7 +2,11 @@
 param(
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Release',
-    [string]$HarmonyPath = 'C:\Games\Steam\steamapps\workshop\content\294100\2009463077\Current\Assemblies\0Harmony.dll'
+    [string]$RimWorldDir = (Join-Path $PSScriptRoot '..\..\..'),
+    [string]$HarmonyPath = 'C:\Games\Steam\steamapps\workshop\content\294100\2009463077\Current\Assemblies\0Harmony.dll',
+    [string]$InsightCanvasDir = (Join-Path $PSScriptRoot '..\..\InsightCanvas'),
+    [string]$KnowledgeFrameworkAssemblyPath = (Join-Path $PSScriptRoot '..\..\KnowledgeFramework\1.6\Assemblies\KnowledgeFramework.dll'),
+    [string]$DeferredRealityAssembly = (Join-Path $PSScriptRoot '..\..\DeferredRealityFramework\1.6\Assemblies\DeferredRealityFramework.dll')
 )
 
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
@@ -16,7 +20,12 @@ if (-not (Test-Path -LiteralPath $HarmonyPath)) { throw "Harmony assembly not fo
 $sourceCommit = (& git -C $repositoryRoot rev-parse HEAD).Trim()
 $sourceDirty = @(& git -C $repositoryRoot status --porcelain --untracked-files=all).Count -gt 0
 
-& dotnet build $project --configuration $Configuration "-p:HarmonyPath=$HarmonyPath"
+& dotnet build $project --configuration $Configuration `
+    "-p:RimWorldDir=$RimWorldDir" `
+    "-p:HarmonyPath=$HarmonyPath" `
+    "-p:InsightCanvasDir=$InsightCanvasDir" `
+    "-p:KnowledgeFrameworkAssemblyPath=$KnowledgeFrameworkAssemblyPath" `
+    "-p:DeferredRealityAssembly=$DeferredRealityAssembly"
 if ($LASTEXITCODE -ne 0) { throw 'Deferred Reality provider build failed.' }
 if (-not (Test-Path -LiteralPath $assembly)) { throw "Provider output not found: $assembly" }
 

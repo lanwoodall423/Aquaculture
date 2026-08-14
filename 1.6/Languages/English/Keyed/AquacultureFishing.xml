@@ -475,6 +475,22 @@ Deliver the living fish through the breed record in the Aquaculture Journal. Del
   <AquacultureFishing.WorkspaceKnowledgeCanonical>Knowledge Framework disclosure</AquacultureFishing.WorkspaceKnowledgeCanonical>
   <AquacultureFishing.WorkspaceKnowledgeHidden>Identity is not yet known.</AquacultureFishing.WorkspaceKnowledgeHidden>
   <AquacultureFishing.WorkspaceHealthLegend>Priority order: lethal habitat, starvation, severe stress, reproduction blocker, advice, then healthy. Warnings also use text and controls, not color alone.</AquacultureFishing.WorkspaceHealthLegend>
+  <AquacultureFishing.WorkspaceHealthSummary>Operational pond health</AquacultureFishing.WorkspaceHealthSummary>
+  <AquacultureFishing.WorkspaceHealthyPonds>Healthy ponds</AquacultureFishing.WorkspaceHealthyPonds>
+  <AquacultureFishing.WorkspaceWarningPonds>Warning ponds</AquacultureFishing.WorkspaceWarningPonds>
+  <AquacultureFishing.WorkspaceCriticalPonds>Critical ponds</AquacultureFishing.WorkspaceCriticalPonds>
+  <AquacultureFishing.WorkspaceConservationSummary>Conservation outlook</AquacultureFishing.WorkspaceConservationSummary>
+  <AquacultureFishing.WorkspaceConservationRisk>At risk</AquacultureFishing.WorkspaceConservationRisk>
+  <AquacultureFishing.WorkspaceConservationRecovery>Recovering</AquacultureFishing.WorkspaceConservationRecovery>
+  <AquacultureFishing.WorkspaceBreedingFloors>Below breeding floor</AquacultureFishing.WorkspaceBreedingFloors>
+  <AquacultureFishing.WorkspaceMilestoneSummary>Species milestones</AquacultureFishing.WorkspaceMilestoneSummary>
+  <AquacultureFishing.WorkspaceMilestoneDiscovered>Discovered</AquacultureFishing.WorkspaceMilestoneDiscovered>
+  <AquacultureFishing.WorkspaceMilestoneEstablished>Established</AquacultureFishing.WorkspaceMilestoneEstablished>
+  <AquacultureFishing.WorkspaceMilestoneBred>Bred</AquacultureFishing.WorkspaceMilestoneBred>
+  <AquacultureFishing.WorkspaceMilestoneStable>Stable</AquacultureFishing.WorkspaceMilestoneStable>
+  <AquacultureFishing.WorkspaceKnowledgeExpertise>Fishing expertise</AquacultureFishing.WorkspaceKnowledgeExpertise>
+  <AquacultureFishing.WorkspaceKnowledgeCanonicalSummary>Canonical Knowledge Framework expertise view</AquacultureFishing.WorkspaceKnowledgeCanonicalSummary>
+  <AquacultureFishing.WorkspacePondWater>Water type</AquacultureFishing.WorkspacePondWater>
   <AquacultureFishing.WorkspaceNoPonds>No ponds are currently available.</AquacultureFishing.WorkspaceNoPonds>
   <AquacultureFishing.WorkspaceWorstPond>Highest-priority pond</AquacultureFishing.WorkspaceWorstPond>
   <AquacultureFishing.WorkspacePondHealthy>Healthy</AquacultureFishing.WorkspacePondHealthy>
@@ -489,9 +505,18 @@ Deliver the living fish through the breed record in the Aquaculture Journal. Del
   <AquacultureFishing.WorkspaceSelectWater>Select a prepared water</AquacultureFishing.WorkspaceSelectWater>
   <AquacultureFishing.WorkspacePondDetail>Pond detail</AquacultureFishing.WorkspacePondDetail>
   <AquacultureFishing.WorkspacePondDetailSubtitle>Health causes are captured before rendering; controls call the pond authority.</AquacultureFishing.WorkspacePondDetailSubtitle>
+  <AquacultureFishing.WorkspacePondSummary>{0}: {1}   {2} / {3}   {4} C</AquacultureFishing.WorkspacePondSummary>
+  <AquacultureFishing.WorkspacePondPopulationValue>{0} / {1}</AquacultureFishing.WorkspacePondPopulationValue>
+  <AquacultureFishing.WorkspaceFeedHoursValue>{0} h</AquacultureFishing.WorkspaceFeedHoursValue>
   <AquacultureFishing.WorkspaceFeedReserve>Feed reserve</AquacultureFishing.WorkspaceFeedReserve>
   <AquacultureFishing.WorkspaceResearchDisclosure>Research-tier disclosure</AquacultureFishing.WorkspaceResearchDisclosure>
-  <AquacultureFishing.WorkspaceResearchDisclosureBody>Controls that affect breeding are disabled until Selective Fish Breeding is available. Existing simulation rules remain authoritative.</AquacultureFishing.WorkspaceResearchDisclosureBody>
+  <AquacultureFishing.WorkspaceResearchDisclosureBody>Operational summaries remain visible at every tier. Pond controls stay disabled until their research tier is available, while existing simulation rules remain authoritative.</AquacultureFishing.WorkspaceResearchDisclosureBody>
+  <AquacultureFishing.WorkspaceResearchLocked>Locked research: {0}</AquacultureFishing.WorkspaceResearchLocked>
+  <AquacultureFishing.WorkspaceResearchAllAvailable>All pond research tiers are available.</AquacultureFishing.WorkspaceResearchAllAvailable>
+  <AquacultureFishing.WorkspaceResearchPondkeeping>Pondkeeping</AquacultureFishing.WorkspaceResearchPondkeeping>
+  <AquacultureFishing.WorkspaceResearchManaged>Managed aquaculture</AquacultureFishing.WorkspaceResearchManaged>
+  <AquacultureFishing.WorkspaceResearchIndustrial>Industrial aquaculture</AquacultureFishing.WorkspaceResearchIndustrial>
+  <AquacultureFishing.WorkspaceResearchBreeding>Selective fish breeding</AquacultureFishing.WorkspaceResearchBreeding>
   <AquacultureFishing.WorkspacePondControls>Pond controls</AquacultureFishing.WorkspacePondControls>
   <AquacultureFishing.WorkspacePondControlsSubtitle>These settings change the selected pond through its existing callbacks.</AquacultureFishing.WorkspacePondControlsSubtitle>
   <AquacultureFishing.WorkspaceBreedingMode>Breeding mode</AquacultureFishing.WorkspaceBreedingMode>
@@ -515,6 +540,7 @@ Deliver the living fish through the breed record in the Aquaculture Journal. Del
   <AquacultureFishing.WorkspaceDefiningTraits>Defining traits</AquacultureFishing.WorkspaceDefiningTraits>
   <AquacultureFishing.WorkspaceNoDefiningTraits>No defining traits recorded.</AquacultureFishing.WorkspaceNoDefiningTraits>
   <AquacultureFishing.WorkspaceWaterDetails>Water summary</AquacultureFishing.WorkspaceWaterDetails>
+  <AquacultureFishing.WorkspaceWaterConservationSummary>{0} {1}  /  {2} {3}</AquacultureFishing.WorkspaceWaterConservationSummary>
   <AquacultureFishing.WorkspaceSpeciesCount>species</AquacultureFishing.WorkspaceSpeciesCount>
   <AquacultureFishing.WorkspaceCommissionActive>Commission active</AquacultureFishing.WorkspaceCommissionActive>
   <AquacultureFishing.WorkspaceNoActiveCommission>No active commission.</AquacultureFishing.WorkspaceNoActiveCommission>

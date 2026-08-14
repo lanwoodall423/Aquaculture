@@ -18,7 +18,9 @@ namespace AquacultureFishing
         private string cachedForecastKey;
         private AquaculturePlannerForecastSnapshot cachedForecastSnapshot;
 
-        public override Vector2 InitialSize => new Vector2(1120f, 740f);
+        public override Vector2 InitialSize => new Vector2(
+            Mathf.Clamp(UI.screenWidth * 0.78f, 860f, 1280f),
+            Mathf.Clamp(UI.screenHeight * 0.72f, 560f, 900f));
 
         public Dialog_PondStockingPlanner(PondProxyThing pond, FishPondMapComponent component)
         {
