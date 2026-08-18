@@ -1,10 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
 using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
 using RimWorld;
 using UnityEngine;
 using Verse;
@@ -12,407 +9,54 @@ using Verse;
 #if AQUACULTURE_DEV_TESTS
 namespace AquacultureFishing
 {
-    /// <summary>
-    /// Runs the mod-owned live checks after DevBridge2 has loaded a playable quicktest map.
-    /// The bridge only supplies the process lifecycle and result-file location.
-    /// </summary>
-    public sealed class AquacultureInGameTestComponent : GameComponent
+    public static class AquacultureBridgeTestSuite
     {
-        private const int SettleTicks = 60;
-        private int playableTicks;
-        private bool completed;
-
-        public AquacultureInGameTestComponent()
-        {
-        }
-
-        public AquacultureInGameTestComponent(Game game)
-        {
-        }
-
-        public override void GameComponentTick()
-        {
-            // Read the launch gate at tick time. Game components can be constructed
-            // while the title/map bootstrap is still settling; the coordinator
-            // environment is authoritative once the playable quicktest is running.
-            if (!AquacultureInGameTestRunner.AutoRunRequested) return;
-            AquacultureInGameTestRunner.Tick(ref playableTicks, ref completed, SettleTicks);
-        }
-    }
-
-    internal static class AquacultureInGameTestTickPatch
-    {
-        private static int playableTicks;
-        private static bool completed;
-        private static bool loggedComponent;
-        private static bool installed;
-
-        internal static void Install(HarmonyLib.Harmony harmony)
-        {
-            if (installed) return;
-            if (harmony == null) throw new ArgumentNullException(nameof(harmony));
-            System.Reflection.MethodInfo tick = HarmonyLib.AccessTools.Method(typeof(GameComponentUtility), nameof(GameComponentUtility.GameComponentTick));
-            System.Reflection.MethodInfo update = HarmonyLib.AccessTools.Method(typeof(GameComponentUtility), nameof(GameComponentUtility.GameComponentUpdate));
-            System.Reflection.MethodInfo finalize = HarmonyLib.AccessTools.Method(typeof(Game), nameof(Game.FinalizeInit));
-            System.Reflection.MethodInfo fill = HarmonyLib.AccessTools.Method(typeof(Game), "FillComponents");
-            System.Reflection.MethodInfo rootUpdate = HarmonyLib.AccessTools.Method(typeof(Root_Play), "Update");
-            System.Reflection.MethodInfo tickManagerUpdate = HarmonyLib.AccessTools.Method(typeof(TickManager), "TickManagerUpdate");
-            if (tick == null) throw new MissingMethodException(typeof(GameComponentUtility).FullName, nameof(GameComponentUtility.GameComponentTick));
-            if (finalize == null) throw new MissingMethodException(typeof(Game).FullName, nameof(Game.FinalizeInit));
-
-            harmony.Patch(
-                tick,
-                postfix: new HarmonyLib.HarmonyMethod(typeof(AquacultureInGameTestTickPatch), nameof(Postfix)));
-            if (update != null)
-                harmony.Patch(update,
-                    postfix: new HarmonyLib.HarmonyMethod(typeof(AquacultureInGameTestTickPatch), nameof(UpdatePostfix)));
-            harmony.Patch(
-                finalize,
-                postfix: new HarmonyLib.HarmonyMethod(typeof(AquacultureInGameTestTickPatch), nameof(FinalizePostfix)));
-            if (fill != null)
-                harmony.Patch(fill,
-                    postfix: new HarmonyLib.HarmonyMethod(typeof(AquacultureInGameTestTickPatch), nameof(FillPostfix)));
-            if (rootUpdate != null)
-                harmony.Patch(rootUpdate,
-                    prefix: new HarmonyLib.HarmonyMethod(typeof(AquacultureInGameTestTickPatch), nameof(UpdatePrefix)));
-            if (tickManagerUpdate != null)
-                harmony.Patch(tickManagerUpdate,
-                    prefix: new HarmonyLib.HarmonyMethod(typeof(AquacultureInGameTestTickPatch), nameof(UpdatePrefix)));
-            installed = true;
-            Log.Message("[Aquaculture - Fishing] Automatic in-game test hooks installed; autoRunRequested=" +
-                AquacultureInGameTestRunner.AutoRunRequested + ".");
-        }
-
-        // Existing Aquaculture GameComponents provide a deterministic fallback
-        // tick source if another mod replaces or bypasses GameComponentUtility's
-        // dispatch method after Harmony has installed this patch.
-        internal static void PollFromExistingComponent()
-        {
-            EnsureComponent(Verse.Current.Game);
-            AquacultureInGameTestRunner.Tick(ref playableTicks, ref completed, 60);
-        }
-
-        internal static void Postfix()
-        {
-            EnsureComponent(Verse.Current.Game);
-            AquacultureInGameTestRunner.Tick(ref playableTicks, ref completed, 60);
-        }
-
-        internal static void FinalizePostfix(Game __instance)
-        {
-            EnsureComponent(__instance);
-        }
-
-        internal static void FillPostfix(Game __instance)
-        {
-            EnsureComponent(__instance);
-        }
-
-        internal static void UpdatePrefix()
-        {
-            AquacultureInGameTestRunner.PollRequestedRuns();
-        }
-
-        internal static void UpdatePostfix()
-        {
-            AquacultureInGameTestRunner.PollRequestedRuns();
-        }
-
-        private static void EnsureComponent(Game game)
-        {
-            if (!AquacultureInGameTestRunner.AutoRunRequested || game == null) return;
-            if (game.components == null) game.components = new List<GameComponent>();
-            if (game.GetComponent<AquacultureInGameTestComponent>() != null) return;
-            game.components.Add(new AquacultureInGameTestComponent(game));
-            if (!loggedComponent)
-            {
-                loggedComponent = true;
-                Log.Message("[Aquaculture - Fishing] Automatic in-game test component attached.");
-            }
-        }
-    }
-
-    internal static class AquacultureInGameTestRunner
-    {
-        private const string ResultFileName = "AquacultureFishing.InGameTests.json";
-        private const string RequestPrefix = "AquacultureFishing.InGameTestRequest.";
-        private const string GoldenResultPrefix = "AquacultureFishing.InGameTestResult.";
-        private const string DiagnosticRequestPrefix = "AquacultureFishing.DiagnosticRequest.";
-        private const string DiagnosticResultPrefix = "AquacultureFishing.DiagnosticResult.";
-        private static readonly HashSet<string> ProcessedRunIds = new HashSet<string>(StringComparer.Ordinal);
-        private static readonly HashSet<string> ProcessedDiagnosticIds = new HashSet<string>(StringComparer.Ordinal);
-        private static int requestedPollCooldown;
-        private static float nextDiagnosticPollAt;
-
-        internal static bool AutoRunRequested
-        {
-            get
-            {
-                try
-                {
-                    string explicitRequest = Environment.GetEnvironmentVariable("HNS_IN_GAME_TESTS");
-                    if (string.Equals(explicitRequest, "1", StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(explicitRequest, "true", StringComparison.OrdinalIgnoreCase)) return true;
-
-                    // DEVBRIDGE_LAUNCH_ID is supplied only to coordinator-owned quicktest
-                    // launches.  Use that launch identity as the gate instead of re-parsing
-                    // the coordinator's command line; this matches the installed-mod
-                    // automatic-test contract and avoids false negatives when RimWorld
-                    // normalizes command-line switches.
-                    return !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("DEVBRIDGE_LAUNCH_ID")) &&
-                        !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("DEVBRIDGE_ROOT"));
-                }
-                catch
-                {
-                    return false;
-                }
-            }
-        }
-
-        internal static void Tick(ref int playableTicks, ref bool completed, int settleTicks)
-        {
-            if (!AutoRunRequested || !IsPlayable()) return;
-            if (!completed && ++playableTicks >= settleTicks)
-            {
-                completed = true;
-                Execute();
-            }
-            PollRequestedRuns();
-        }
-
-        internal static void PollRequestedRuns()
-        {
-            // Quicktest can remain on the play root while its normal tick manager
-            // is paused or the world UI is still incomplete.  A requested fixture
-            // only needs a live Game and current Map; requiring GenScene/TickManager
-            // here would strand requests after the baseline report.
-            if (!AutoRunRequested || Verse.Current.Game == null || Find.CurrentMap == null) return;
-            // Diagnostics are on-demand and must not inherit the slow game-tick
-            // throttle used for fixture runs.  Pace the filesystem check by real
-            // time so a paused or heavily modded quicktest remains responsive
-            // without doing an idle per-frame map scan.
-            if (Time.realtimeSinceStartup >= nextDiagnosticPollAt)
-            {
-                nextDiagnosticPollAt = Time.realtimeSinceStartup + 0.5f;
-                ProcessDiagnosticRequests();
-            }
-            if (requestedPollCooldown++ < 15) return;
-            requestedPollCooldown = 0;
-            ProcessRequestedRuns();
-        }
-
-        internal static bool IsPlayable()
+        public static AquacultureInGameTestReport RunBaseline(string runId)
         {
             try
             {
-                return GenScene.InPlayScene && Verse.Current.Game != null && Find.CurrentMap != null &&
-                    Find.TickManager != null;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        internal static void Execute()
-        {
-            AquacultureInGameTestReport report;
-            try
-            {
-                report = Run();
+                return Complete(Run(), runId);
             }
             catch (Exception exception)
             {
-                report = NewReport();
-                report.results.Add(AquacultureInGameTestResult.Failed("runner", exception));
+                return FailedReport(runId, "aquaculture-baseline", exception);
             }
+        }
 
+        public static AquacultureInGameTestReport RunGoldenPath(string runId)
+        {
+            AquacultureInGameTestRequest request = new AquacultureInGameTestRequest
+            {
+                runId = runId,
+                suite = "aquaculture-golden-path",
+                requestedUtc = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture)
+            };
+            try
+            {
+                return Complete(RunGoldenPathInternal(request), runId);
+            }
+            catch (Exception exception)
+            {
+                return FailedReport(runId, request.suite, exception);
+            }
+        }
+
+        private static AquacultureInGameTestReport Complete(AquacultureInGameTestReport report, string runId)
+        {
+            report.runId = runId;
             report.completedUtc = DateTime.UtcNow;
-            Persist(report);
-            LogReport(report);
-        }
-
-        private static void ProcessRequestedRuns()
-        {
-            string runtimeDirectory = RuntimeDirectory();
-            if (runtimeDirectory.NullOrEmpty() || !Directory.Exists(runtimeDirectory)) return;
-            string[] paths;
-            try
-            {
-                paths = Directory.GetFiles(runtimeDirectory, RequestPrefix + "*.json")
-                    .OrderBy(path => path, StringComparer.Ordinal).ToArray();
-            }
-            catch
-            {
-                return;
-            }
-
-            for (int index = 0; index < paths.Length; index++)
-            {
-                string path = paths[index];
-                AquacultureInGameTestRequest request;
-                if (!TryReadRequest(path, out request) || request == null || request.runId.NullOrEmpty()) continue;
-                if (ProcessedRunIds.Contains(request.runId)) continue;
-                string resultPath = Path.Combine(runtimeDirectory, GoldenResultPrefix + request.runId + ".json");
-                if (File.Exists(resultPath))
-                {
-                    ProcessedRunIds.Add(request.runId);
-                    continue;
-                }
-                if (!string.Equals(request.launchId, Environment.GetEnvironmentVariable("DEVBRIDGE_LAUNCH_ID"), StringComparison.Ordinal) ||
-                    request.generation != ParseGeneration()) continue;
-
-                ProcessedRunIds.Add(request.runId);
-                AquacultureInGameTestReport report;
-                try
-                {
-                    report = RunGoldenPath(request);
-                }
-                catch (Exception exception)
-                {
-                    report = NewReport(request.runId, "inhabited-pond-golden-path");
-                    report.requestedUtc = request.requestedUtc;
-                    report.results.Add(AquacultureInGameTestResult.Failed("runner", exception));
-                }
-                report.completedUtc = DateTime.UtcNow;
-                Persist(report, resultPath);
-                LogReport(report);
-            }
-        }
-
-        private static void ProcessDiagnosticRequests()
-        {
-            string runtimeDirectory = RuntimeDirectory();
-            if (runtimeDirectory.NullOrEmpty() || !Directory.Exists(runtimeDirectory)) return;
-            string[] paths;
-            try
-            {
-                paths = Directory.GetFiles(runtimeDirectory, DiagnosticRequestPrefix + "*.json")
-                    .OrderBy(path => path, StringComparer.Ordinal).ToArray();
-            }
-            catch
-            {
-                return;
-            }
-
-            for (int index = 0; index < paths.Length; index++)
-            {
-                AquacultureDiagnosticRequest request;
-                if (!TryReadDiagnosticRequest(paths[index], out request) || request == null || request.runId.NullOrEmpty()) continue;
-                if (ProcessedDiagnosticIds.Contains(request.runId)) continue;
-                string resultPath = Path.Combine(runtimeDirectory, DiagnosticResultPrefix + request.runId + ".json");
-                if (File.Exists(resultPath))
-                {
-                    ProcessedDiagnosticIds.Add(request.runId);
-                    continue;
-                }
-                if (!string.Equals(request.launchId, Environment.GetEnvironmentVariable("DEVBRIDGE_LAUNCH_ID"), StringComparison.Ordinal) ||
-                    request.generation != ParseGeneration()) continue;
-
-                ProcessedDiagnosticIds.Add(request.runId);
-                AquacultureDiagnosticReport report;
-                try
-                {
-                    report = RunDiagnostic(request);
-                }
-                catch (Exception exception)
-                {
-                    report = NewDiagnosticReport(request);
-                    report.status = "FAIL";
-                    report.error = exception.GetBaseException().Message;
-                }
-                report.completedUtc = DateTime.UtcNow;
-                PersistDiagnostic(report, resultPath);
-                LogDiagnostic(report);
-            }
-        }
-
-        private static bool TryReadRequest(string path, out AquacultureInGameTestRequest request)
-        {
-            request = null;
-            try
-            {
-                string json = File.ReadAllText(path, Encoding.UTF8);
-                string runId = JsonString(json, "runId");
-                string launchId = JsonString(json, "launchId");
-                string suite = JsonString(json, "suite");
-                if (runId.NullOrEmpty() || launchId.NullOrEmpty() ||
-                    !Regex.IsMatch(runId, "^[A-Za-z0-9_-]{8,128}$")) return false;
-                int generation = JsonInt(json, "generation");
-                request = new AquacultureInGameTestRequest
-                {
-                    runId = runId,
-                    launchId = launchId,
-                    generation = generation,
-                    suite = suite.NullOrEmpty() ? "inhabited-pond-golden-path" : suite,
-                    requestedUtc = JsonString(json, "requestedUtc")
-                };
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        private static bool TryReadDiagnosticRequest(string path, out AquacultureDiagnosticRequest request)
-        {
-            request = null;
-            try
-            {
-                string json = File.ReadAllText(path, Encoding.UTF8);
-                string runId = JsonString(json, "runId");
-                string launchId = JsonString(json, "launchId");
-                string command = JsonString(json, "command");
-                if (runId.NullOrEmpty() || launchId.NullOrEmpty() || command.NullOrEmpty() ||
-                    !Regex.IsMatch(runId, "^[A-Za-z0-9_-]{8,128}$") ||
-                    !Regex.IsMatch(command, "^[A-Za-z][A-Za-z0-9_]{1,63}$")) return false;
-                request = new AquacultureDiagnosticRequest
-                {
-                    runId = runId,
-                    launchId = launchId,
-                    generation = JsonInt(json, "generation"),
-                    command = command.ToUpperInvariant(),
-                    argument = JsonString(json, "argument"),
-                    requestedUtc = JsonString(json, "requestedUtc")
-                };
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        private static AquacultureDiagnosticReport RunDiagnostic(AquacultureDiagnosticRequest request)
-        {
-            AquacultureDiagnosticReport report = NewDiagnosticReport(request);
-            string readOnlySpec = AquacultureBridgeAdapter.BridgeCommandSpecs()
-                .FirstOrDefault(spec => spec.StartsWith(request.command + "|R|", StringComparison.OrdinalIgnoreCase));
-            if (readOnlySpec.NullOrEmpty())
-                throw new InvalidOperationException("Diagnostic command is not a supported read-only command: " + request.command);
-            List<string> lines = AquacultureBridgeAdapter.ExecuteBridgeCommand(
-                request.command, request.argument ?? string.Empty, Find.CurrentMap);
-            if (lines == null) throw new InvalidOperationException("Diagnostic command returned no result: " + request.command);
-            report.lines.AddRange(lines.Where(line => line != null).Take(256));
-            report.status = "PASS";
             return report;
         }
 
-        private static string JsonString(string json, string key)
+        private static AquacultureInGameTestReport FailedReport(string runId, string suite, Exception exception)
         {
-            Match match = Regex.Match(json ?? string.Empty, "\\\"" + Regex.Escape(key) + "\\\"\\s*:\\s*\\\"([^\\\"]*)\\\"");
-            return match.Success ? match.Groups[1].Value : null;
+            AquacultureInGameTestReport report = NewReport(runId, suite);
+            report.results.Add(AquacultureInGameTestResult.Failed("suite", exception));
+            report.completedUtc = DateTime.UtcNow;
+            return report;
         }
 
-        private static int JsonInt(string json, string key)
-        {
-            Match match = Regex.Match(json ?? string.Empty, "\\\"" + Regex.Escape(key) + "\\\"\\s*:\\s*(-?\\d+)");
-            return match.Success && int.TryParse(match.Groups[1].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int value)
-                ? value : 0;
-        }
-
-        private static AquacultureInGameTestReport RunGoldenPath(AquacultureInGameTestRequest request)
+        private static AquacultureInGameTestReport RunGoldenPathInternal(AquacultureInGameTestRequest request)
         {
             AquacultureInGameTestReport report = NewReport(request.runId, "inhabited-pond-golden-path");
             report.requestedUtc = request.requestedUtc;
@@ -934,179 +578,6 @@ namespace AquacultureFishing
             return int.TryParse(Environment.GetEnvironmentVariable("DEVBRIDGE_GENERATION"), out int value) ? value : 0;
         }
 
-        private static void Persist(AquacultureInGameTestReport report)
-        {
-            string runtimeDirectory = RuntimeDirectory();
-            if (runtimeDirectory.NullOrEmpty())
-            {
-                Log.Error("[Aquaculture InGameTests] DEVBRIDGE_ROOT was unavailable; report could not be persisted.");
-                return;
-            }
-            Persist(report, Path.Combine(runtimeDirectory, ResultFileName));
-        }
-
-        private static string RuntimeDirectory()
-        {
-            string runtimeRoot = Environment.GetEnvironmentVariable("DEVBRIDGE_ROOT");
-            return string.IsNullOrWhiteSpace(runtimeRoot)
-                ? null
-                : Path.Combine(Path.GetFullPath(runtimeRoot), "Runtime");
-        }
-
-        private static void Persist(AquacultureInGameTestReport report, string path)
-        {
-            try
-            {
-                Directory.CreateDirectory(Path.GetDirectoryName(path));
-                report.outputPath = path;
-                WriteAtomic(path, BuildJson(report));
-            }
-            catch (Exception exception)
-            {
-                Log.Error("[Aquaculture InGameTests] Could not write " + path + ": " + exception);
-            }
-        }
-
-        private static AquacultureDiagnosticReport NewDiagnosticReport(AquacultureDiagnosticRequest request)
-        {
-            return new AquacultureDiagnosticReport
-            {
-                runId = request.runId,
-                command = request.command,
-                launchId = request.launchId,
-                generation = request.generation,
-                requestedUtc = request.requestedUtc,
-                startedUtc = DateTime.UtcNow,
-                gameTick = Find.TickManager?.TicksGame ?? 0
-            };
-        }
-
-        private static void PersistDiagnostic(AquacultureDiagnosticReport report, string path)
-        {
-            try
-            {
-                Directory.CreateDirectory(Path.GetDirectoryName(path));
-                report.outputPath = path;
-                WriteAtomic(path, BuildDiagnosticJson(report));
-            }
-            catch (Exception exception)
-            {
-                Log.Error("[Aquaculture Diagnostics] Could not write " + path + ": " + exception);
-            }
-        }
-
-        private static void LogDiagnostic(AquacultureDiagnosticReport report)
-        {
-            if (report.status == "PASS")
-                Log.Message("[Aquaculture Diagnostics] PASS " + report.command + " run=" + report.runId + ".");
-            else
-                Log.Error("[Aquaculture Diagnostics] FAIL " + report.command + " run=" + report.runId + ": " + report.error);
-        }
-
-        private static string BuildDiagnosticJson(AquacultureDiagnosticReport report)
-        {
-            StringBuilder builder = new StringBuilder();
-            builder.Append("{\n")
-                .Append("  \"schemaVersion\": 1,\n")
-                .Append("  \"suite\": \"aquaculture-diagnostic\",\n")
-                .Append("  \"coordinator\": \"DevBridge2-lifecycle-only\",\n")
-                .Append("  \"runId\": ").Append(Quote(report.runId)).Append(",\n")
-                .Append("  \"command\": ").Append(Quote(report.command)).Append(",\n")
-                .Append("  \"status\": ").Append(Quote(report.status)).Append(",\n")
-                .Append("  \"launchId\": ").Append(Quote(report.launchId)).Append(",\n")
-                .Append("  \"generation\": ").Append(report.generation.ToString(CultureInfo.InvariantCulture)).Append(",\n")
-                .Append("  \"gameTick\": ").Append(report.gameTick.ToString(CultureInfo.InvariantCulture)).Append(",\n")
-                .Append("  \"requestedUtc\": ").Append(Quote(report.requestedUtc)).Append(",\n")
-                .Append("  \"startedUtc\": ").Append(Quote(report.startedUtc.ToString("o", CultureInfo.InvariantCulture))).Append(",\n")
-                .Append("  \"completedUtc\": ").Append(Quote(report.completedUtc.ToString("o", CultureInfo.InvariantCulture))).Append(",\n")
-                .Append("  \"error\": ").Append(Quote(report.error)).Append(",\n")
-                .Append("  \"lines\": [");
-            for (int index = 0; index < report.lines.Count; index++)
-            {
-                if (index > 0) builder.Append(",");
-                builder.Append("\n    ").Append(Quote(report.lines[index]));
-            }
-            builder.Append("\n  ]\n}\n");
-            return builder.ToString();
-        }
-
-        private static void WriteAtomic(string path, string contents)
-        {
-            string temporary = path + ".tmp-" + Guid.NewGuid().ToString("N");
-            try
-            {
-                File.WriteAllText(temporary, contents, new UTF8Encoding(false));
-                if (File.Exists(path))
-                {
-                    try { File.Replace(temporary, path, null); }
-                    catch
-                    {
-                        File.Delete(path);
-                        File.Move(temporary, path);
-                    }
-                }
-                else File.Move(temporary, path);
-            }
-            finally
-            {
-                if (File.Exists(temporary)) File.Delete(temporary);
-            }
-        }
-
-        private static void LogReport(AquacultureInGameTestReport report)
-        {
-            string failures = string.Join(", ", report.results.Where(result => result.status == "FAIL")
-                .Select(result => result.id + ": " + result.message));
-            if (report.Passed)
-                Log.Message("[Aquaculture InGameTests] PASS " + report.results.Count + " checks; generation " +
-                    report.generation + ".");
-            else
-                Log.Error("[Aquaculture InGameTests] FAIL " + report.results.Count + " checks; " + failures);
-        }
-
-        private static string BuildJson(AquacultureInGameTestReport report)
-        {
-            int passed = report.results.Count(result => result.status == "PASS");
-            int failed = report.results.Count - passed;
-            StringBuilder builder = new StringBuilder();
-            builder.Append("{\n")
-                .Append("  \"schemaVersion\": 1,\n")
-                .Append("  \"suite\": ").Append(Quote(report.suite)).Append(",\n")
-                .Append("  \"coordinator\": ").Append(Quote("DevBridge2-lifecycle-only")).Append(",\n")
-                .Append("  \"runId\": ").Append(Quote(report.runId)).Append(",\n")
-                .Append("  \"status\": ").Append(Quote(report.Passed ? "PASS" : "FAIL")).Append(",\n")
-                .Append("  \"launchId\": ").Append(Quote(report.launchId)).Append(",\n")
-                .Append("  \"generation\": ").Append(report.generation.ToString(CultureInfo.InvariantCulture)).Append(",\n")
-                .Append("  \"processId\": ").Append(ProcessId()).Append(",\n")
-                .Append("  \"gameTick\": ").Append(report.gameTick.ToString(CultureInfo.InvariantCulture)).Append(",\n")
-                .Append("  \"requestedUtc\": ").Append(Quote(report.requestedUtc)).Append(",\n")
-                .Append("  \"startedUtc\": ").Append(Quote(report.startedUtc.ToString("o", CultureInfo.InvariantCulture))).Append(",\n")
-                .Append("  \"completedUtc\": ").Append(Quote(report.completedUtc.ToString("o", CultureInfo.InvariantCulture))).Append(",\n")
-                .Append("  \"passed\": ").Append(passed.ToString(CultureInfo.InvariantCulture)).Append(",\n")
-                .Append("  \"failed\": ").Append(failed.ToString(CultureInfo.InvariantCulture)).Append(",\n")
-                .Append("  \"tests\": [\n");
-            for (int index = 0; index < report.results.Count; index++)
-            {
-                AquacultureInGameTestResult result = report.results[index];
-                if (index > 0) builder.Append(",\n");
-                builder.Append("    { \"id\": ").Append(Quote(result.id))
-                    .Append(", \"status\": ").Append(Quote(result.status))
-                    .Append(", \"message\": ").Append(Quote(result.message)).Append(" }");
-            }
-            builder.Append("\n  ]\n}\n");
-            return builder.ToString();
-        }
-
-        private static string Quote(string value)
-        {
-            return "\"" + (value ?? string.Empty).Replace("\\", "\\\\").Replace("\"", "\\\"")
-                .Replace("\r", "\\r").Replace("\n", "\\n") + "\"";
-        }
-
-        private static string ProcessId()
-        {
-            return System.Diagnostics.Process.GetCurrentProcess().Id.ToString(CultureInfo.InvariantCulture);
-        }
     }
 
     internal sealed class AquacultureInGameTestRequest
@@ -1116,32 +587,6 @@ namespace AquacultureFishing
         public int generation;
         public string suite;
         public string requestedUtc;
-    }
-
-    internal sealed class AquacultureDiagnosticRequest
-    {
-        public string runId;
-        public string launchId;
-        public int generation;
-        public string command;
-        public string argument;
-        public string requestedUtc;
-    }
-
-    internal sealed class AquacultureDiagnosticReport
-    {
-        public string runId;
-        public string command;
-        public string status;
-        public string error;
-        public string launchId;
-        public int generation;
-        public int gameTick;
-        public string requestedUtc;
-        public DateTime startedUtc;
-        public DateTime completedUtc;
-        public string outputPath;
-        public readonly List<string> lines = new List<string>();
     }
 
     internal sealed class AquacultureGoldenPathFixture
@@ -1620,7 +1065,7 @@ namespace AquacultureFishing
         }
     }
 
-    internal sealed class AquacultureInGameTestReport
+    public sealed class AquacultureInGameTestReport
     {
         public string suite;
         public string runId;
@@ -1635,7 +1080,7 @@ namespace AquacultureFishing
         public bool Passed => results.Count > 0 && results.All(result => result.status == "PASS");
     }
 
-    internal sealed class AquacultureInGameTestResult
+    public sealed class AquacultureInGameTestResult
     {
         public string id;
         public string status;
@@ -1654,14 +1099,5 @@ namespace AquacultureFishing
     }
 }
 #else
-namespace AquacultureFishing
-{
-    // Production/package builds keep the gameplay assembly independent of the
-    // development-only test runner while preserving the existing call sites.
-    internal static class AquacultureInGameTestTickPatch
-    {
-        internal static void Install(HarmonyLib.Harmony harmony) { }
-        internal static void PollFromExistingComponent() { }
-    }
-}
+// The bridge suite is developer-only and is not part of player builds.
 #endif

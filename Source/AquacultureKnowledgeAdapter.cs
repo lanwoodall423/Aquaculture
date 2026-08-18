@@ -62,6 +62,22 @@ namespace AquacultureFishing
         };
 
         public static bool IsRegistered => registered;
+        public static bool IsFrameworkReady => FrameworkReady;
+
+        /// <summary>
+        /// Re-attempts registration when the Knowledge Framework game component becomes
+        /// available. Startup can run before that component exists, and a stale static
+        /// registration flag must not hide a new game's empty schema.
+        /// </summary>
+        public static void EnsureRegistration()
+        {
+            if (registered)
+            {
+                if (V3ContractReady() && KnowledgeRegistry.Schema(DomainId) != null) return;
+                registered = false;
+            }
+            Register();
+        }
 
         public static void Register()
         {
@@ -367,8 +383,10 @@ namespace AquacultureFishing
 
         private static bool V3ContractReady()
         {
-            return GameComponent_KnowledgeFramework.Current != null &&
-                AquacultureKnowledgeContract.SupportsV3(KnowledgeFrameworkApi.ApiVersion,
+            // Domain schemas, contexts, relations, and UI providers are static framework
+            // registrations and are valid before a game component is attached. The game
+            // component is intentionally checked later by FrameworkReady for stateful I/O.
+            return AquacultureKnowledgeContract.SupportsV3(KnowledgeFrameworkApi.ApiVersion,
                     (version, capability) => KnowledgeFrameworkApi.Supports(version, capability),
                     KnowledgeFrameworkApi.CapabilityVersion);
         }

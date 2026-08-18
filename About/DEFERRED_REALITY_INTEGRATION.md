@@ -129,12 +129,10 @@ policy, and the last error. DRF diagnostics additionally report quarantines,
 paused processes, pending migrations, operation records, and identity audit
 failures.
 
-The mod-owned DevBridge2 diagnostic request/result protocol exposes bounded
-provider diagnostics on demand, including registration/capability status,
-active map ownership, paused processes, quarantines, retained exactly-once
-markers, recent correlated operations, migration counts, and the last mismatch.
-DevBridge2 itself only coordinates lifecycle/readiness/leases; it does not
-execute this diagnostic command or become a player dependency.
+RimTest-selected live recipes expose the bounded provider checks through the
+developer companion and authenticated RimBridge route. There is no mod-owned
+diagnostic request/result protocol; DevBridge2 remains the lifecycle/readiness/
+lease owner and never becomes a player dependency.
 
 ## Build and Manifest
 

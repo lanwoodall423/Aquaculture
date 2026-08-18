@@ -186,27 +186,27 @@ The final release boundary, evidence status, isolated startup results, and prior
 
 Run `dotnet build DevTools\TraitBreedingRules.Tests.csproj --configuration Release` followed by `dotnet run --project DevTools\TraitBreedingRules.Tests.csproj --configuration Release --no-build`. The dependency-free executable covers zero/full boundary probabilities, independent parental-union rolls, dual-parent advantage, post-roll caps, incompatible and empty pools, separate mutations, outlier weights, registered-breed reliability, matching/failed qualifying-birth success rates, restrained generation contribution, stability, legacy setting migration, legacy stability preservation, and closed/same-category/positive-source recovery rules. Run `DevTools\Test-AquacultureLocalization.ps1` to check duplicate keys and every source-referenced Aquaculture key in each supported language file. RimWorld runtime tests remain required for Def loading, save/load, journal event routing, UI localization, and breeding in an actual pond.
 Knowledge Framework hardening is covered by the same executable: V3 API/capability gating, stable logical event IDs, migration commit requirements, finite-value rejection, and deterministic identity checks. Framework-specific validation must additionally run `KnowledgeFramework\DevTools\Run-KnowledgeFrameworkBehavioralTests.ps1 -SkipBuild` from the installed framework checkout. Runtime cases must verify partial registration retry, one personal/colony transaction per logical event, duplicate event suppression, context parent/global fallback, migration retry after a rejected import, bounded dynamic subjects, and no whole-map parent lookup under large colonies.
-## Aquaculture Mod-Owned In-Game Suite
+## Aquaculture RimTest In-Game Suite
 
-When RimWorld is launched by DevBridge2 with -quicktest, Aquaculture automatically waits for a playable map and runs Source\AquacultureInGameTests.cs. The suite is owned and executed by Aquaculture; DevBridge2 only coordinates the process lifecycle. It checks live game/map components, required Defs and research prerequisites, fish runtime configuration and trait state, pond snapshots and finite ecology/habitat values, natural-water population state, journal/breed/commission integrity, settings bounds, Knowledge Framework view access, deterministic capacity rules, and snapshot-cache repeatability.
+The developer live suite is exposed through the RimBridge companion and is
+selected by `TestCatalog/rimtest.catalog.json`. RimTest owns selection,
+execution, and compact result aggregation; DevBridge2 owns the generation,
+readiness, and lease; RimBridgeServer owns the authenticated in-game route.
 
-The baseline result is written by the mod to `DevBridge2\Runtime\AquacultureFishing.InGameTests.json`. Run the request-driven inhabited-pond golden path twice in the same quicktest process with:
-
-```powershell
-dotnet build Source\AquacultureFishing.csproj --configuration Release --no-restore -p:AquacultureDeveloperTests=true
-pwsh -NoProfile -File DevTools\Run-AquacultureInGameTests.ps1 -DevBridgeRoot C:\Games\Steam\steamapps\common\RimWorld\Mods\DevBridge2 -Runs 2
-```
-
-The harness asks DevBridge2 only to restart/wait for readiness and acquire/release its own lease. It then writes atomic requests named `AquacultureFishing.InGameTestRequest.<runId>.json`; AquacultureFishing.dll owns the transient unused-map rectangle, pond construction, fish/adult setup, production placement, feed/habitat/cache checks, deterministic breeding and hatch, harvest/processing, and cleanup. Results are written by the mod as `AquacultureFishing.InGameTestResult.<runId>.json` with launch ID, generation, timestamps, status, and individual checks. No save, scenario, colony, or DevBridge-owned fixture is created. The request is explicit, so ordinary quicktests run only the lightweight baseline suite.
-
-For read-only live diagnostics, use `DevTools\Run-AquacultureDiagnostic.ps1` after the developer-test assembly is loaded:
+Use the normal repository workflow:
 
 ```powershell
-pwsh -NoProfile -File DevTools\Run-AquacultureDiagnostic.ps1 -Command AQUA_ADAPTER_STATUS
-pwsh -NoProfile -File DevTools\Run-AquacultureDiagnostic.ps1 -Command AQUA_DEFERRED_REALITY
+$rimTest = 'C:\Games\Steam\steamapps\common\RimWorld\Mods\RimTest\rimtest.cmd'
+& $rimTest doctor --json
+& $rimTest affected --run --json
 ```
 
-The mod validates the command allowlist and returns bounded diagnostic lines. DevBridge2 only coordinates restart/readiness and the exact test lease; it does not register, execute, or authoritatively report Aquaculture diagnostics.
+The suite checks live game/map components, required Defs and research
+prerequisites, fish runtime configuration and trait state, pond snapshots and
+finite ecology/habitat values, natural-water population state, journal/breed/
+commission integrity, settings bounds, Knowledge Framework view access,
+deterministic capacity rules, and snapshot-cache repeatability. There is no
+mod-owned Runtime request/result protocol and no direct in-game test harness.
 
 ## Deferred Reality Provider
 
@@ -225,8 +225,8 @@ The Prompt 3 closure reopens UI-specific release gates invalidated by the
 Insight Canvas overhaul. Start with a clean player build and a fresh isolated
 colony, interact naturally with settings, the first fish dossier, Journal,
 first pond, and save/reload before using any DevBridge2 state manipulation.
-Then use only `DevBridge2\\DevBridge.cmd` and the mod-owned harness for the
-developer baseline/golden and read-only diagnostics. Do not mutate normal saves,
+Then use only RimTest for developer baseline/golden validation; it delegates
+through DevBridge2 and RimBridgeServer. Do not mutate normal saves,
 ModsConfig.xml, or player package contents during the run.
 
 Record results for: wide/medium/narrow layouts; comfortable/normal/compact

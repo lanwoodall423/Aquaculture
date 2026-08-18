@@ -3,9 +3,14 @@
   "packageId": "lan.aquaculture.fishing",
   "coordinator": "DevBridge2",
   "runtimeGuide": "DevTools/DEVBRIDGE2_AGENT.md",
-  "requestDirectory": "<DEVBRIDGE2_ROOT>/Runtime",
-  "requestProtocol": "AquacultureFishing.InGameTestRequest.<runId>.json",
-  "resultProtocol": "AquacultureFishing.InGameTestResult.<runId>.json",
-  "legacyAdapter": "DevTools/BridgeAdapter/AquacultureBridgeAdapter.cs",
-  "legacyAdapterStatus": "historical-only-not-registered-by-DevBridge2"
+  "companionProject": "DevTools/RimBridgeTools/AquacultureFishing.BridgeTools.csproj",
+  "companionBundle": "<RIMWORLD_ROOT>/BridgeTools/AquacultureFishing/AquacultureFishing.BridgeTools.dll",
+  "bridgeService": "RimBridgeServer",
+  "routedTools": [
+    "aquaculture/test_status",
+    "aquaculture/run_baseline",
+    "aquaculture/run_golden_path"
+  ],
+  "routing": "DevBridge2 lease-bound authenticated RimBridgeServer bridge call",
+  "fileProtocol": "none"
 }

@@ -1,6 +1,7 @@
 # Local build intermediates
 **/bin/
 **/obj/
+artifacts/
 Build/
 **/Build/
 DevTools/BridgeAdapter/Build/
@@ -21,3 +22,4 @@ DevTools/TestResults/
 .tura/tools/
 DevTools/Runtime/
 Source/CompatibilityValidation/
+.rimctx/

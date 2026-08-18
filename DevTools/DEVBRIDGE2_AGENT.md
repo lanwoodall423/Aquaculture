@@ -1,103 +1,82 @@
-# Aquaculture DevBridge2 workflow
+# Aquaculture live testing with DevBridge2 and RimBridgeServer
 
-DevBridge2 is the only supported RimWorld coordinator for Aquaculture live
-validation. The current DevBridge2 provider exposes lifecycle and test-lease
-coordination only; it has no adapter registration or arbitrary command API.
-Aquaculture therefore owns its diagnostics and tests in the gameplay assembly,
-using atomic request/result JSON under DevBridge2's `Runtime` directory.
+DevBridge2 is the only supported lifecycle and lease coordinator. RimBridgeServer
+is a separate optional RimWorld mod that provides the authenticated live-game
+tool endpoint. Aquaculture's developer companion is discovered by RimBridgeServer
+from the global sibling BridgeTools folder.
 
-## Rules
+## Preconditions
 
-- Do not launch, kill, or control RimWorld directly.
-- Use `C:\Games\Steam\steamapps\common\RimWorld\Mods\DevBridge2\DevBridge.cmd`.
-- Query `status` before acting and use `wait-ready` after an interrupted command.
-- Register a session-owned Aquaculture intent with a unique registration ID before requesting a
-  restart or test. Register immediately even when other project intents or tests are active: DevBridge
-  combines them into an aggregate profile. Active tests delay the replacement launch or test start,
-  not registration. Wait for an exclusive profile only to reproduce a baseline, isolate a combined-run
-  failure, or honor a known incompatibility.
-- Acquire a lease with `test begin` before interacting with the live map.
-- Release exactly the lease printed by that command with `test end <lease>`.
-- Never release another agent's lease.
-- Keep test setup, assertions, simulation, and cleanup inside `AquacultureFishing.dll`.
-- Do not write normal player saves or alter the user's normal configuration.
+1. Build the developer AquacultureFishing assembly and companion:
+   `dotnet build Source/AquacultureFishing.csproj -c Release /p:AquacultureDeveloperTests=true`.
+   Set `RimWorldDir`, `HarmonyPath`, `InsightCanvasDir`,
+   `KnowledgeFrameworkAssemblyPath`, and `RimBridgeSdkAssemblyPath` as needed.
+2. Confirm the companion exists at
+   `<RimWorld>\\BridgeTools\\AquacultureFishing\\AquacultureFishing.BridgeTools.dll`.
+3. Install and enable RimBridgeServer in the active RimWorld profile.
 
-## Standard golden-path run
+RimBridgeServer and its SDK are not player dependencies. Do not copy the SDK or
+server assemblies into the companion bundle.
 
-After a gameplay/Defs/Harmony/core build, use the coordinator-managed restart:
+## Supported workflow
+
+RimTest owns test selection and execution. From the AquacultureFishing
+repository, use the local RimTest entrypoint:
 
 ```powershell
-dotnet build Source\AquacultureFishing.csproj --configuration Release --no-restore `
-  -p:AquacultureDeveloperTests=true `
-  -p:RimWorldDir="C:\Games\Steam\steamapps\common\RimWorld" `
-  -p:HarmonyPath="<path-to-0Harmony.dll>" `
-  -p:InsightCanvasDir="<InsightCanvas-checkout>" `
-  -p:KnowledgeFrameworkAssemblyPath="<KnowledgeFramework.dll>"
-$env:DEVBRIDGE_AGENT = "codex-aquaculture-<unique-run>"
-$env:DEVBRIDGE_SESSION = "codex-aquaculture-<unique-run>-session"
-$registrationId = "codex-aquaculture-<unique-run>"
-& 'C:\Games\Steam\steamapps\common\RimWorld\Mods\DevBridge2\DevBridge.cmd' project register aquaculture --id $registrationId --json
-& 'C:\Games\Steam\steamapps\common\RimWorld\Mods\DevBridge2\DevBridge.cmd' restart
-& 'C:\Games\Steam\steamapps\common\RimWorld\Mods\DevBridge2\DevBridge.cmd' wait-ready
-& .\DevTools\Run-AquacultureInGameTests.ps1 -DevBridgeRoot 'C:\Games\Steam\steamapps\common\RimWorld\Mods\DevBridge2' -Runs 2
+$rimTest = 'C:\Games\Steam\steamapps\common\RimWorld\Mods\RimTest\rimtest.cmd'
+& $rimTest doctor --json
+& $rimTest affected --run --json
 ```
 
-For a read-only live diagnostic, use the mod-owned diagnostic coordinator:
+Do not call a project-owned in-game harness or write Runtime request/result
+files. If RimTest returns an owner handoff, follow that command and then
+return to RimTest for the next test run.
+
+When RimTest hands off to an owner command, the underlying DevBridge2
+operations are:
 
 ```powershell
-& .\DevTools\Run-AquacultureDiagnostic.ps1 -Command AQUA_ADAPTER_STATUS
-& .\DevTools\Run-AquacultureDiagnostic.ps1 -Command AQUA_PONDS
+$devBridge = 'C:\\Games\\Steam\\steamapps\\common\\RimWorld\\Mods\\DevBridge2\\DevBridge.cmd'
+& $devBridge project resolve aquaculture --json
+& $devBridge project register aquaculture
+& $devBridge restart
+& $devBridge wait-ready
+& $devBridge test begin
+& $devBridge bridge status --json
+& $devBridge bridge policy --json
+& $devBridge bridge tools --lease <lease-id> --json
+& $devBridge bridge call aquaculture/test_status '{}' --lease <lease-id> --json
+& $devBridge bridge call aquaculture/run_baseline '{"runId":"baseline-1"}' --lease <lease-id> --json
+& $devBridge bridge call aquaculture/run_golden_path '{"runId":"golden-1"}' --lease <lease-id> --json
+& $devBridge test end <lease-id>
+& $devBridge project release <registration-id>
 ```
 
-The command is checked again inside the mod; mutating commands such as
-`AQUA_OPEN_PLANNER` are rejected.
+Every `--json` coordinator response is an envelope. For bridge commands, read
+`rimBridgeRoute.success`, `rimBridgeRoute.errorCode`, and
+`rimBridgeRoute.result`; tool discovery is in `rimBridgeRoute.result.tools`.
+Do not treat the envelope itself as the companion tool payload.
 
-The harness queues unique request IDs, waits for matching launch/generation
-results, collects every run even when one fails, releases only its own lease,
-and verifies that DevBridge2 returns to `READY` with no owned lease. The
-`inhabited-pond-golden-path` fixture uses the current quicktest map only and
-restores every created object and terrain cell.
+## Ownership and restart rules
 
-## Build/reload boundary
+- DevBridge2 validates launch ID, generation, process identity, endpoint,
+  profile/policy, companion evidence, and the current lease before forwarding.
+- DevBridge2 remains lifecycle authority; routed tool calls cannot mutate
+  lifecycle or mod order.
+- Gameplay, defs, Harmony, serialized types, or core changes require a full
+  DevBridge2 restart. Request arguments and read-only diagnostics do not.
+- The companion suite runs on the RimWorld main thread. It owns transient
+  fixture setup, assertions, simulation, and cleanup.
+- The player build excludes `Source`, `DevTools`, the companion, and all test
+  code. DevBridge2 and RimBridgeServer remain optional developer tooling.
 
-The gameplay assembly, Defs, Harmony patches, serialized types, provider, and
-core changes require `restart` followed by `wait-ready`. A request/result or
-documentation-only change can be exercised without a restart when the loaded
-assembly is unchanged. DevBridge2 currently has no supported cooperative
-adapter hot-reload API, so no adapter reload command is used.
+## Troubleshooting
 
-## Build, register, query, restart, reload, savedata, and config
+Use `bridge status --json`, `bridge policy --json`, and `bridge tools --json`
+with the active lease. If the host is reachable but Aquaculture tools are
+missing, inspect RimBridgeServer's `rimbridge/get_bridge_status` through
+`bridge call` and check the deployed companion path and SDK/host version.
 
-- **Build:** use the explicit developer property for live tests. Use the
-  default (false) property for the player assembly and package.
-- **Register:** set a session-owned `DEVBRIDGE_AGENT`, `DEVBRIDGE_SESSION`, and unique registration
-  `--id`, then register the `aquaculture` project intent before testing so it joins the aggregate
-  profile. There is no separate adapter-registration command: do not publish or register the
-  historical standalone adapter. The loaded developer assembly installs the mod-owned request/result
-  runner itself.
-- **Query:** use `DevBridge.cmd status` for lifecycle identity and
-  `Run-AquacultureDiagnostic.ps1` for read-only mod diagnostics. Results are
-  atomic files under `DevBridge2\Runtime` and are matched by run ID, launch ID,
-  and generation.
-- **Restart:** after gameplay changes, run `DevBridge.cmd restart` and then
-  `DevBridge.cmd wait-ready`; discard old launch/generation context.
-- **Reload:** no live adapter reload is supported. Restart is the reload
-  boundary for gameplay, Defs, Harmony, serialized types, and providers.
-- **Savedata/config:** use only disposable quicktest or explicitly isolated
-  test data. Do not edit the player's normal saves or `ModsConfig.xml`; the
-  mod-owned fixture restores its temporary map state and the coordinator does
-  not manage player data migration.
-
-## Diagnostics
-
-The fixed smoke report and per-run golden reports are written atomically under
-`DevBridge2\Runtime` and include suite, run ID, launch ID, generation, UTC
-timestamps, status, and individual checks. The bridge only coordinates process
-lifecycle and leases; it does not create fixtures, mutate gameplay state, or
-declare test results.
-
-## Packaging
-
-DevBridge2, `DevTools`, `Source`, test code, request/result files, adapter
-artifacts, and build intermediates are development-only and must not enter the
-player package. The old `RimWorldDevBridge` publisher and client are not used.
+Do not revive the removed Runtime JSON request/result protocol or the former
+standalone BridgeAdapter. Those paths are not release inputs.

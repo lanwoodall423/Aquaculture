@@ -60,6 +60,11 @@ namespace AquacultureFishing
         private InsightUiSlider populationLimitSlider;
         private InsightUiSlider populationTargetSlider;
         private InsightUiSelect breedingModeSelect;
+        private InsightUiSplit pondsSplit;
+        private InsightUiSplit speciesSplit;
+        private InsightUiSplit breedsSplit;
+
+        private const float CompactSplitBreakpoint = 960f;
 
         private static readonly string[] BreedingModeNames = Enum.GetNames(typeof(PondBreedingMode));
 
@@ -86,6 +91,7 @@ namespace AquacultureFishing
             RefreshSnapshots();
             CaptureResearchAvailability();
             UpdateDynamicControls();
+            UpdateResponsiveLayout(rect.width);
             Host.Draw(rect, Time.deltaTime);
         }
 
@@ -107,6 +113,20 @@ namespace AquacultureFishing
             selectedSpeciesId = AquacultureUiStableIds.For("species", defName);
             activePage = "species";
             document.Invalidate();
+        }
+
+        private void UpdateResponsiveLayout(float width)
+        {
+            bool compact = width < CompactSplitBreakpoint;
+            InsightUiSplit[] splits = { pondsSplit, speciesSplit, breedsSplit };
+            for (int i = 0; i < splits.Length; i++)
+            {
+                InsightUiSplit split = splits[i];
+                if (split == null) continue;
+                split.Orientation = compact
+                    ? InsightUiOrientation.Vertical
+                    : InsightUiOrientation.Horizontal;
+            }
         }
 
         private void RefreshSnapshots()
@@ -353,11 +373,13 @@ namespace AquacultureFishing
                 breedingModeSelect, adultsOnlyToggle, protectFemalesToggle, automaticFeedingToggle,
                 feedDaysSlider, predationToggle, surplusHarvestToggle, populationLimitSlider, populationTargetSlider));
 
+            pondsSplit = InsightUi.Split("ponds.split", InsightUi.Column("ponds.master").SetGap(6f).Add(pondList), detail, 0.34f);
+            pondsSplit.SetFlex(1f);
             InsightUiStack root = InsightUi.Column("workspace.ponds.content").SetGap(8f).Add(
                 InsightUi.SectionHeader("ponds.header", L("AquacultureFishing.WorkspacePonds"),
                     L("AquacultureFishing.WorkspacePondsSubtitle"), null, null, true), search,
-                InsightUi.Split("ponds.split", InsightUi.Column("ponds.master").SetGap(6f).Add(pondList), detail, 0.34f));
-            return InsightUi.Scroll("workspace.ponds.scroll", root);
+                pondsSplit);
+            return root;
         }
 
         private InsightUiElement BuildPondRow(PondEntry entry)
@@ -404,10 +426,12 @@ namespace AquacultureFishing
                 InsightUi.Label("species.detail.facets", string.Empty, InsightUiTextStyle.Caption).SetTextProvider(SelectedSpeciesFacets),
                 InsightUi.Callout("species.detail.knowledge-callout", InsightUiCalloutSeverity.Info,
                     L("AquacultureFishing.WorkspaceKnowledgeTitle"), L("AquacultureFishing.WorkspaceKnowledgeBody"))));
-            return InsightUi.Scroll("workspace.species.scroll", InsightUi.Column("workspace.species.content").SetGap(8f).Add(
+            speciesSplit = InsightUi.Split("species.split", InsightUi.Column("species.master").SetGap(6f).Add(speciesList), detail, 0.34f);
+            speciesSplit.SetFlex(1f);
+            return InsightUi.Column("workspace.species.content").SetGap(8f).Add(
                 InsightUi.SectionHeader("species.header", L("AquacultureFishing.WorkspaceSpecies"),
                     L("AquacultureFishing.WorkspaceSpeciesSubtitle"), null, null, true), search,
-                InsightUi.Split("species.split", InsightUi.Column("species.master").SetGap(6f).Add(speciesList), detail, 0.34f)));
+                speciesSplit);
         }
 
         private InsightUiElement BuildSpeciesRow(AquacultureSpeciesViewSnapshot snapshot)
@@ -446,10 +470,12 @@ namespace AquacultureFishing
                 InsightUi.Label("breeds.detail.traits", string.Empty, InsightUiTextStyle.Caption).SetTextProvider(SelectedBreedTraits),
                 InsightUi.Callout("breeds.detail.rules", InsightUiCalloutSeverity.Info,
                     L("AquacultureFishing.WorkspaceBreedRules"), L("AquacultureFishing.WorkspaceBreedRulesBody"))));
-            return InsightUi.Scroll("workspace.breeds.scroll", InsightUi.Column("workspace.breeds.content").SetGap(8f).Add(
+            breedsSplit = InsightUi.Split("breeds.split", InsightUi.Column("breeds.master").SetGap(6f).Add(breedList), detail, 0.34f);
+            breedsSplit.SetFlex(1f);
+            return InsightUi.Column("workspace.breeds.content").SetGap(8f).Add(
                 InsightUi.SectionHeader("breeds.header", L("AquacultureFishing.WorkspaceBreeds"),
                     L("AquacultureFishing.WorkspaceBreedsSubtitle"), null, null, true), search,
-                InsightUi.Split("breeds.split", InsightUi.Column("breeds.master").SetGap(6f).Add(breedList), detail, 0.34f)));
+                breedsSplit);
         }
 
         private InsightUiElement BuildBreedRow(FishBreedRecord breed)

@@ -599,6 +599,7 @@ namespace AquacultureFishing
 
         public static void OpenExpertise(Pawn pawn)
         {
+            AquacultureKnowledgeAdapter.EnsureRegistration();
             MainButtonDef button = DefDatabase<MainButtonDef>.GetNamedSilentFail("AF_AquacultureJournal");
             if (button == null) return;
             Find.MainTabsRoot.SetCurrentTab(button, true);
@@ -657,7 +658,19 @@ namespace AquacultureFishing
                 insightWorkspaceDocument.PostClose();
                 insightWorkspaceDocument = null;
             }
-            KnowledgeMenuUI.Draw(inRect, expertiseState, ExpertiseModelFor, ExpertiseFor);
+            AquacultureKnowledgeAdapter.EnsureRegistration();
+            const float navigationHeight = 34f;
+            Rect backRect = new Rect(inRect.x, inRect.y, Mathf.Min(220f, inRect.width), navigationHeight);
+            if (Widgets.ButtonText(backRect, "AquacultureFishing.WorkspaceBackToJournal".Translate()))
+            {
+                page = JournalPage.Species;
+                expertiseState.scope = KnowledgeMenuScope.Colonist;
+                expertiseState.selectedPawn = null;
+                return;
+            }
+            Rect knowledgeRect = new Rect(inRect.x, inRect.y + navigationHeight + 8f, inRect.width,
+                Mathf.Max(0f, inRect.height - navigationHeight - 8f));
+            KnowledgeMenuUI.Draw(knowledgeRect, expertiseState, ExpertiseModelFor, ExpertiseFor);
         }
 
         public override void PostClose()

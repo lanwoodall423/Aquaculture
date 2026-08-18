@@ -22,12 +22,21 @@
     <RimWorldManagedDir Condition="'$(RimWorldManagedDir)' == '' and Exists('$(RimWorldDir)/RimWorldMac.app/Contents/Resources/Data/Managed/Assembly-CSharp.dll')">$(RimWorldDir)/RimWorldMac.app/Contents/Resources/Data/Managed</RimWorldManagedDir>
     <InsightCanvasDir Condition="'$(InsightCanvasDir)' == '' and Exists('$(MSBuildThisFileDirectory)..\..\InsightCanvas\1.6\Assemblies\InsightCanvas.dll')">$(MSBuildThisFileDirectory)..\..\InsightCanvas</InsightCanvasDir>
     <InsightCanvasAssemblyPath Condition="'$(InsightCanvasAssemblyPath)' == '' and '$(InsightCanvasDir)' != ''">$(InsightCanvasDir)/1.6/Assemblies/InsightCanvas.dll</InsightCanvasAssemblyPath>
+    <RimBridgeServerDir Condition="'$(RimBridgeServerDir)' == ''">$(MSBuildThisFileDirectory)..\..\RimBridgeServer</RimBridgeServerDir>
+    <RimBridgeSdkAssemblyPath Condition="'$(RimBridgeSdkAssemblyPath)' == '' and Exists('$(RimBridgeServerDir)/1.6/Assemblies/RimBridgeServer.Sdk.dll')">$(RimBridgeServerDir)/1.6/Assemblies/RimBridgeServer.Sdk.dll</RimBridgeSdkAssemblyPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(AquacultureDeveloperTests)' == 'true'"><DefineConstants>$(DefineConstants);AQUACULTURE_DEV_TESTS</DefineConstants></PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|AnyCPU'"><Optimize>true</Optimize><OutputPath>..\1.6\Assemblies\</OutputPath><DebugType>none</DebugType></PropertyGroup>
   <ItemGroup>
+    <!-- Keep isolated DevBridge2 builds from globbing stale local intermediates. -->
+    <Compile Remove="obj\**" />
+    <Compile Remove="bin\**" />
+    <EmbeddedResource Remove="obj\**" />
+    <EmbeddedResource Remove="bin\**" />
+    <None Remove="obj\**" />
+    <None Remove="bin\**" />
     <Compile Remove="DeferredRealityProvider\**" />
-    <Compile Include="..\DevTools\BridgeAdapter\AquacultureBridgeAdapter.cs" Link="Development\AquacultureBridgeAdapter.cs" Condition="'$(AquacultureDeveloperTests)' == 'true'" />
+    <Compile Remove="..\DevTools\RimBridgeTools\**\*.cs" />
     <EmbeddedResource Remove="DeferredRealityProvider\**" />
     <None Remove="DeferredRealityProvider\**" />
   </ItemGroup>
@@ -55,5 +64,22 @@
     <Error Condition="'$(HarmonyPath)' == '' or !Exists('$(HarmonyPath)')" Text="AquacultureFishing requires HarmonyPath pointing to 0Harmony.dll." />
     <Error Condition="'$(InsightCanvasAssemblyPath)' == '' or !Exists('$(InsightCanvasAssemblyPath)')" Text="AquacultureFishing requires the installed InsightCanvas.dll. Set InsightCanvasDir or InsightCanvasAssemblyPath." />
     <Error Condition="'$(KnowledgeFrameworkAssemblyPath)' == '' and !Exists('$(MSBuildThisFileDirectory)..\..\KnowledgeFramework\1.6\Assemblies\KnowledgeFramework.dll')" Text="AquacultureFishing requires KnowledgeFrameworkAssemblyPath or the sibling KnowledgeFramework checkout." />
+  </Target>
+  <Target Name="BuildBridgeTools" AfterTargets="Build" Condition="'$(AquacultureDeveloperTests)' == 'true'">
+    <Error Condition="'$(RimBridgeSdkAssemblyPath)' == '' or !Exists('$(RimBridgeSdkAssemblyPath)')" Text="Aquaculture developer tests require RimBridgeServer.Sdk.dll. Set RimBridgeSdkAssemblyPath or RimBridgeServerDir to the installed RimBridgeServer checkout." />
+    <MSBuild
+      Projects="$(MSBuildThisFileDirectory)..\DevTools\RimBridgeTools\AquacultureFishing.BridgeTools.csproj"
+      Targets="Restore;Build"
+      RemoveProperties="OutputPath;OutDir"
+      Properties="Configuration=$(Configuration);AquacultureFishingAssemblyPath=$(TargetPath);RimBridgeSdkAssemblyPath=$(RimBridgeSdkAssemblyPath)" />
+  </Target>
+  <Target Name="CopyBridgeTools" AfterTargets="BuildBridgeTools" Condition="'$(RIMWORLD_MOD_DIR)' != ''">
+    <PropertyGroup>
+      <GlobalBridgeToolsDir>$(RIMWORLD_MOD_DIR)\..\BridgeTools</GlobalBridgeToolsDir>
+    </PropertyGroup>
+    <ItemGroup>
+      <AquacultureBridgeTool Include="$(MSBuildThisFileDirectory)..\artifacts\BridgeTools\AquacultureFishing\AquacultureFishing.BridgeTools.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(AquacultureBridgeTool)" DestinationFolder="$(GlobalBridgeToolsDir)\AquacultureFishing" SkipUnchangedFiles="true" />
   </Target>
 </Project>

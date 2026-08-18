@@ -178,7 +178,6 @@ namespace AquacultureFishing
 
         public override void GameComponentTick()
         {
-            AquacultureInGameTestTickPatch.PollFromExistingComponent();
             int now = Find.TickManager?.TicksGame ?? 0;
             if (now < nextEligibilityCheckTick) return;
             nextEligibilityCheckTick = now + AquacultureCommissionRules.EligibilityCheckIntervalTicks;

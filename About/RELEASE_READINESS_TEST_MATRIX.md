@@ -71,26 +71,21 @@ main-menu or quicktest startup do not prove the corresponding gameplay gate.
 | Performance/scaling contracts | PASS | 16 performance checks and 70-cell/500-cell scaling checks passed. |
 | XML/localization/optional content | PASS | XML startup checks, one language/279 referenced keys, and Fishing Treasures contract passed. |
 | Generated-file/package hygiene | PASS | Historical local verifier passed; current player package contract passed with 26 entries and no source/tests/DevTools/PDB/cache/bridge files. |
-| Current mod-owned baseline | PASS | `DevTools/Run-AquacultureInGameTests.ps1 -SkipRestart`: generation 151 baseline 17/17. |
-| Current mod-owned golden path | PASS | Same run, two inhabited-pond runs, 7/7 each: `76282a60976342209486c0cda864f04e` and `8ffb2da2f1dc44aeaeae3d2e612a6c44`. |
-| Current read-only diagnostics | PASS | Eleven sequential `DevTools/Run-AquacultureDiagnostic.ps1` requests passed: `AQUA_ADAPTER_STATUS`, `AQUA_PONDS`, `AQUA_DEFERRED_REALITY`, `AQUA_VALIDATE`, `AQUA_PERFORMANCE`, `AQUA_SETTINGS`, `AQUACULTURE`, `AQUA_SPECIES`, `AQUA_CATALOG`, `AQUA_JOURNAL`, and `AQUA_OPPORTUNITIES`. |
+| Historical mod-owned baseline | PASS (historical) | Generation-151 evidence is retained for provenance; it is not the current test entrypoint. |
+| Historical mod-owned golden path | PASS (historical) | The two recorded inhabited-pond runs are retained for provenance; current execution is RimTest-selected. |
+| Historical read-only diagnostics | PASS (historical) | The recorded diagnostic requests are retained for provenance; the Runtime request/result transport is retired. |
 
-## Automatic in-game test plan
+## RimTest in-game test plan
 
-The following commands are the repeatable development-only plan. The mod owns
-setup, simulation, assertions, cleanup, atomic requests, and atomic results;
-DevBridge2 only owns lifecycle, readiness, generation/launch identity, and the
-exact test lease.
+RimTest owns selection, execution, and compact result aggregation. DevBridge2
+owns lifecycle, readiness, generation/launch identity, and the exact test
+lease; the RimBridge companion owns live-world setup, simulation, assertions,
+and cleanup.
 
 ```powershell
-dotnet build Source\AquacultureFishing.csproj --configuration Release --no-restore -p:AquacultureDeveloperTests=true
-DevTools\Run-AquacultureInGameTests.ps1 -DevBridgeRoot C:\Games\Steam\steamapps\common\RimWorld\Mods\DevBridge2 -Runs 2
-DevTools\Run-AquacultureDiagnostic.ps1 -DevBridgeRoot C:\Games\Steam\steamapps\common\RimWorld\Mods\DevBridge2 -Command AQUA_ADAPTER_STATUS
-DevTools\Run-AquacultureDiagnostic.ps1 -DevBridgeRoot C:\Games\Steam\steamapps\common\RimWorld\Mods\DevBridge2 -Command AQUA_PONDS
-DevTools\Run-AquacultureDiagnostic.ps1 -DevBridgeRoot C:\Games\Steam\steamapps\common\RimWorld\Mods\DevBridge2 -Command AQUA_DEFERRED_REALITY
-DevTools\Run-AquacultureDiagnostic.ps1 -DevBridgeRoot C:\Games\Steam\steamapps\common\RimWorld\Mods\DevBridge2 -Command AQUA_VALIDATE
-DevTools\Run-AquacultureDiagnostic.ps1 -DevBridgeRoot C:\Games\Steam\steamapps\common\RimWorld\Mods\DevBridge2 -Command AQUA_PERFORMANCE
-DevTools\Run-AquacultureDiagnostic.ps1 -DevBridgeRoot C:\Games\Steam\steamapps\common\RimWorld\Mods\DevBridge2 -Command AQUA_SETTINGS
+$rimTest = 'C:\Games\Steam\steamapps\common\RimWorld\Mods\RimTest\rimtest.cmd'
+& $rimTest doctor --json
+& $rimTest affected --run --json
 ```
 
 Run a full DevBridge2 restart after gameplay, Defs, Harmony, serialized types,

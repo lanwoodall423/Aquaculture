@@ -637,15 +637,6 @@ namespace AquacultureFishing
 
     static AquacultureStartup()
     {
-        try
-        {
-            AquacultureInGameTestTickPatch.Install(AquacultureMod.Harmony);
-        }
-        catch (Exception exception)
-        {
-            Log.Error("[Aquaculture - Fishing] Could not install automatic in-game test hooks: " + exception);
-        }
-
         LongEventHandler.ExecuteWhenFinished(() =>
             {
                 List<ThingDef> fishDefs = DefDatabase<ThingDef>.AllDefs.Where(FishUtility.IsFish).ToList();
