@@ -13,13 +13,14 @@ namespace AquacultureFishing
         private readonly FishPondMapComponent component;
         private readonly List<ThingDef> species;
         private readonly Dictionary<ThingDef, int> plan = new Dictionary<ThingDef, int>();
-        private Vector2 speciesScroll;
-        private Vector2 planScroll;
-        private Vector2 forecastScroll;
-        private string search = string.Empty;
         private PondWaterKind plannedWater;
+        private AquacultureStockingPlannerDocument insightDocument;
+        private string cachedForecastKey;
+        private AquaculturePlannerForecastSnapshot cachedForecastSnapshot;
 
-        public override Vector2 InitialSize => new Vector2(1120f, 740f);
+        public override Vector2 InitialSize => new Vector2(
+            Mathf.Clamp(UI.screenWidth * 0.78f, 860f, 1280f),
+            Mathf.Clamp(UI.screenHeight * 0.72f, 560f, 900f));
 
         public Dialog_PondStockingPlanner(PondProxyThing pond, FishPondMapComponent component)
         {
@@ -36,6 +37,7 @@ namespace AquacultureFishing
                 .ThenBy(def => def.defName)
                 .ToList();
             if (!LoadBlueprint()) LoadCurrentStock();
+            insightDocument = new AquacultureStockingPlannerDocument(this);
         }
 
         public override void DoWindowContents(Rect inRect)
@@ -46,188 +48,74 @@ namespace AquacultureFishing
                 return;
             }
 
-            Text.Font = GameFont.Medium;
-            Widgets.Label(new Rect(inRect.x, inRect.y, inRect.width - 290f, 34f), "AquacultureFishing.PondPlannerTitle".Translate());
-            Text.Font = GameFont.Small;
-            Widgets.Label(new Rect(inRect.x, inRect.y + 36f, inRect.width - 290f, 28f),
-                "AquacultureFishing.PondPlannerSubtitle".Translate());
-
-            DrawWaterControl(new Rect(inRect.xMax - 275f, inRect.y, 275f, 64f));
-
-            float top = inRect.y + 76f;
-            float gap = 10f;
-            float leftWidth = 340f;
-            float middleWidth = 315f;
-            Rect available = new Rect(inRect.x, top, leftWidth, inRect.height - top - 4f);
-            Rect planned = new Rect(available.xMax + gap, top, middleWidth, available.height);
-            Rect forecast = new Rect(planned.xMax + gap, top, inRect.xMax - planned.xMax - gap, available.height);
-            DrawAvailableSpecies(available);
-            DrawPlannedStock(planned);
-            DrawForecast(forecast);
+            insightDocument.Draw(inRect);
         }
 
-        private void DrawWaterControl(Rect rect)
+        public override void PostClose()
         {
-            Widgets.DrawMenuSection(rect);
-            Text.Font = GameFont.Tiny;
-            GUI.color = new Color(0.72f, 0.72f, 0.72f);
-            Widgets.Label(new Rect(rect.x + 10f, rect.y + 5f, rect.width - 20f, 20f), "AquacultureFishing.PondPlannerPlannedWater".Translate());
-            Text.Font = GameFont.Small;
-            GUI.color = Color.white;
-            if (Widgets.ButtonText(new Rect(rect.x + 10f, rect.y + 27f, rect.width - 20f, 29f), WaterLabel(plannedWater)))
-            {
-                Find.WindowStack.Add(new FloatMenu(Enum.GetValues(typeof(PondWaterKind)).Cast<PondWaterKind>()
-                    .Select(kind => new FloatMenuOption(WaterLabel(kind), () => plannedWater = kind)).ToList()));
-            }
-            TooltipHandler.TipRegion(rect, "AquacultureFishing.PondPlannerWaterTip".Translate());
+            insightDocument?.PostClose();
+            base.PostClose();
         }
 
-        private void DrawAvailableSpecies(Rect rect)
-        {
-            Widgets.DrawMenuSection(rect);
-            Text.Font = GameFont.Medium;
-            Widgets.Label(new Rect(rect.x + 12f, rect.y + 10f, rect.width - 24f, 30f), "AquacultureFishing.PondPlannerAvailableSpecies".Translate());
-            Text.Font = GameFont.Small;
-            search = Widgets.TextField(new Rect(rect.x + 12f, rect.y + 46f, rect.width - 24f, 30f), search ?? string.Empty);
+        internal IReadOnlyList<ThingDef> SpeciesCatalog => species;
+        internal IEnumerable<KeyValuePair<ThingDef, int>> PlanEntries => plan;
+        internal PondWaterKind PlannedWaterValue => plannedWater;
 
-            List<ThingDef> filtered = species.Where(def => search.NullOrEmpty()
-                || def.label.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0
-                || def.defName.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0).ToList();
-            Rect outRect = new Rect(rect.x + 8f, rect.y + 84f, rect.width - 16f, rect.height - 92f);
-            Rect view = new Rect(0f, 0f, outRect.width - 18f, Mathf.Max(outRect.height, filtered.Count * 48f));
-            Widgets.BeginScrollView(outRect, ref speciesScroll, view);
-            for (int i = 0; i < filtered.Count; i++)
-            {
-                ThingDef def = filtered[i];
-                Rect row = new Rect(0f, i * 48f, view.width, 44f);
-                if (i % 2 == 1) Widgets.DrawAltRect(row);
-                DrawDefIcon(new Rect(row.x + 4f, row.y + 4f, 36f, 36f), def);
-                Widgets.Label(new Rect(row.x + 47f, row.y + 3f, row.width - 102f, 24f), def.LabelCap);
-                AquaticSpeciesProfile profile = AquaticSpeciesProfile.For(def);
-                Text.Font = GameFont.Tiny;
-                GUI.color = new Color(0.72f, 0.72f, 0.72f);
-                Widgets.Label(new Rect(row.x + 47f, row.y + 24f, row.width - 102f, 18f),
-                    "AquacultureFishing.PondPlannerSpeciesMeta".Translate(profile.diet.ToString(), WaterLabel(profile.waterKind)));
-                GUI.color = Color.white;
-                Text.Font = GameFont.Small;
-                if (Widgets.ButtonText(new Rect(row.xMax - 46f, row.y + 7f, 40f, 30f), "+")) ChangeCount(def, 1);
-                TooltipHandler.TipRegion(row, SpeciesTooltip(def, profile));
-            }
-            Widgets.EndScrollView();
+        internal void SetPlannedWater(PondWaterKind value)
+        {
+            plannedWater = value;
+            cachedForecastKey = null;
         }
 
-        private void DrawPlannedStock(Rect rect)
+        internal void ChangeCountForUi(ThingDef def, int delta)
         {
-            Widgets.DrawMenuSection(rect);
-            Text.Font = GameFont.Medium;
-            Widgets.Label(new Rect(rect.x + 12f, rect.y + 10f, rect.width - 24f, 30f), "AquacultureFishing.PondPlannerPlannedStock".Translate());
-            Text.Font = GameFont.Small;
-            List<KeyValuePair<ThingDef, int>> entries = plan.Where(pair => pair.Value > 0)
-                .OrderBy(pair => pair.Key.label).ToList();
-            int total = entries.Sum(pair => pair.Value);
-            GUI.color = new Color(0.72f, 0.72f, 0.72f);
-            Widgets.Label(new Rect(rect.x + 12f, rect.y + 42f, rect.width - 24f, 24f),
-                "AquacultureFishing.PondPlannerTotals".Translate(entries.Count, total));
-            GUI.color = Color.white;
-
-            Rect outRect = new Rect(rect.x + 8f, rect.y + 72f, rect.width - 16f, rect.height - 184f);
-            Rect view = new Rect(0f, 0f, outRect.width - 18f, Mathf.Max(outRect.height, entries.Count * 50f));
-            Widgets.BeginScrollView(outRect, ref planScroll, view);
-            for (int i = 0; i < entries.Count; i++)
-            {
-                ThingDef def = entries[i].Key;
-                int count = entries[i].Value;
-                Rect row = new Rect(0f, i * 50f, view.width, 46f);
-                if (i % 2 == 1) Widgets.DrawAltRect(row);
-                DrawDefIcon(new Rect(row.x + 4f, row.y + 5f, 34f, 34f), def);
-                Widgets.Label(new Rect(row.x + 44f, row.y + 3f, row.width - 142f, 24f), def.LabelCap);
-                Text.Font = GameFont.Tiny;
-                GUI.color = CompatibilityColor(def);
-                Widgets.Label(new Rect(row.x + 44f, row.y + 25f, row.width - 142f, 18f), CompatibilityLabel(def));
-                GUI.color = Color.white;
-                Text.Font = GameFont.Small;
-                if (Widgets.ButtonText(new Rect(row.xMax - 94f, row.y + 8f, 28f, 28f), "-")) ChangeCount(def, -1);
-                Text.Anchor = TextAnchor.MiddleCenter;
-                Widgets.Label(new Rect(row.xMax - 63f, row.y + 8f, 30f, 28f), count.ToString());
-                Text.Anchor = TextAnchor.UpperLeft;
-                if (Widgets.ButtonText(new Rect(row.xMax - 30f, row.y + 8f, 28f, 28f), "+")) ChangeCount(def, 1);
-            }
-            Widgets.EndScrollView();
-
-            float buttonY = rect.yMax - 100f;
-            float third = (rect.width - 28f) / 3f;
-            if (Widgets.ButtonText(new Rect(rect.x + 10f, buttonY, third, 32f), "AquacultureFishing.PondPlannerCurrent".Translate())) LoadCurrentStock();
-            if (Widgets.ButtonText(new Rect(rect.x + 14f + third, buttonY, third, 32f), "AquacultureFishing.PondPlannerBlueprint".Translate())) LoadBlueprint();
-            if (Widgets.ButtonText(new Rect(rect.x + 18f + third * 2f, buttonY, third, 32f), "AquacultureFishing.PondPlannerClear".Translate())) plan.Clear();
-            if (Widgets.ButtonText(new Rect(rect.x + 10f, buttonY + 40f, rect.width - 20f, 38f), "AquacultureFishing.PondPlannerSave".Translate()))
-            {
-                component.SetStockingBlueprint(pond.Position, plan, plannedWater);
-                Messages.Message(total > 0
-                        ? "AquacultureFishing.PondPlannerSaved".Translate(total).ToString()
-                        : "AquacultureFishing.PondPlannerCleared".Translate().ToString(),
-                    MessageTypeDefOf.TaskCompletion, false);
-            }
-            TooltipHandler.TipRegion(new Rect(rect.x + 10f, buttonY + 40f, rect.width - 20f, 38f),
-                "AquacultureFishing.PondPlannerSaveTip".Translate());
+            ChangeCount(def, delta);
         }
 
-        private void DrawForecast(Rect rect)
+        internal void LoadCurrentForUi()
         {
-            Widgets.DrawMenuSection(rect);
-            Forecast data = CalculateForecast();
-            Rect inner = rect.ContractedBy(12f);
-            Color statusColor = data.danger ? new Color(1f, 0.48f, 0.34f)
-                : data.warnings.Count > 0 ? new Color(1f, 0.78f, 0.28f)
-                : new Color(0.45f, 0.92f, 0.55f);
-            Text.Font = GameFont.Medium;
-            GUI.color = statusColor;
-            Widgets.Label(new Rect(inner.x, inner.y, inner.width, 32f), data.danger
-                ? "AquacultureFishing.PondPlannerUnsafe".Translate()
-                : data.warnings.Count > 0
-                    ? "AquacultureFishing.PondPlannerNeedsSupport".Translate()
-                    : "AquacultureFishing.PondPlannerStable".Translate());
-            GUI.color = Color.white;
-            Text.Font = GameFont.Small;
+            LoadCurrentStock();
+        }
 
-            float y = inner.y + 40f;
-            DrawGauge(inner, ref y, "AquacultureFishing.PondPlannerPhysical".Translate().ToString(), data.totalFish,
-                data.physicalCapacity, new Color(0.32f, 0.72f, 0.96f));
-            DrawGauge(inner, ref y, "AquacultureFishing.PondPlannerSustainable".Translate().ToString(), data.totalFish,
-                data.sustainableCapacity, new Color(0.38f, 0.82f, 0.44f));
-            DrawGauge(inner, ref y, "AquacultureFishing.PondPlannerIndustrial".Translate().ToString(), data.totalFish,
-                data.industrialCapacity, new Color(0.78f, 0.58f, 0.28f));
-            DrawGauge(inner, ref y, "AquacultureFishing.PondPlannerAlgaeDemand".Translate().ToString(), data.algaeDemand,
-                Mathf.Max(0.001f, data.sustainableAlgae), new Color(0.38f, 0.82f, 0.44f));
-            y += 4f;
-            DrawForecastCard(inner, ref y, "AquacultureFishing.PondPlannerFoodDemand".Translate().ToString(),
-                "AquacultureFishing.PondPlannerPerDay".Translate(data.dailyDemand.ToString("0.000")).ToString(),
-                "AquacultureFishing.PondPlannerFoodDetails".Translate(data.sustainableAlgae.ToString("0.000"), data.feedNeeded.ToString("0.000")),
-                TexCommand.DesirePower);
-            DrawForecastCard(inner, ref y, "AquacultureFishing.PondPlannerDietMix".Translate().ToString(),
-                "AquacultureFishing.PondPlannerDietCounts".Translate(data.plantEaters, data.omnivores, data.predators),
-                data.predationRisk ? "AquacultureFishing.PondPlannerPredationRisk".Translate().ToString() :
-                    "AquacultureFishing.PondPlannerNoPredation".Translate().ToString(),
-                TexCommand.Attack);
-            DrawForecastCard(inner, ref y, "AquacultureFishing.PondPlannerExpectedValue".Translate().ToString(),
-                "AquacultureFishing.PondPlannerValue".Translate(data.beauty.ToString("0.#"), data.meatIndex.ToString("0.#")),
-                "AquacultureFishing.PondPlannerBreedingSpecies".Translate(data.breedingSpecies),
-                TexCommand.SelectCarriedThing);
+        internal void LoadBlueprintForUi()
+        {
+            LoadBlueprint();
+        }
 
-            Rect warningOut = new Rect(inner.x, y + 4f, inner.width, inner.yMax - y - 4f);
-            List<string> messages = data.warnings.Count > 0 ? data.warnings : new List<string>
+        internal void ClearPlanForUi()
+        {
+            plan.Clear();
+            cachedForecastKey = null;
+        }
+
+        internal void SavePlanForUi()
+        {
+            component.SetStockingBlueprint(pond.Position, plan, plannedWater);
+            int total = plan.Sum(pair => pair.Value);
+            Messages.Message(total > 0
+                    ? "AquacultureFishing.PondPlannerSaved".Translate(total).ToString()
+                    : "AquacultureFishing.PondPlannerCleared".Translate().ToString(),
+                MessageTypeDefOf.TaskCompletion, false);
+        }
+
+        internal AquaculturePlannerForecastSnapshot ForecastSnapshot
+        {
+            get
             {
-                "AquacultureFishing.PondPlannerCompatible".Translate().ToString()
-            };
-            Rect warningView = new Rect(0f, 0f, warningOut.width - 18f, Mathf.Max(warningOut.height, messages.Count * 42f));
-            Widgets.BeginScrollView(warningOut, ref forecastScroll, warningView);
-            for (int i = 0; i < messages.Count; i++)
-            {
-                Rect row = new Rect(0f, i * 42f, warningView.width, 38f);
-                GUI.color = data.warnings.Count > 0 ? new Color(1f, 0.78f, 0.35f) : new Color(0.60f, 0.90f, 0.65f);
-                Widgets.Label(row, (data.warnings.Count > 0 ? "! " : "OK ") + messages[i]);
-                GUI.color = Color.white;
+                string key = AquaculturePlannerCacheContract.Key(plan
+                    .Where(pair => pair.Value > 0)
+                    .OrderBy(pair => pair.Key.defName, StringComparer.Ordinal)
+                    .Select(pair => pair.Key.defName + ":" + pair.Value),
+                    plannedWater.ToString(), AquacultureSnapshotCache.Revision);
+                if (cachedForecastSnapshot != null && cachedForecastKey == key) return cachedForecastSnapshot;
+                Forecast data = CalculateForecast();
+                cachedForecastKey = key;
+                cachedForecastSnapshot = new AquaculturePlannerForecastSnapshot(data.totalFish,
+                    data.physicalCapacity, data.sustainableCapacity, data.industrialCapacity,
+                    data.dailyDemand, data.feedNeeded, data.danger, data.predationRisk,
+                    data.warnings, key, AquacultureSnapshotCache.Revision);
+                return cachedForecastSnapshot;
             }
-            Widgets.EndScrollView();
         }
 
         private Forecast CalculateForecast()
@@ -311,38 +199,10 @@ namespace AquacultureFishing
             return data;
         }
 
-        private void DrawGauge(Rect rect, ref float y, string label, float value, float maximum, Color color)
-        {
-            Widgets.Label(new Rect(rect.x, y, rect.width, 24f), label + "  " + value.ToString("0.##") + " / " + maximum.ToString("0.##"));
-            Rect bar = new Rect(rect.x, y + 25f, rect.width, 12f);
-            Widgets.DrawBoxSolid(bar, new Color(0.12f, 0.13f, 0.14f));
-            float fraction = maximum <= 0f ? (value > 0f ? 1f : 0f) : Mathf.Clamp01(value / maximum);
-            Widgets.DrawBoxSolid(new Rect(bar.x, bar.y, bar.width * fraction, bar.height), color);
-            y += 48f;
-        }
-
-        private static void DrawForecastCard(Rect rect, ref float y, string title, string value, string details, Texture2D icon)
-        {
-            Rect card = new Rect(rect.x, y, rect.width, 88f);
-            Widgets.DrawMenuSection(card);
-            if (icon != null) GUI.DrawTexture(new Rect(card.x + 9f, card.y + 20f, 34f, 34f), icon, ScaleMode.ScaleToFit);
-            Text.Font = GameFont.Tiny;
-            GUI.color = new Color(0.72f, 0.72f, 0.72f);
-            Widgets.Label(new Rect(card.x + 50f, card.y + 7f, card.width - 58f, 18f), title.ToUpperInvariant());
-            Text.Font = GameFont.Small;
-            GUI.color = Color.white;
-            Widgets.Label(new Rect(card.x + 50f, card.y + 25f, card.width - 58f, 24f), value);
-            Text.Font = GameFont.Tiny;
-            GUI.color = new Color(0.72f, 0.72f, 0.72f);
-            Widgets.Label(new Rect(card.x + 50f, card.y + 49f, card.width - 58f, 34f), details);
-            GUI.color = Color.white;
-            Text.Font = GameFont.Small;
-            y += 96f;
-        }
-
         private void LoadCurrentStock()
         {
             plan.Clear();
+            cachedForecastKey = null;
             PondMenuSnapshot snapshot = component?.MenuSnapshotAt(pond.Position);
             if (snapshot == null) return;
             for (int i = 0; i < snapshot.fish.Count; i++)
@@ -357,6 +217,7 @@ namespace AquacultureFishing
             Dictionary<ThingDef, int> saved = component?.StockingBlueprintAt(pond.Position);
             if (saved == null || saved.Count == 0) return false;
             plan.Clear();
+            cachedForecastKey = null;
             foreach (KeyValuePair<ThingDef, int> pair in saved) plan[pair.Key] = pair.Value;
             plannedWater = component.StockingBlueprintWaterAt(pond.Position);
             return true;
@@ -367,48 +228,20 @@ namespace AquacultureFishing
             int changed = Mathf.Clamp(Count(def) + delta, 0, 999);
             if (changed <= 0) plan.Remove(def);
             else plan[def] = changed;
+            cachedForecastKey = null;
         }
 
         private int Count(ThingDef def) => plan.TryGetValue(def, out int count) ? count : 0;
 
-        private Color CompatibilityColor(ThingDef def)
+        private static string WaterLabel(PondWaterKind kind)
         {
-            AquaticSpeciesProfile profile = AquaticSpeciesProfile.For(def);
-            if (!AquaticSpeciesProfile.WaterCompatible(profile.waterKind, plannedWater)) return new Color(1f, 0.45f, 0.35f);
-            float temperature = component.MenuSnapshotAt(pond.Position)?.temperature ?? 21f;
-            return temperature < profile.minimumTemperature || temperature > profile.maximumTemperature
-                ? new Color(1f, 0.78f, 0.30f)
-                : new Color(0.52f, 0.92f, 0.58f);
+            switch (kind)
+            {
+                case PondWaterKind.Saltwater: return "AquacultureFishing.WorkspaceWaterSaltwater".Translate().ToString();
+                case PondWaterKind.Brackishwater: return "AquacultureFishing.WorkspaceWaterBrackishwater".Translate().ToString();
+                default: return "AquacultureFishing.WorkspaceWaterFreshwater".Translate().ToString();
+            }
         }
-
-        private string CompatibilityLabel(ThingDef def)
-        {
-            AquaticSpeciesProfile profile = AquaticSpeciesProfile.For(def);
-            if (!AquaticSpeciesProfile.WaterCompatible(profile.waterKind, plannedWater))
-                return "AquacultureFishing.PondPlannerWrongWaterLabel".Translate();
-            float temperature = component.MenuSnapshotAt(pond.Position)?.temperature ?? 21f;
-            return temperature < profile.minimumTemperature || temperature > profile.maximumTemperature
-                ? "AquacultureFishing.PondPlannerUnsafeTemperatureLabel".Translate()
-                : "AquacultureFishing.PondPlannerCompatibleLabel".Translate();
-        }
-
-        private static string SpeciesTooltip(ThingDef def, AquaticSpeciesProfile profile)
-        {
-            return "AquacultureFishing.PondPlannerSpeciesTooltip".Translate(def.LabelCap, profile.diet.ToString(),
-                WaterLabel(profile.waterKind), profile.minimumTemperature.ToString("0.#"),
-                profile.maximumTemperature.ToString("0.#"), (profile.hourlyDemand * 24f).ToString("0.000"),
-                profile.breedingIntervalFactor.ToStringPercent(), profile.offspringFactor.ToStringPercent(),
-                profile.meatYieldFactor.ToStringPercent()).ToString();
-        }
-
-        private static void DrawDefIcon(Rect rect, ThingDef def)
-        {
-            Texture2D icon = def?.uiIcon;
-            if (icon != null) GUI.DrawTexture(rect, icon, ScaleMode.ScaleToFit, true);
-        }
-
-        private static string WaterLabel(PondWaterKind kind) =>
-            kind == PondWaterKind.Brackishwater ? "Brackishwater" : kind.ToString();
 
         private static void DietShares(FishDiet diet, out float algae, out float detritus, out float prey)
         {

@@ -1,9 +1,22 @@
-# Aquaculture Fishing
+# Content Mod Development
 
-- Package ID: `lan.aquaculture.fishing`.
-- Adapter source: `DevTools/BridgeAdapter/AquacultureBridgeAdapter.cs`; package output: `DevTools/BridgeAdapters`.
-- Build: `DevTools\Build-HotBridgeAdapter.ps1`; validate: `DevTools\Test-BridgeAdapter.ps1`.
-- Query live Dev Bridge context with `DevTools\devbridge.ps1` from the Dev Bridge checkout before runtime tests.
-- Adapter-only changes can reload the adapter; gameplay, defs, Harmony, serialized types, or core changes require a full restart.
-- This integration and its adapter distribution are Aquaculture-controlled. Dev Bridge remains optional.
-- Full workflow: `DevTools/DEVBRIDGE_AGENT.md`.
+This repository is a RimWorld content mod.
+
+For source changes, RimTest owns build, generation, local deployment,
+RimWorld lifecycle, affected-test selection, and runtime validation.
+
+Use:
+
+rimtest doctor --json
+
+before validation, and normally:
+
+rimtest affected --run --json
+
+after source changes.
+
+Do not manually copy assemblies into the live mod directory, manually
+substitute RimWorld launches for RimTest lifecycle operations, or call
+RimContext/DevBridge2 directly when RimTest owns the workflow.
+
+Artifact freshness must be proven before runtime results are accepted.

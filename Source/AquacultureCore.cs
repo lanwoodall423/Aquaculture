@@ -552,27 +552,40 @@ namespace AquacultureFishing
 
         private void PlaceInPond(IntVec3 cell)
         {
+            TryPlaceInPond(cell, true);
+        }
+
+        // The live-world developer test uses the same production placement path as the
+        // player command, but suppresses player-facing rejection messages.
+        internal bool TryPlaceInPondForDevTest(IntVec3 cell)
+        {
+            return TryPlaceInPond(cell, false);
+        }
+
+        private bool TryPlaceInPond(IntVec3 cell, bool notify)
+        {
             Map map = parent.Map;
-            if (!cell.InBounds(map) || map.terrainGrid.TerrainAt(cell).defName != "AF_Pond")
+            if (map == null || !cell.InBounds(map) || map.terrainGrid.TerrainAt(cell).defName != "AF_Pond")
             {
-                Messages.Message("Select a constructed pond cell.", MessageTypeDefOf.RejectInput, false);
-                return;
+                if (notify) Messages.Message("Select a constructed pond cell.", MessageTypeDefOf.RejectInput, false);
+                return false;
             }
             if (cell.GetThingList(map).Any(t => t.TryGetComp<CompFishTraits>() != null))
             {
-                Messages.Message("That pond cell already contains a fish.", MessageTypeDefOf.RejectInput, false);
-                return;
+                if (notify) Messages.Message("That pond cell already contains a fish.", MessageTypeDefOf.RejectInput, false);
+                return false;
             }
             FishPondMapComponent pond = map.GetComponent<FishPondMapComponent>();
             if (pond != null && !pond.FishFitsWater(cell, this))
             {
-                Messages.Message("This fish requires " + (WaterKind == PondWaterKind.Brackishwater ? "compatible" : WaterKind.ToString().ToLowerInvariant()) + " water.", MessageTypeDefOf.RejectInput, false);
-                return;
+                if (notify) Messages.Message("This fish requires " + (WaterKind == PondWaterKind.Brackishwater ? "compatible" : WaterKind.ToString().ToLowerInvariant()) + " water.", MessageTypeDefOf.RejectInput, false);
+                return false;
             }
             parent.DeSpawn();
             GenSpawn.Spawn(parent, cell, map);
             ResetAirExposure();
             PondMovementUtility.Reset(this);
+            return true;
         }
 
         private Pawn FindLikelyDiscoverer()
@@ -622,9 +635,9 @@ namespace AquacultureFishing
         private static FieldInfo aquariumFishThingField;
         private static readonly HashSet<string> DefDiagnostics = new HashSet<string>();
 
-        static AquacultureStartup()
-        {
-            LongEventHandler.ExecuteWhenFinished(() =>
+    static AquacultureStartup()
+    {
+        LongEventHandler.ExecuteWhenFinished(() =>
             {
                 List<ThingDef> fishDefs = DefDatabase<ThingDef>.AllDefs.Where(FishUtility.IsFish).ToList();
                 foreach (ThingDef def in fishDefs)

@@ -15,6 +15,7 @@ namespace AquacultureFishing
         private readonly List<FishTraitDef> cachedTraits = new List<FishTraitDef>();
         private readonly List<float> cachedHeights = new List<float>();
         private float cachedTotalHeight;
+        private AquacultureFishDossierDocument insightDossier;
 
         public ITab_FishTraits()
         {
@@ -48,6 +49,13 @@ namespace AquacultureFishing
         {
             Rect rect = new Rect(0f, 0f, size.x, size.y).ContractedBy(12f);
             CompFishTraits selected = SelThing?.TryGetComp<CompFishTraits>();
+            if (selected != null)
+            {
+                if (insightDossier == null) insightDossier = new AquacultureFishDossierDocument();
+                insightDossier.Draw(rect, selected);
+                return;
+            }
+            insightDossier?.PostClose();
             Text.Font = GameFont.Medium;
             Widgets.Label(new Rect(rect.x, rect.y, rect.width, 34f), "Fish Traits" + (selected?.sterilized == true ? " - Sterilized" : ""));
             Text.Font = GameFont.Small;

@@ -1,9 +1,16 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "packageId": "lan.aquaculture.fishing",
-  "adapterDirectory": "DevTools/BridgeAdapters",
-  "adapterSource": "DevTools/BridgeAdapter/AquacultureBridgeAdapter.cs",
-  "buildEntrypoint": "DevTools/Build-HotBridgeAdapter.ps1",
-  "validateEntrypoint": "DevTools/Test-BridgeAdapter.ps1",
-  "runtimeGuide": "DevTools/DEVBRIDGE_AGENT.md"
+  "coordinator": "DevBridge2",
+  "runtimeGuide": "DevTools/DEVBRIDGE2_AGENT.md",
+  "companionProject": "DevTools/RimBridgeTools/AquacultureFishing.BridgeTools.csproj",
+  "companionBundle": "<RIMWORLD_ROOT>/BridgeTools/AquacultureFishing/AquacultureFishing.BridgeTools.dll",
+  "bridgeService": "RimBridgeServer",
+  "routedTools": [
+    "aquaculture/test_status",
+    "aquaculture/run_baseline",
+    "aquaculture/run_golden_path"
+  ],
+  "routing": "DevBridge2 lease-bound authenticated RimBridgeServer bridge call",
+  "fileProtocol": "none"
 }

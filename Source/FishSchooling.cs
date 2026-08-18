@@ -367,6 +367,22 @@ namespace AquacultureFishing
             }
         }
 
+        internal bool IsRegisteredForDevTest(CompFishTraits comp)
+        {
+            return comp != null && fish.Contains(comp);
+        }
+
+        internal bool IsPondMemberForDevTest(CompFishTraits comp)
+        {
+            return comp != null && pondByFish.ContainsKey(comp);
+        }
+
+        internal void RebuildMembershipForDevTest()
+        {
+            pondMembershipDirty = true;
+            EnsurePondState();
+        }
+
         public PondMenuSnapshot MenuSnapshotAt(IntVec3 pondCell)
         {
             EnsurePondState();

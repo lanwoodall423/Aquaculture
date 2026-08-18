@@ -1,6 +1,6 @@
 # Aquaculture Visual Asset Matrix
 
-This is the visual-identity inventory for the RimWorld 1.6 content in this mod. No image-generation tool is available in this environment, so missing production art is specified below rather than replaced with placeholder PNGs. The only mod-owned production texture currently present is `FishingRod.png`.
+This is the visual-identity inventory for the RimWorld 1.6 content in this mod. The owner has waived the dedicated production-art requirement for the current candidate, so missing art remains specified below rather than replaced with placeholder PNGs. No production art is generated or changed by that waiver. The only mod-owned production texture currently present is `FishingRod.png`.
 
 ## Conventions
 

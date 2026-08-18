@@ -32,8 +32,7 @@ foreach ($file in $scanFiles) {
 }
 
 $assemblyPaths = @(
-    (Join-Path $root '1.6\Assemblies\AquacultureFishing.dll'),
-    (Join-Path $root 'DevTools\BridgeAdapter\bin\Release\AquacultureFishing.BridgeAdapter.dll')
+    (Join-Path $root '1.6\Assemblies\AquacultureFishing.dll')
 )
 foreach ($path in $assemblyPaths) {
     if (-not (Test-Path -LiteralPath $path)) { continue }

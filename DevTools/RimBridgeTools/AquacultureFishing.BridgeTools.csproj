@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>AquacultureFishing.BridgeTools</AssemblyName>
+    <RootNamespace>AquacultureFishing.BridgeTools</RootNamespace>
+    <OutputPath>..\..\artifacts\BridgeTools\AquacultureFishing\</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AquacultureFishingAssemblyPath Condition="'$(AquacultureFishingAssemblyPath)' == ''">$(MSBuildThisFileDirectory)..\..\1.6\Assemblies\AquacultureFishing.dll</AquacultureFishingAssemblyPath>
+    <RimBridgeServerDir Condition="'$(RimBridgeServerDir)' == ''">$(MSBuildThisFileDirectory)..\..\..\RimBridgeServer</RimBridgeServerDir>
+    <RimBridgeSdkAssemblyPath Condition="'$(RimBridgeSdkAssemblyPath)' == ''">$(RimBridgeServerDir)\1.6\Assemblies\RimBridgeServer.Sdk.dll</RimBridgeSdkAssemblyPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Keep isolated DevBridge2 builds from globbing stale local intermediates. -->
+    <Compile Remove="obj\**" />
+    <Compile Remove="bin\**" />
+    <EmbeddedResource Remove="obj\**" />
+    <EmbeddedResource Remove="bin\**" />
+    <None Remove="obj\**" />
+    <None Remove="bin\**" />
+    <Reference Include="AquacultureFishing">
+      <HintPath>$(AquacultureFishingAssemblyPath)</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="RimBridgeServer.Sdk">
+      <HintPath>$(RimBridgeSdkAssemblyPath)</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+  <Target Name="ValidateBridgeToolReferences" BeforeTargets="ResolveReferences">
+    <Error Condition="'$(AquacultureFishingAssemblyPath)' == '' or !Exists('$(AquacultureFishingAssemblyPath)')" Text="AquacultureFishing.dll was not found. Build the developer mod assembly first or set AquacultureFishingAssemblyPath." />
+    <Error Condition="'$(RimBridgeSdkAssemblyPath)' == '' or !Exists('$(RimBridgeSdkAssemblyPath)')" Text="RimBridgeServer.Sdk.dll was not found. Set RimBridgeSdkAssemblyPath or RimBridgeServerDir." />
+  </Target>
+</Project>

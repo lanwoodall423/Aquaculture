@@ -1,5 +1,18 @@
 # Release Feature Set
 
+## Licensing and release scope
+
+Aquaculture's original source and packaged artifacts are licensed under
+`GPL-3.0-or-later`, Copyright (C) 2026 lanwoodall423. The Insight Canvas
+dependency separately declares GPLv3.0 in its own checkout license. The owner
+has waived the dedicated production-art requirement for this candidate; no
+production art was generated or changed, and third-party art remains under its
+original owner's terms.
+
+## Prompt 1 UI foundation
+
+The settings surface now uses an embedded Insight Canvas 2.x document with responsive navigation, stable-ID scopes, document-local aquatic theming, accessibility density options, searchable virtualized fish/trait lists, and direct bindings to the existing authoritative `AquacultureSettings`. Serialization keys, defaults, migrations, clamps, and the native mask painter remain unchanged. Journal, pond, fish-traits, stocking planner, commission, and rod dialogs are intentionally not part of this migration.
+
 ## Progression
 
 1. **Pondkeeping** is Neolithic, follows Fishing when Odyssey is active, and unlocks constructed ponds, fishing buckets, habitat structures, and natural-water sampling.
@@ -89,7 +102,9 @@ Species receive inferred ecology and economy profiles covering food demand, spee
 
 ## Development Diagnostics
 
-When RimWorld Dev Bridge is loaded, Aquaculture exposes read-only commands for compact summaries, pond and fish inspection, species aggregates, active settings, scheduler scale, and state validation. The integration is reflection-discovered and does not make the bridge a dependency.
+During development, the RimTest-selected DevBridge2/RimBridge companion suite
+exposes bounded live-world validation. RimTest is the test entrypoint and
+DevBridge2 is not a player dependency.
 
 Runtime Def changes are now scoped. Recognized fish retain only the Def-backed state required for individual lifecycle, rendering, stats, and save behavior. Food provenance is attached to relevant recipe output Things instead of every ingestible Def, while a temporary load-only compatibility pass preserves old serialized food components. Vanilla foods, unrelated modded ingestibles, storage, trade, and unrelated recipes are not modified.
 

@@ -1,3 +1,5 @@
-# Aquaculture Dev Bridge Workflow
+# Deprecated filename retained for compatibility.
 
-The adapter is an optional owner package in `DevTools/BridgeAdapters`. Read `AGENTS.md` and `DevTools/DevBridge/agent.json`, then use the Dev Bridge client to discover a fresh live bridge and query `lan.aquaculture.fishing` context before testing. Run the owner build and validator before `adapter reload`. Reload only adapter changes; for a coordinator-owned sandbox request `restart request --agent-id <id> --package-id lan.aquaculture.fishing --readiness game --save-policy none`; attached/live processes require a person or external orchestrator. Discard cached context, leases, cursors, and handles after reload or restart.
+The old RimWorld Dev Bridge is retired and must not be used. Follow
+`DevTools/DEVBRIDGE2_AGENT.md` and use the local DevBridge2 checkout for all
+live coordination.

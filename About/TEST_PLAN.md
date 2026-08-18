@@ -186,6 +186,28 @@ The final release boundary, evidence status, isolated startup results, and prior
 
 Run `dotnet build DevTools\TraitBreedingRules.Tests.csproj --configuration Release` followed by `dotnet run --project DevTools\TraitBreedingRules.Tests.csproj --configuration Release --no-build`. The dependency-free executable covers zero/full boundary probabilities, independent parental-union rolls, dual-parent advantage, post-roll caps, incompatible and empty pools, separate mutations, outlier weights, registered-breed reliability, matching/failed qualifying-birth success rates, restrained generation contribution, stability, legacy setting migration, legacy stability preservation, and closed/same-category/positive-source recovery rules. Run `DevTools\Test-AquacultureLocalization.ps1` to check duplicate keys and every source-referenced Aquaculture key in each supported language file. RimWorld runtime tests remain required for Def loading, save/load, journal event routing, UI localization, and breeding in an actual pond.
 Knowledge Framework hardening is covered by the same executable: V3 API/capability gating, stable logical event IDs, migration commit requirements, finite-value rejection, and deterministic identity checks. Framework-specific validation must additionally run `KnowledgeFramework\DevTools\Run-KnowledgeFrameworkBehavioralTests.ps1 -SkipBuild` from the installed framework checkout. Runtime cases must verify partial registration retry, one personal/colony transaction per logical event, duplicate event suppression, context parent/global fallback, migration retry after a rejected import, bounded dynamic subjects, and no whole-map parent lookup under large colonies.
+## Aquaculture RimTest In-Game Suite
+
+The developer live suite is exposed through the RimBridge companion and is
+selected by `TestCatalog/rimtest.catalog.json`. RimTest owns selection,
+execution, and compact result aggregation; DevBridge2 owns the generation,
+readiness, and lease; RimBridgeServer owns the authenticated in-game route.
+
+Use the normal repository workflow:
+
+```powershell
+$rimTest = 'C:\Games\Steam\steamapps\common\RimWorld\Mods\RimTest\rimtest.cmd'
+& $rimTest doctor --json
+& $rimTest affected --run --json
+```
+
+The suite checks live game/map components, required Defs and research
+prerequisites, fish runtime configuration and trait state, pond snapshots and
+finite ecology/habitat values, natural-water population state, journal/breed/
+commission integrity, settings bounds, Knowledge Framework view access,
+deterministic capacity rules, and snapshot-cache repeatability. There is no
+mod-owned Runtime request/result protocol and no direct in-game test harness.
+
 ## Deferred Reality Provider
 
 Run `DevTools\Build-DeferredRealityProvider.ps1` with the installed DRF and
@@ -196,3 +218,40 @@ stocking events, closed/cross-category migration rejection, provider removal
 and restoration, old-save migration, long elapsed time, and multiple maps and
 species. A failed DRF registration must leave the legacy natural-population
 tick active rather than running both authorities.
+
+## Prompt 3 UI closure runbook
+
+The Prompt 3 closure reopens UI-specific release gates invalidated by the
+Insight Canvas overhaul. Start with a clean player build and a fresh isolated
+colony, interact naturally with settings, the first fish dossier, Journal,
+first pond, and save/reload before using any DevBridge2 state manipulation.
+Then use only RimTest for developer baseline/golden validation; it delegates
+through DevBridge2 and RimBridgeServer. Do not mutate normal saves,
+ModsConfig.xml, or player package contents during the run.
+
+Record results for: wide/medium/narrow layouts; comfortable/normal/compact
+density; high contrast; reduced motion; mouse and supported keyboard focus;
+multiple maps and same-coordinate ponds; save/reload with transient selections;
+bounded virtual lists and Insight Canvas diagnostics; Knowledge canonical
+browsing; Deferred Reality provider registration/reconciliation; settings
+migration/persistence; commission delivery; and a clean package without
+DevBridge2, source, tests, caches, PDBs, or duplicate InsightCanvas.dll.
+
+The current closure inventory and intentional native/hybrid decisions are in
+`About/INSIGHT_CANVAS_UI_ARCHITECTURE.md`. Missing player-interaction evidence
+must remain explicitly `NOT RUN`; older Prompt 2 quicktest or fixture results
+must not be relabeled as fresh-colony UX evidence.
+
+Prompt 3 live closure evidence (2026-08-14): generation 259, launch
+`73e7b345c9ed4552b5b115f08ec62da5`, passed the mod-owned baseline 17/17 and two
+inhabited-pond golden runs 7/7 each. `AQUA_DEFERRED_REALITY` also passed with
+API/schema 2, save schema 5, one region/map, 48 populations/processes, no
+failure/duplicate/reconciliation issues, and 48 migrated populations. The
+harness initially generated different owner identities during cleanup; the
+lease was verified by read-only status and released with an explicit
+owner-matched `test end`. The fresh-colony natural UX step was not completed
+before DevBridge2 manipulation and remains `NOT RUN`, as do the player-facing
+accessibility, multi-map, save/load, long-run performance, clean-install, and
+full cross-framework failure-injection gates. The post-commit clean package
+contract passed with 25 allowlisted entries, `sourceDirty=false`, and no
+DevBridge2/source/tests/caches/PDBs or duplicate InsightCanvas DLL.

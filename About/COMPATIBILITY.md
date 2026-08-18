@@ -3,6 +3,7 @@
 ## Required
 
 - Harmony
+- Insight Canvas 2.1.0 (`lan.insightcanvas`)
 - Knowledge Framework
 - Deferred Reality Framework
 - Vanilla Fishing Expanded
@@ -16,7 +17,9 @@
 
 ## Load Order
 
-Load Harmony, Knowledge Framework, Deferred Reality Framework, and Vanilla Fishing Expanded before Aquaculture - Fishing. Fishing Treasures is optional; when present, load it after Vanilla Fishing Expanded. Aquariums may load before Aquaculture - Fishing. No compatibility mod should be required for ordinary fish packs.
+Load Harmony, Insight Canvas, Knowledge Framework, Deferred Reality Framework, and Vanilla Fishing Expanded before Aquaculture - Fishing. Fishing Treasures is optional; when present, load it after Vanilla Fishing Expanded. Aquariums may load before Aquaculture - Fishing. No compatibility mod should be required for ordinary fish packs.
+
+Insight Canvas is a normal player dependency for the Prompt 1 settings surface. Aquaculture compiles against the installed framework assembly and does not ship a duplicate DLL. Aquaculture's original source is licensed under `GPL-3.0-or-later` (Copyright (C) 2026 lanwoodall423); the installed Insight Canvas checkout separately declares GPLv3.0 in its own license file. See `INSIGHT_CANVAS_UI_ARCHITECTURE.md` for the ownership boundary. The owner-controlled dedicated production-art requirement is waived for the current candidate; third-party asset terms remain separate.
 
 ## Def Mutation Contract
 

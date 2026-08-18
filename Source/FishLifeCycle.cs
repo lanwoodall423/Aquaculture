@@ -230,6 +230,21 @@ namespace AquacultureFishing
         {
             return Mathf.Max(1, Mathf.RoundToInt(BaseMeatCount() * TotalYieldFactor(fish)));
         }
+
+        internal static Thing CreateMeatForDevTest(CompFishTraits deadFish)
+        {
+            ThingDef meatDef = DefDatabase<ThingDef>.GetNamedSilentFail(MeatDefName);
+            if (meatDef == null || deadFish == null) return null;
+            Thing meat = ThingMaker.MakeThing(meatDef);
+            meat.stackCount = ExpectedMeatCount(deadFish);
+            CompFishMeatTraits food = meat.TryGetComp<CompFishMeatTraits>();
+            if (food != null)
+            {
+                food.nutritionMultiplier = Mathf.Max(1f, deadFish.NutritionMultiplier);
+                food.delicious = deadFish.ActiveTraits.Any(trait => trait?.pondEffect?.delicious == true);
+            }
+            return meat;
+        }
     }
 
     public static class PondBreedingRules
@@ -365,8 +380,8 @@ namespace AquacultureFishing
                         else if (interventionFeed > 0f) pond.ecology.preparedFeed -= interventionFeed;
                         for (int eggIndex = 0; eggIndex < eggCount; eggIndex++)
                         {
-                            if (female.Livebearer) SpawnLiveFry(female, male);
-                            else SpawnEgg(female, male, now);
+                            if (female.Livebearer) SpawnLiveFry(pond, female, male);
+                            else SpawnEgg(pond, female, male, now);
                             availableSlots--;
                         }
                         if (availableSlots <= 0) break;
@@ -387,8 +402,24 @@ namespace AquacultureFishing
             }
         }
 
-        private void SpawnLiveFry(CompFishTraits first, CompFishTraits second)
+        // Developer-only seam: keep the real breeding implementation and formulas while
+        // allowing the in-game test to make one reproducible breeding attempt immediately.
+        internal void RunBreedingForDevTest(int now, int seed)
         {
+            Rand.PushState(seed);
+            try
+            {
+                ProcessBreeding(now);
+            }
+            finally
+            {
+                Rand.PopState();
+            }
+        }
+
+        private void SpawnLiveFry(PondState pond, CompFishTraits first, CompFishTraits second)
+        {
+            if (!TryFindOffspringCell(pond, first.parent.Position, out IntVec3 cell)) return;
             Thing fish = ThingMaker.MakeThing(first.parent.def);
             BuildInheritance(first, second, out List<string> traits, out Dictionary<string, float> values,
                 out string breedId, out int breedGeneration, out string qualifyingBreedId, out int qualifyingBreedGeneration);
@@ -396,13 +427,13 @@ namespace AquacultureFishing
             child?.InitializeFromEgg(traits, values, breedId, breedGeneration, qualifyingBreedId, qualifyingBreedGeneration,
                 first.parent.thingIDNumber, second.parent.thingIDNumber);
             AquacultureEventRouter.FishBred(first, second, child);
-            GenSpawn.Spawn(fish, first.parent.Position, map);
+            GenSpawn.Spawn(fish, cell, map);
         }
 
-        private void SpawnEgg(CompFishTraits first, CompFishTraits second, int now)
+        private void SpawnEgg(PondState pond, CompFishTraits first, CompFishTraits second, int now)
         {
             ThingDef eggDef = DefDatabase<ThingDef>.GetNamedSilentFail("AF_FishEgg");
-            if (eggDef == null) return;
+            if (eggDef == null || !TryFindOffspringCell(pond, first.parent.Position, out IntVec3 cell)) return;
             FishEggThing egg = (FishEggThing)ThingMaker.MakeThing(eggDef);
             egg.fishDefName = first.parent.def.defName;
             BuildInheritance(first, second, out List<string> inheritedTraits, out Dictionary<string, float> inheritedValues,
@@ -419,7 +450,23 @@ namespace AquacultureFishing
             egg.hatchTick = now + Mathf.RoundToInt((AquacultureMod.Settings?.eggHatchDays ?? 3f) * 60000f);
             if (nextEggCheckTick == 0 || egg.hatchTick < nextEggCheckTick) nextEggCheckTick = egg.hatchTick;
             AquacultureEventRouter.FishBred(first, second);
-            GenSpawn.Spawn(egg, first.parent.Position, map);
+            GenSpawn.Spawn(egg, cell, map);
+        }
+
+        private bool TryFindOffspringCell(PondState pond, IntVec3 preferred, out IntVec3 cell)
+        {
+            cell = IntVec3.Invalid;
+            if (pond?.info?.cells == null || pond.info.cells.Count == 0) return false;
+            int preferredIndex = pond.info.cells.IndexOf(preferred);
+            if (preferredIndex < 0) preferredIndex = 0;
+            for (int offset = 0; offset < pond.info.cells.Count; offset++)
+            {
+                IntVec3 candidate = pond.info.cells[(preferredIndex + offset) % pond.info.cells.Count];
+                if (!candidate.InBounds(map) || candidate.GetThingList(map).Count > 0) continue;
+                cell = candidate;
+                return true;
+            }
+            return false;
         }
 
         private static void BuildInheritance(CompFishTraits first, CompFishTraits second, out List<string> inheritedTraits,

@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "rimtest-catalog/v1",
+  "tests": [
+    {
+      "id": "aquaculture-runtime-smoke",
+      "description": "Run the RimTest-managed in-game smoke recipe for the active Aquaculture profile.",
+      "recipe": "aquaculture-development-smoke",
+      "tags": ["aquaculture", "in-game", "smoke"],
+      "covers": [
+        { "kind": "csharp_type", "name": "AquacultureFishing.AquacultureMod" },
+        { "kind": "csharp_type", "name": "AquacultureFishing.FishPondMapComponent" },
+        { "kind": "csharp_type", "name": "AquacultureFishing.NaturalFishPopulationMapComponent" }
+      ],
+      "cost": "medium",
+      "isolation": {
+        "mode": "SameGenerationSafe",
+        "reuseKey": "aquaculture-runtime-smoke"
+      }
+    }
+  ],
+  "suites": [
+    {
+      "id": "smoke",
+      "description": "RimTest-managed Aquaculture smoke validation.",
+      "tests": ["aquaculture-runtime-smoke"]
+    }
+  ]
+}

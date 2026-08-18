@@ -1,5 +1,10 @@
 # Framework Integration Results
 
+This is a historical framework-integration ledger. The current release
+candidate's art scope is governed by `About/ART_REQUIREMENTS.md`: the owner
+waived the dedicated production-art requirement on 2026-08-14. That waiver
+does not change the historical runtime evidence or third-party asset terms.
+
 Validation was run on branch `integration/framework-end-to-end-validation`.
 This report deliberately separates executable, startup, and unavailable live
 evidence. No normal RimWorld configuration or save was modified.
@@ -104,4 +109,5 @@ report was collected.
 - Provider removal/restoration and map unload/reload require RimWorld execution.
 - No long-running multi-map simulation baseline was collected.
 - Current framework checkouts contain pre-existing dirty changes, so the manifest records `sourceDirty=true`.
-- Visual production-art completeness remains a separate existing blocker.
+- Visual production-art completeness was a separate historical item; it is
+  waived for the current candidate and is not a current release blocker.
