@@ -40,14 +40,11 @@ namespace AquacultureFishing
             this.owner = owner;
             document = new InsightUiDocument("aquaculture.commission.delivery.v2", BuildRoot())
             {
-                Theme = AquacultureInsightTheme.Create(),
-                Density = InsightUiDensity.Normal,
-                HighContrast = false,
-                ReducedMotion = false,
                 TrackDuplicateIds = true,
                 DrawBackground = true
             };
             Host = new InsightUiHost(document);
+            AquacultureInsightPresentation.Apply(document);
         }
 
         public InsightUiHost Host { get; private set; }
@@ -99,23 +96,24 @@ namespace AquacultureFishing
             specimenList.SetFlex(1f);
 
             return InsightUi.Scroll("commission.delivery.scroll",
-                InsightUi.Column("commission.delivery.content").SetGap(8f).SetPadding(8f).Add(
-                    InsightUi.SectionHeader("commission.delivery.header",
-                        L("AquacultureFishing.CommissionDeliverTitle"),
-                        L("AquacultureFishing.CommissionDeliverInstruction"), null, null, true),
-                    InsightUi.Label("commission.delivery.requirements", string.Empty)
-                        .SetTextProvider(() => owner.RequirementsForUi),
-                    InsightUi.Label("commission.delivery.preview", string.Empty, InsightUiTextStyle.Caption)
-                        .SetTextProvider(() => owner.PreviewForUi),
-                    InsightUi.Label("commission.delivery.count", string.Empty, InsightUiTextStyle.Caption)
-                        .SetTextProvider(() => owner.EligibleCountForUi),
-                    InsightUi.Callout("commission.delivery.authority", InsightUiCalloutSeverity.Info,
-                        L("AquacultureFishing.WorkspaceCommissionRules"),
-                        L("AquacultureFishing.WorkspaceCommissionDisclosure")),
-                    specimenList,
-                    InsightUi.Label("commission.delivery.empty", string.Empty, InsightUiTextStyle.Caption)
-                        .SetTextProvider(() => rows.Count == 0
-                            ? L("AquacultureFishing.CommissionNoEligible") : string.Empty)));
+                AquacultureUiComponents.Panel("commission.delivery",
+                    InsightUi.Column("commission.delivery.content").SetGap(8f).Add(
+                        InsightUi.SectionHeader("commission.delivery.header",
+                            L("AquacultureFishing.CommissionDeliverTitle"),
+                            L("AquacultureFishing.CommissionDeliverInstruction"), null, null, true),
+                        InsightUi.Label("commission.delivery.requirements", string.Empty)
+                            .SetTextProvider(() => owner.RequirementsForUi),
+                        InsightUi.Label("commission.delivery.preview", string.Empty, InsightUiTextStyle.Caption)
+                            .SetTextProvider(() => owner.PreviewForUi),
+                        InsightUi.Label("commission.delivery.count", string.Empty, InsightUiTextStyle.Caption)
+                            .SetTextProvider(() => owner.EligibleCountForUi),
+                        InsightUi.Callout("commission.delivery.authority", InsightUiCalloutSeverity.Info,
+                            L("AquacultureFishing.WorkspaceCommissionRules"),
+                            L("AquacultureFishing.WorkspaceCommissionDisclosure")),
+                        specimenList,
+                        InsightUi.Label("commission.delivery.empty", string.Empty, InsightUiTextStyle.Caption)
+                            .SetTextProvider(() => rows.Count == 0
+                                ? L("AquacultureFishing.CommissionNoEligible") : string.Empty))));
         }
 
         private InsightUiElement BuildSpecimenRow(AquacultureCommissionDeliverySnapshot row)

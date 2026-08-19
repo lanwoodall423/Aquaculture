@@ -10,6 +10,96 @@ namespace AquacultureFishing
         Compact
     }
 
+    /// <summary>Portable master/detail modes used by workspace documents at different widths.</summary>
+    public enum AquacultureUiMasterDetailMode
+    {
+        SideBySide,
+        Stacked
+    }
+
+    /// <summary>Persisted Aquaculture presentation-density values. The numeric order is a save contract.</summary>
+    public enum AquaculturePresentationDensity
+    {
+        Comfortable = 0,
+        Normal = 1,
+        Compact = 2
+    }
+
+    /// <summary>
+    /// Immutable, engine-independent presentation preferences. AquacultureSettings owns the serialized
+    /// fields; this contract owns their safe defaults and normalization so portable tests can exercise
+    /// reload behavior without loading RimWorld or Insight Canvas.
+    /// </summary>
+    public struct AquaculturePresentationPreferences : IEquatable<AquaculturePresentationPreferences>
+    {
+        public const int MinimumDensityIndex = (int)AquaculturePresentationDensity.Comfortable;
+        public const int MaximumDensityIndex = (int)AquaculturePresentationDensity.Compact;
+        public const int DefaultDensityIndex = (int)AquaculturePresentationDensity.Normal;
+
+        public AquaculturePresentationPreferences(int densityIndex, bool highContrast, bool reducedMotion)
+        {
+            DensityIndex = ClampDensityIndex(densityIndex);
+            HighContrast = highContrast;
+            ReducedMotion = reducedMotion;
+        }
+
+        public int DensityIndex { get; private set; }
+        public bool HighContrast { get; private set; }
+        public bool ReducedMotion { get; private set; }
+
+        public static AquaculturePresentationPreferences Default =>
+            new AquaculturePresentationPreferences(DefaultDensityIndex, false, false);
+
+        public static AquaculturePresentationPreferences FromSerializedValues(int densityIndex,
+            bool highContrast, bool reducedMotion)
+        {
+            return new AquaculturePresentationPreferences(densityIndex, highContrast, reducedMotion);
+        }
+
+        public static int ClampDensityIndex(int value)
+        {
+            return value < MinimumDensityIndex ? MinimumDensityIndex :
+                value > MaximumDensityIndex ? MaximumDensityIndex : value;
+        }
+
+        public bool Equals(AquaculturePresentationPreferences other)
+        {
+            return DensityIndex == other.DensityIndex && HighContrast == other.HighContrast &&
+                ReducedMotion == other.ReducedMotion;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is AquaculturePresentationPreferences &&
+                Equals((AquaculturePresentationPreferences)obj);
+        }
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                int hash = DensityIndex;
+                hash = hash * 31 + (HighContrast ? 1 : 0);
+                return hash * 31 + (ReducedMotion ? 1 : 0);
+            }
+        }
+
+        public static bool operator ==(AquaculturePresentationPreferences left,
+            AquaculturePresentationPreferences right) => left.Equals(right);
+
+        public static bool operator !=(AquaculturePresentationPreferences left,
+            AquaculturePresentationPreferences right) => !left.Equals(right);
+    }
+
+    /// <summary>Semantic status categories used by shared Aquaculture compositions.</summary>
+    public enum AquacultureUiStatus
+    {
+        Healthy,
+        Attention,
+        Critical,
+        Unknown
+    }
+
     /// <summary>Stable, human-readable IDs for document-local state and diagnostics.</summary>
     public static class AquacultureUiStableIds
     {
@@ -42,6 +132,13 @@ namespace AquacultureFishing
             return width < Math.Max(360f, breakpoint)
                 ? AquacultureUiNavigationMode.Compact
                 : AquacultureUiNavigationMode.Rail;
+        }
+
+        public static AquacultureUiMasterDetailMode MasterDetailMode(float width, float breakpoint = 960f)
+        {
+            return width < Math.Max(360f, breakpoint)
+                ? AquacultureUiMasterDetailMode.Stacked
+                : AquacultureUiMasterDetailMode.SideBySide;
         }
 
         public static int CompactColumns(float width, float itemWidth = 96f, float gap = 5f, int itemCount = 6)
@@ -265,6 +362,116 @@ namespace AquacultureFishing
         public static int Rank(AquacultureHealthPriority priority) => (int)priority;
     }
 
+    /// <summary>Player-facing pond filters. The values are a UI contract, not simulation state.</summary>
+    public enum AquaculturePondFilter
+    {
+        All,
+        NeedsAttention,
+        Critical,
+        Healthy
+    }
+
+    /// <summary>Pure, deterministic ordering and filtering for the Journal pond workspace.</summary>
+    public static class AquacultureWorkspaceOrdering
+    {
+        public static int Compare(AquacultureWorkspaceRowSnapshot left, AquacultureWorkspaceRowSnapshot right)
+        {
+            if (ReferenceEquals(left, right)) return 0;
+            if (left == null) return 1;
+            if (right == null) return -1;
+            int priority = AquacultureHealthPriorityRules.Rank(right.Priority)
+                .CompareTo(AquacultureHealthPriorityRules.Rank(left.Priority));
+            if (priority != 0) return priority;
+            int label = StringComparer.OrdinalIgnoreCase.Compare(left.Label, right.Label);
+            return label != 0 ? label : StringComparer.Ordinal.Compare(left.StableId, right.StableId);
+        }
+
+        public static bool Matches(AquacultureWorkspaceRowSnapshot row, string query, AquaculturePondFilter filter)
+        {
+            if (row == null) return false;
+            bool categoryMatch;
+            switch (filter)
+            {
+                case AquaculturePondFilter.NeedsAttention:
+                    categoryMatch = row.Priority != AquacultureHealthPriority.Healthy;
+                    break;
+                case AquaculturePondFilter.Critical:
+                    categoryMatch = AquacultureHealthPriorityRules.Rank(row.Priority) >=
+                        AquacultureHealthPriorityRules.Rank(AquacultureHealthPriority.SevereStress);
+                    break;
+                case AquaculturePondFilter.Healthy:
+                    categoryMatch = row.Priority == AquacultureHealthPriority.Healthy;
+                    break;
+                default:
+                    categoryMatch = true;
+                    break;
+            }
+            if (!categoryMatch) return false;
+            string normalized = query == null ? string.Empty : query.Trim();
+            if (normalized.Length == 0) return true;
+            if (Contains(row.Label, normalized) || Contains(row.Status, normalized)) return true;
+            for (int i = 0; i < row.Details.Count; i++)
+                if (Contains(row.Details[i], normalized)) return true;
+            return false;
+        }
+
+        public static string PreserveSelection(string selectedId, IEnumerable<string> availableIds,
+            string fallbackId = null)
+        {
+            string first = string.Empty;
+            bool selectedAvailable = false;
+            bool fallbackAvailable = false;
+            foreach (string id in availableIds ?? new string[0])
+            {
+                if (string.IsNullOrEmpty(id)) continue;
+                if (first.Length == 0) first = id;
+                if (id == selectedId) selectedAvailable = true;
+                if (id == fallbackId) fallbackAvailable = true;
+            }
+            if (selectedAvailable) return selectedId;
+            if (fallbackAvailable) return fallbackId;
+            return first;
+        }
+
+        private static bool Contains(string value, string query)
+        {
+            return !string.IsNullOrEmpty(value) &&
+                value.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+    }
+
+    /// <summary>Semantic health state for the individual fish dossier.</summary>
+    public enum AquacultureDossierHealthState
+    {
+        Unknown,
+        Healthy,
+        Attention,
+        Critical,
+        Dead
+    }
+
+    /// <summary>Pure thresholds for dossier presentation; gameplay systems remain authoritative.</summary>
+    public static class AquacultureDossierHealthRules
+    {
+        public static AquacultureDossierHealthState Classify(bool alive, float foodReserve,
+            float habitatFit, float starvationProgress)
+        {
+            if (!alive) return AquacultureDossierHealthState.Dead;
+            if (Unknown(foodReserve) || Unknown(habitatFit) || Unknown(starvationProgress))
+                return AquacultureDossierHealthState.Unknown;
+            if (starvationProgress > 0f || foodReserve <= 0.20f || habitatFit <= 0.25f)
+                return AquacultureDossierHealthState.Critical;
+            if (foodReserve < 0.50f || habitatFit < 0.75f)
+                return AquacultureDossierHealthState.Attention;
+            return AquacultureDossierHealthState.Healthy;
+        }
+
+        private static bool Unknown(float value)
+        {
+            return float.IsNaN(value) || float.IsInfinity(value) || value < 0f;
+        }
+    }
+
     /// <summary>Immutable, map-free workspace row. Runtime adapters populate it before Paint.</summary>
     public sealed class AquacultureWorkspaceRowSnapshot
     {
@@ -293,6 +500,17 @@ namespace AquacultureFishing
         public AquacultureFishDossierSnapshot(string stableId, string species, string sex, string lifeStage,
             string breed, string generation, string condition, string production, IEnumerable<string> traits,
             string knowledge, string knowledgeLink, int revision)
+            : this(stableId, species, sex, lifeStage, breed, generation, condition, production, traits,
+                knowledge, knowledgeLink, -1f, -1f, -1f, -1, false,
+                AquacultureDossierHealthState.Unknown, revision)
+        {
+        }
+
+        public AquacultureFishDossierSnapshot(string stableId, string species, string sex, string lifeStage,
+            string breed, string generation, string condition, string production, IEnumerable<string> traits,
+            string knowledge, string knowledgeLink, float foodReserve, float habitatFit,
+            float starvationProgress, int expectedMeatYield, bool sterilized,
+            AquacultureDossierHealthState healthState, int revision)
         {
             StableId = stableId ?? string.Empty;
             Species = species ?? string.Empty;
@@ -305,6 +523,12 @@ namespace AquacultureFishing
             Traits = new List<string>(traits ?? new string[0]).AsReadOnly();
             Knowledge = knowledge ?? string.Empty;
             KnowledgeLink = knowledgeLink ?? string.Empty;
+            FoodReserve = foodReserve;
+            HabitatFit = habitatFit;
+            StarvationProgress = starvationProgress;
+            ExpectedMeatYield = expectedMeatYield;
+            Sterilized = sterilized;
+            HealthState = healthState;
             Revision = revision;
         }
 
@@ -319,6 +543,12 @@ namespace AquacultureFishing
         public IReadOnlyList<string> Traits { get; private set; }
         public string Knowledge { get; private set; }
         public string KnowledgeLink { get; private set; }
+        public float FoodReserve { get; private set; }
+        public float HabitatFit { get; private set; }
+        public float StarvationProgress { get; private set; }
+        public int ExpectedMeatYield { get; private set; }
+        public bool Sterilized { get; private set; }
+        public AquacultureDossierHealthState HealthState { get; private set; }
         public int Revision { get; private set; }
     }
 

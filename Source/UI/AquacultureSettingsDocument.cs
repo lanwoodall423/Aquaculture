@@ -31,9 +31,6 @@ namespace AquacultureFishing
         private string fishSearch = string.Empty;
         private string traitSearch = string.Empty;
         private string activePage = "gameplay";
-        private InsightUiDensity density = InsightUiDensity.Normal;
-        private bool highContrast;
-        private bool reducedMotion;
         private bool appearanceExpanded = true;
         private bool capacityWarningExpanded;
         private int uiRevision;
@@ -52,14 +49,11 @@ namespace AquacultureFishing
             InsightUiElement root = BuildRoot();
             Document = new InsightUiDocument("aquaculture.settings.v2", root)
             {
-                Theme = AquacultureInsightTheme.Create(),
-                Density = density,
-                HighContrast = highContrast,
-                ReducedMotion = reducedMotion,
                 TrackDuplicateIds = true,
                 DrawBackground = true
             };
             Host = new InsightUiHost(Document);
+            AquacultureInsightPresentation.Apply(Document, settings);
         }
 
         public InsightUiDocument Document { get; private set; }
@@ -348,20 +342,23 @@ namespace AquacultureFishing
             traitList.SetHeight(InsightLength.Fixed(360f));
             traitList.CacheLimit = 64;
             InsightUiSegmented densitySelector = InsightUi.Segmented("advanced.density",
-                new[] { L("AquacultureFishing.SettingsDensityComfortable"), L("AquacultureFishing.SettingsDensityNormal"), L("AquacultureFishing.SettingsDensityCompact") }, (int)density,
-                (index, value) =>
-                {
-                    density = (InsightUiDensity)Mathf.Clamp(index, 0, 2);
-                    Document.Density = density;
-                    Document.Invalidate();
-                }).Bind(() => (int)density, index =>
-                {
-                    density = (InsightUiDensity)Mathf.Clamp(index, 0, 2);
-                    Document.Density = density;
-                    Document.Invalidate();
-                });
+                new[] { L("AquacultureFishing.SettingsDensityComfortable"), L("AquacultureFishing.SettingsDensityNormal"), L("AquacultureFishing.SettingsDensityCompact") },
+                settings.PresentationPreferences.DensityIndex,
+                (index, value) => SetPresentationDensity(index)).Bind(
+                    () => settings.PresentationPreferences.DensityIndex,
+                    SetPresentationDensity);
             return AquacultureUiComponents.Page("page.advanced", L("AquacultureFishing.SettingsAdvanced"),
                 L("AquacultureFishing.SettingsAdvancedSubtitle"),
+                // Presentation is deliberately first on Advanced so accessibility controls are
+                // discoverable without searching through trait tuning.
+                InsightUi.SectionHeader("advanced.presentation.header", L("AquacultureFishing.SettingsPresentation"), L("AquacultureFishing.SettingsPresentationSubtitle")),
+                densitySelector,
+                AquacultureUiComponents.ToggleSetting("advanced.contrast", L("AquacultureFishing.SettingsHighContrast"), L("AquacultureFishing.SettingsHighContrastTip"),
+                    () => settings.PresentationPreferences.HighContrast, SetPresentationHighContrast),
+                AquacultureUiComponents.ToggleSetting("advanced.motion", L("AquacultureFishing.SettingsReducedMotion"), L("AquacultureFishing.SettingsReducedMotionTip"),
+                    () => settings.PresentationPreferences.ReducedMotion, SetPresentationReducedMotion),
+                AquacultureUiComponents.Status("advanced.migration", AquacultureUiStatus.Attention, L("AquacultureFishing.SettingsMigrationBoundary"),
+                    L("AquacultureFishing.SettingsMigrationBoundaryBody")),
                 AquacultureUiComponents.SliderSetting("advanced.wild", "AquacultureFishing.TraitWildExceptionalChance".Translate().ToString(), L("AquacultureFishing.SettingsWildExceptionalTip"),
                     0f, 1f, () => settings.wildExceptionalTraitChance, value => Set(() => settings.wildExceptionalTraitChance = value),
                     value => value.ToStringPercent()),
@@ -381,24 +378,6 @@ namespace AquacultureFishing
                 InsightUi.Label("advanced.traits.explanation", "AquacultureFishing.TraitSettingsExplanation".Translate().ToString()),
                 search,
                 traitList,
-                InsightUi.SectionHeader("advanced.presentation.header", L("AquacultureFishing.SettingsPresentation"), L("AquacultureFishing.SettingsPresentationSubtitle")),
-                densitySelector,
-                AquacultureUiComponents.ToggleSetting("advanced.contrast", L("AquacultureFishing.SettingsHighContrast"), L("AquacultureFishing.SettingsHighContrastTip"),
-                    () => highContrast, value =>
-                    {
-                        highContrast = value;
-                        Document.HighContrast = value;
-                        Document.Invalidate();
-                    }),
-                AquacultureUiComponents.ToggleSetting("advanced.motion", L("AquacultureFishing.SettingsReducedMotion"), L("AquacultureFishing.SettingsReducedMotionTip"),
-                    () => reducedMotion, value =>
-                    {
-                        reducedMotion = value;
-                        Document.ReducedMotion = value;
-                        Document.Invalidate();
-                    }),
-                InsightUi.Callout("advanced.migration", InsightUiCalloutSeverity.Info, L("AquacultureFishing.SettingsMigrationBoundary"),
-                    L("AquacultureFishing.SettingsMigrationBoundaryBody")),
                 AquacultureUiComponents.ResetButton("advanced", L("AquacultureFishing.SettingsResetTraitRules"), ResetTraitRules));
         }
 
@@ -458,6 +437,37 @@ namespace AquacultureFishing
             Invalidate();
         }
 
+        private void SetPresentationDensity(int index)
+        {
+            AquaculturePresentationPreferences current = settings.PresentationPreferences;
+            settings.SetPresentationPreferences(AquaculturePresentationPreferences.FromSerializedValues(
+                index, current.HighContrast, current.ReducedMotion));
+            ApplyPresentationPreferences();
+        }
+
+        private void SetPresentationHighContrast(bool value)
+        {
+            AquaculturePresentationPreferences current = settings.PresentationPreferences;
+            settings.SetPresentationPreferences(AquaculturePresentationPreferences.FromSerializedValues(
+                current.DensityIndex, value, current.ReducedMotion));
+            ApplyPresentationPreferences();
+        }
+
+        private void SetPresentationReducedMotion(bool value)
+        {
+            AquaculturePresentationPreferences current = settings.PresentationPreferences;
+            settings.SetPresentationPreferences(AquaculturePresentationPreferences.FromSerializedValues(
+                current.DensityIndex, current.HighContrast, value));
+            ApplyPresentationPreferences();
+        }
+
+        private void ApplyPresentationPreferences()
+        {
+            AquacultureInsightPresentation.Apply(Document, settings);
+            uiRevision++;
+            snapshotCache.Invalidate();
+        }
+
         private void Invalidate()
         {
             uiRevision++;
@@ -474,6 +484,7 @@ namespace AquacultureFishing
                 settings.fishingDurationFactor = 0.30f;
                 settings.animaFishPerTree = 20;
             });
+            ShowResetToast(L("AquacultureFishing.SettingsGameplay"));
         }
 
         private void ResetEcology()
@@ -493,6 +504,7 @@ namespace AquacultureFishing
                 settings.feedValuePerUnit = 0.05f;
                 settings.feederRange = 6f;
             });
+            ShowResetToast(L("AquacultureFishing.SettingsEcology"));
         }
 
         private void ResetBreeding()
@@ -507,6 +519,7 @@ namespace AquacultureFishing
                 settings.minimumLifespanDays = 48;
                 settings.maximumLifespanDays = 72;
             });
+            ShowResetToast(L("AquacultureFishing.SettingsBreeding"));
         }
 
         private void ResetTraitRules()
@@ -520,6 +533,12 @@ namespace AquacultureFishing
                 settings.maxOffspringMutations = AquacultureSettings.DefaultMaximumOffspringMutations;
                 settings.registeredBreedDefiningTraitReliability = AquacultureSettings.DefaultRegisteredBreedDefiningTraitReliability;
             });
+            ShowResetToast(L("AquacultureFishing.SettingsAdvanced"));
+        }
+
+        private void ShowResetToast(string section)
+        {
+            Document?.Toasts.Show(L("AquacultureFishing.SettingsResetComplete", section), InsightToastSeverity.Success);
         }
 
         private static string L(string key, params NamedArgument[] args)

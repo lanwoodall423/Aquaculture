@@ -152,3 +152,61 @@ clean temporary installation/player smoke, and full cross-framework failure
 injection likewise remain `NOT RUN`. Production artwork is `WAIVED` by owner
 instruction and was not generated or altered. These unrun release gates keep
 the verdict `BLOCKED`.
+
+## Prompt 1 presentation work — 2026-08-18 validation addendum
+
+This addendum supplements the historical evidence above; it does not relabel
+older Prompt 2 or Prompt 3 results.
+
+| Check | Status | Evidence |
+|---|---|---|
+| Persistent presentation contract and document adoption | PASS | Portable `InsightCanvasUiTests` passed preference save/reload, density clamping, serialized-key preservation, centralized adoption across all six player-facing documents, shared surfaces/status/tooltips, high-contrast focus/theme checks, and no `GUI.skin` mutation. |
+| Localization | PASS | `DevTools\Test-AquacultureLocalization.ps1`; one English language file and 536 referenced keys. |
+| DevBridge-compatible production build | PASS | The standard installed Steam layout now supplies conservative local defaults for `RimWorldDir` and Harmony while preserving explicit MSBuild overrides. The exact owner-shaped build completed with 0 warnings and 0 errors. |
+| RimTest readiness | PASS | `rimtest doctor --json`: `status=ready`, catalog/rimctx/devbridge/rimerror all `ok`, RimBridge `configured`. |
+| RimTest affected runtime and artifact freshness | PASS | `rimtest affected --run --json`; workflow `rw-ed6c8c792016413789481e9ce30be2d9`, transaction `ca5098d4a6ed4fdf946b546635210de3`, source fingerprint `a87545d9dcffc09103c00721baa8a6714f2d8efd0e4a5b6026ea84db89039299`, generation 315, run `run-bb0195ca74b748cca9f6438043352f12`, one test passed, built/deployed SHA256 `ad6b9005ff03f5e51131838fc5afe1e321935c78fe3131d53b3741c05400effb`, deployment `unchanged`, `loadedArtifactFreshnessProven=true`, proof `identical-deployment-hash-plus-owned-generation-state`. |
+| Owner-scoped runtime error logs | FAIL | DevBridge `logs query --generation 315 --since-launch --severity ERROR --limit 64 --json` and `--trace` both returned `available=false`, `rawBytes=0`, `records=[]`, error `PLAYER_LOG_BOUNDARY_INVALID`: `Player.log was shortened after the launch boundary.` |
+
+Strict Prompt 1 verdict: **FAIL — the runtime test and artifact freshness passed,
+but the required generation-scoped log gate could not be proven because the
+owner-controlled Player.log boundary was invalid.**
+
+## Prompt 1 current revalidation — 2026-08-19
+
+This entry supersedes neither the historical release matrix nor the prior
+boundary-invalid result; it records the current worktree candidate separately.
+
+| Check | Status | Evidence |
+|---|---|---|
+| Portable Insight Canvas UI contracts | PASS | `dotnet run --project DevTools/InsightCanvasUiTests.csproj --configuration Release`; preference reload/clamping, adoption, stable IDs, compatibility keys, shared components, high-contrast tokens, localization references, and no `GUI.skin` mutation passed. |
+| Directly relevant portable regression checks | PASS | `dotnet run --project DevTools/TraitBreedingRules.Tests.csproj --configuration Release`; executable trait-breeding tests passed. |
+| Localization | PASS | `DevTools\\Test-AquacultureLocalization.ps1`; one language file and 536 referenced keys. |
+| RimTest readiness | PASS | `rimtest doctor --json`; `status=ready`, catalog/rimctx/devbridge/rimerror `ok`, RimBridge `configured`. |
+| RimTest affected runtime and artifact freshness | PASS | `rimtest affected --run --json`; final workflow `rw-0dc55663ab8a4fddb40fe1e3692561b1`, transaction `c7d744b5f8384f4e984f2cfd944ee553`, source fingerprint `5b5cda5403c2a7017f92168187776594eee98a7bc0a3685d0cd51d9275ad8bc6`, generation 326, run `run-fbd37b11226f4b6aa7c68d8ed91e19c8`, one test passed, zero failed, matching built/deployed SHA256 `ad6b9005ff03f5e51131838fc5afe1e321935c78fe3131d53b3741c05400effb`, `loadedArtifactFreshnessProven=true`, proof `identical-deployment-hash-plus-owned-generation-state`; selection was conservative with `RIMCONTEXT_RESULT_TRUNCATED` and the declared smoke fallback. |
+| Generation-scoped runtime log inspection | PASS (bounded) | DevBridge `logs query --generation 326 --since-launch --severity ERROR --limit 64 --json` and the matching WARN/Aquaculture/InsightCanvas queries returned `available=true`, `records=[]`, and `rawBytes=21854`; the tool reported `truncated=true` because its semantic log result is bounded, so this is not an unrestricted Player.log claim. |
+
+The current Prompt 1 implementation gates exercised in this revalidation pass;
+the older unrun release-matrix items and the previous boundary-invalid run remain
+historical evidence and are not relabeled.
+
+## Prompt 2 current player-experience validation — 2026-08-19
+
+This entry records the current Prompt 2 worktree candidate separately from the
+historical release matrix and earlier validation addenda.
+
+| Check | Status | Evidence |
+|---|---|---|
+| Portable Prompt 2 UI contracts | PASS | `dotnet run --project DevTools/InsightCanvasUiTests.csproj --configuration Release`; urgency ordering, status filtering/search, selection preservation, dossier health classification, responsive mode, source contracts, stable IDs, and presentation adoption passed. |
+| Localization | PASS | `DevTools\\Test-AquacultureLocalization.ps1`; one English language file and 593 referenced keys. |
+| RimTest readiness | PASS | `rimtest doctor --json`; `status=ready`, catalog/rimctx/devbridge/rimerror `ok`, RimBridge `configured`. |
+| RimTest affected runtime and artifact freshness | PASS | Final `rimtest affected --run --json` against the completed worktree: generation 328, one passed/zero failed, matching built/deployed SHA256 `757edb229f9251d2e75a89456a4e6bdf081d471708ef1caac95d034697a6863a`, `loadedArtifactFreshnessProven=true`, proof `identical-deployment-hash-plus-owned-generation-state`; conservative selection used the declared smoke fallback after `RIMCONTEXT_RESULT_TRUNCATED`. The structured workflow, transaction, run, and source-fingerprint identifiers were retained in the task result. |
+| Owner-scoped runtime logs | PASS (bounded) | Generation 328 ERROR/WARN/Aquaculture queries with `--since-launch --limit 64` returned `available=true`, `records=[]`, `rawBytes=21853`, and `truncated=true`; this is bounded evidence, not an unrestricted Player.log claim. |
+| Interactive UI targets/screenshots and width/density review | FAIL gate | `rimtest capabilities --json` and `rimtest ui targets --json` returned `RIMBRIDGE_LEASE_REQUIRED`; no interactive target, keyboard/focus, responsive-width, density/contrast, or screenshot evidence was available. The smoke recipe mapped the UI types but did not exercise these surfaces. |
+
+Strict Prompt 2 verdict: **FAIL — the implementation, portable contracts,
+runtime smoke, and bounded logs passed, but the required interactive UI/runtime
+gate was not executed.**
+
+Two earlier affected attempts were infrastructure/freshness failures while the
+DevBridge owner was restarting; they were not treated as application failures.
+The stabilized final run above is the authoritative current-source result.

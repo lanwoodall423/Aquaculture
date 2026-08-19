@@ -26,6 +26,7 @@ namespace AquacultureFishing.Tests
             TestPrompt2Contracts(root);
             TestMetadataAndBuildContract(root);
             TestSerializedSettingsContract(root);
+            TestPresentationContract(root);
             Console.WriteLine(failures == 0 ? "Insight Canvas UI tests: PASS" : "Insight Canvas UI tests: FAIL (" + failures + ")");
             return failures == 0 ? 0 : 1;
         }
@@ -81,6 +82,36 @@ namespace AquacultureFishing.Tests
             Check(AquacultureHealthPriorityRules.Highest(false, false, false, false, false) ==
                 AquacultureHealthPriority.Healthy, "pond health falls back to healthy");
 
+            var urgent = new AquacultureWorkspaceRowSnapshot("pond.warning", "Warning", "Advice",
+                AquacultureHealthPriority.Advice, new[] { "Check feed" }, 4);
+            var critical = new AquacultureWorkspaceRowSnapshot("pond.critical", "Critical", "Starvation",
+                AquacultureHealthPriority.Starvation, new[] { "Refill feed" }, 4);
+            var healthy = new AquacultureWorkspaceRowSnapshot("pond.healthy", "Healthy", "Healthy",
+                AquacultureHealthPriority.Healthy, new[] { "Healthy" }, 4);
+            var ordered = new List<AquacultureWorkspaceRowSnapshot> { healthy, urgent, critical };
+            ordered.Sort(AquacultureWorkspaceOrdering.Compare);
+            Check(ordered[0] == critical && ordered[1] == urgent && ordered[2] == healthy,
+                "pond workspace ordering puts critical rows before warnings and healthy rows");
+            Check(AquacultureWorkspaceOrdering.Matches(critical, "feed", AquaculturePondFilter.Critical) &&
+                !AquacultureWorkspaceOrdering.Matches(healthy, string.Empty, AquaculturePondFilter.NeedsAttention),
+                "pond workspace filters combine semantic status and search text");
+            Check(AquacultureWorkspaceOrdering.PreserveSelection("pond.warning",
+                ordered.Select(item => item.StableId)) == "pond.warning" &&
+                AquacultureWorkspaceOrdering.PreserveSelection("missing", ordered.Select(item => item.StableId)) == "pond.critical",
+                "workspace selection survives refresh and falls back deterministically");
+            Check(AquacultureDossierHealthRules.Classify(true, 0.9f, 0.9f, 0f) ==
+                AquacultureDossierHealthState.Healthy &&
+                AquacultureDossierHealthRules.Classify(true, 0.4f, 0.9f, 0f) ==
+                AquacultureDossierHealthState.Attention &&
+                AquacultureDossierHealthRules.Classify(true, 0.9f, 0.9f, 0.1f) ==
+                AquacultureDossierHealthState.Critical &&
+                AquacultureDossierHealthRules.Classify(false, 0.9f, 0.9f, 0f) ==
+                AquacultureDossierHealthState.Dead,
+                "fish dossier classifies healthy, attention, critical, and dead states");
+            Check(AquacultureUiResponsiveLayout.MasterDetailMode(1200f) == AquacultureUiMasterDetailMode.SideBySide &&
+                AquacultureUiResponsiveLayout.MasterDetailMode(700f) == AquacultureUiMasterDetailMode.Stacked,
+                "workspace master/detail layout stacks at narrow widths");
+
             var details = new List<string> { "First" };
             var row = new AquacultureWorkspaceRowSnapshot("pond.1", "Pond", "Healthy",
                 AquacultureHealthPriority.Healthy, details, 4);
@@ -113,6 +144,13 @@ namespace AquacultureFishing.Tests
                 "Prompt 2 documents use bounded searchable lists");
             Check(allUi.Contains("KnowledgeHidden") && allUi.Contains("AquaculturePlannerForecastSnapshot"),
                 "Prompt 2 documents preserve Knowledge disclosure and forecast snapshots");
+            string contracts = File.ReadAllText(Path.Combine(root, "Source\\UI\\AquacultureUiContracts.cs"));
+            Check(contracts.Contains("AquacultureWorkspaceOrdering") && allUi.Contains("PondFilter") &&
+                allUi.Contains("InsightUi.Expander") && allUi.Contains("ResearchStatus"),
+                "Prompt 2 documents expose urgency filters, progressive disclosure, and research locks");
+            Check(allUi.Contains("DossierHealthRules") && allUi.Contains("FoodReserve") &&
+                allUi.Contains("ExpectedMeatYield"),
+                "fish dossier exposes semantic health indicators and separated yield facts");
             Check(allUi.Contains("commission.delivery.specimens") && allUi.Contains("Host.PostClose"),
                 "commission delivery uses a bounded Insight Canvas document with cleanup");
 
@@ -172,11 +210,77 @@ namespace AquacultureFishing.Tests
                 "globalMutationRate", "maxMutations", "traitBreedingSettingsVersion", "capacityModelVersion",
                 "capacityTransitionWarning", "fishMasks", "fishExpertiseSettings", "traitSettings",
                 "fishingDurationFactor", "minimumOffspring", "maximumOffspring", "minimumLifespanDays",
-                "maximumLifespanDays"
+                "maximumLifespanDays", "presentationDensity", "presentationHighContrast",
+                "presentationReducedMotion", "presentationSettingsVersion"
             };
             foreach (string key in requiredKeys) Check(settings.Contains("\"" + key + "\""), "serialized key preserved: " + key);
             Check(settings.Contains("DoSettingsWindowContents") && settings.Contains("AquacultureSettingsDocument"),
                 "settings entry delegates to the Insight Canvas document");
+        }
+
+        private static void TestPresentationContract(string root)
+        {
+            AquaculturePresentationPreferences saved =
+                AquaculturePresentationPreferences.FromSerializedValues(2, true, true);
+            AquaculturePresentationPreferences reloaded =
+                AquaculturePresentationPreferences.FromSerializedValues(saved.DensityIndex,
+                    saved.HighContrast, saved.ReducedMotion);
+            Check(reloaded == saved, "presentation preferences serialize and reload without loss");
+
+            AquaculturePresentationPreferences low =
+                AquaculturePresentationPreferences.FromSerializedValues(-50, false, false);
+            AquaculturePresentationPreferences high =
+                AquaculturePresentationPreferences.FromSerializedValues(50, false, false);
+            Check(low.DensityIndex == AquaculturePresentationPreferences.MinimumDensityIndex &&
+                high.DensityIndex == AquaculturePresentationPreferences.MaximumDensityIndex,
+                "invalid persisted density values clamp to safe bounds");
+
+            string uiRoot = Path.Combine(root, "Source", "UI");
+            string[] documentPaths = Directory.GetFiles(uiRoot, "*Document.cs", SearchOption.TopDirectoryOnly);
+            Check(documentPaths.Length == 6, "all six player-facing Canvas documents are present");
+            foreach (string path in documentPaths)
+            {
+                string document = File.ReadAllText(path);
+                Check(document.Contains("AquacultureInsightPresentation.Apply"),
+                    "document uses centralized presentation preferences: " + Path.GetFileName(path));
+                Check(document.Contains("TrackDuplicateIds = true"),
+                    "document keeps duplicate-ID diagnostics enabled: " + Path.GetFileName(path));
+                Check(!Regex.IsMatch(document, @"Density\s*=\s*InsightUiDensity\.[A-Za-z]+"),
+                    "document does not hard-code an independent density: " + Path.GetFileName(path));
+                Check(!Regex.IsMatch(document, @"HighContrast\s*=\s*(true|false)"),
+                    "document does not hard-code independent contrast: " + Path.GetFileName(path));
+                Check(!Regex.IsMatch(document, @"ReducedMotion\s*=\s*(true|false)"),
+                    "document does not hard-code independent motion: " + Path.GetFileName(path));
+            }
+
+            string settings = File.ReadAllText(Path.Combine(uiRoot, "AquacultureSettingsDocument.cs"));
+            Check(settings.Contains("settings.PresentationPreferences") &&
+                settings.Contains("SetPresentationPreferences"),
+                "settings controls bind to the persistent Aquaculture authority");
+            Check(!settings.Contains("private InsightUiDensity density") &&
+                !settings.Contains("private bool highContrast") && !settings.Contains("private bool reducedMotion"),
+                "settings document has no transient presentation fields");
+
+            string presentation = File.ReadAllText(Path.Combine(uiRoot, "AquacultureUiPresentation.cs"));
+            string components = File.ReadAllText(Path.Combine(uiRoot, "AquacultureUiComponents.cs"));
+            string theme = File.ReadAllText(Path.Combine(uiRoot, "AquacultureUiTheme.cs"));
+            Check(presentation.Contains("presentation") && presentation.Contains("document.Density") &&
+                presentation.Contains("document.ReducedMotion"),
+                "central applicator maps all presentation preferences to the document");
+            Check(components.Contains("InsightUi.Surface") && components.Contains("Status") &&
+                components.Contains("SetTooltip"),
+                "shared components provide panels, semantic status, and contextual help");
+            Check(theme.Contains("highContrast") && theme.Contains("theme.Focus") &&
+                theme.Contains("aquaculture-aquatic-v2-high-contrast"),
+                "high contrast has stronger local separation and focus tokens");
+
+            var language = XDocument.Load(Path.Combine(root, "1.6", "Languages", "English", "Keyed", "AquacultureFishing.xml"));
+            var localized = new HashSet<string>(language.Root.Elements().Select(element => element.Name.LocalName));
+            IEnumerable<string> keys = Directory.GetFiles(uiRoot, "*.cs", SearchOption.TopDirectoryOnly)
+                .SelectMany(path => Regex.Matches(File.ReadAllText(path), @"""(AquacultureFishing\.[A-Za-z0-9_]+)""")
+                    .Cast<Match>().Select(match => match.Groups[1].Value))
+                .Distinct(StringComparer.Ordinal);
+            foreach (string key in keys) Check(localized.Contains(key), "presentation/UI localization key exists: " + key);
         }
 
         private static string FindRoot()

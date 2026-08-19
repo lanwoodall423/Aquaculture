@@ -17,6 +17,15 @@
     development convenience and is never copied into the player package.
   -->
   <PropertyGroup>
+    <!--
+      DevBridge2 builds this project from the installed mod tree without
+      forwarding machine-specific MSBuild properties. Keep explicit
+      overrides authoritative, but make the standard Steam layout usable by
+      that owning workflow as well.
+    -->
+    <RimWorldDir Condition="'$(RimWorldDir)' == '' and Exists('$(MSBuildThisFileDirectory)..\..\..\RimWorldWin64_Data\Managed\Assembly-CSharp.dll')">$(MSBuildThisFileDirectory)..\..\..</RimWorldDir>
+    <HarmonyPath Condition="'$(HarmonyPath)' == '' and Exists('$(RimWorldDir)/../../steamapps/workshop/content/294100/2009463077/Current/Assemblies/0Harmony.dll')">$(RimWorldDir)/../../steamapps/workshop/content/294100/2009463077/Current/Assemblies/0Harmony.dll</HarmonyPath>
+    <HarmonyPath Condition="'$(HarmonyPath)' == '' and Exists('$(MSBuildThisFileDirectory)..\..\XenotypeGeneChances\Assemblies\0Harmony.dll')">$(MSBuildThisFileDirectory)..\..\XenotypeGeneChances\Assemblies\0Harmony.dll</HarmonyPath>
     <RimWorldManagedDir Condition="'$(RimWorldManagedDir)' == '' and Exists('$(RimWorldDir)/RimWorldWin64_Data/Managed/Assembly-CSharp.dll')">$(RimWorldDir)/RimWorldWin64_Data/Managed</RimWorldManagedDir>
     <RimWorldManagedDir Condition="'$(RimWorldManagedDir)' == '' and Exists('$(RimWorldDir)/RimWorldLinux_Data/Managed/Assembly-CSharp.dll')">$(RimWorldDir)/RimWorldLinux_Data/Managed</RimWorldManagedDir>
     <RimWorldManagedDir Condition="'$(RimWorldManagedDir)' == '' and Exists('$(RimWorldDir)/RimWorldMac.app/Contents/Resources/Data/Managed/Assembly-CSharp.dll')">$(RimWorldDir)/RimWorldMac.app/Contents/Resources/Data/Managed</RimWorldManagedDir>
