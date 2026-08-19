@@ -16,19 +16,20 @@ namespace AquacultureFishing
         private AquacultureFishDossierSnapshot snapshot;
         private CompFishTraits capturedComp;
         private InsightUiVirtualList traitsList;
+        private InsightUiCallout healthCallout;
+        private InsightUiBadge healthBadge;
+        private InsightUiMeter foodReserveMeter;
+        private InsightUiMeter habitatFitMeter;
 
         public AquacultureFishDossierDocument()
         {
             document = new InsightUiDocument("aquaculture.fish.dossier.v2", BuildRoot())
             {
-                Theme = AquacultureInsightTheme.Create(),
-                Density = InsightUiDensity.Compact,
-                HighContrast = false,
-                ReducedMotion = false,
                 TrackDuplicateIds = true,
                 DrawBackground = true
             };
             Host = new InsightUiHost(document);
+            AquacultureInsightPresentation.Apply(document);
         }
 
         public InsightUiHost Host { get; private set; }
@@ -54,6 +55,7 @@ namespace AquacultureFishing
                 snapshot = null;
                 traitRows.Clear();
                 if (traitsList != null) traitsList.ItemCount = 0;
+                UpdateHealthPresentation();
                 return;
             }
             if (ReferenceEquals(comp, capturedComp) && snapshot != null &&
@@ -72,6 +74,9 @@ namespace AquacultureFishing
                 .Select(trait => FormatTrait(comp, trait)).ToList();
             traitRows.Clear();
             traitRows.AddRange(traits);
+            int expectedMeatYield = FishProcessingYield.ExpectedMeatCount(comp);
+            AquacultureDossierHealthState healthState = AquacultureDossierHealthRules.Classify(
+                comp.IsAlive, comp.foodReserve, comp.habitatFit, comp.starvationProgress);
             snapshot = new AquacultureFishDossierSnapshot(
                 AquacultureUiStableIds.For("fish-dossier", parent?.thingIDNumber.ToString() ?? "none"),
                 parent?.def?.LabelCap.ToString() ?? L("AquacultureFishing.WorkspaceUnknownSpecies"),
@@ -81,13 +86,84 @@ namespace AquacultureFishing
                 comp.breedGeneration.ToString(), Condition(comp), Production(comp), traitRows,
                 knowledge.identityKnown ? knowledge.stageId + "  •  " + knowledge.confidence.ToStringPercent() :
                     L("AquacultureFishing.WorkspaceKnowledgeHidden"),
-                knowledge.identityKnown ? knowledge.subjectId : string.Empty, comp.traitRevision);
+                knowledge.identityKnown ? knowledge.subjectId : string.Empty,
+                comp.foodReserve, comp.habitatFit, comp.starvationProgress, expectedMeatYield,
+                comp.sterilized, healthState, comp.traitRevision);
+            UpdateHealthPresentation();
             if (traitsList != null)
             {
                 traitsList.ItemCount = traitRows.Count;
                 traitsList.Refresh();
             }
             document.Invalidate();
+        }
+
+        private void UpdateHealthPresentation()
+        {
+            if (healthCallout == null || healthBadge == null || foodReserveMeter == null || habitatFitMeter == null)
+                return;
+            if (snapshot == null)
+            {
+                healthCallout.Severity = InsightUiCalloutSeverity.Info;
+                healthCallout.Title = L("AquacultureFishing.WorkspaceDossierHealthUnknown");
+                healthCallout.Body = L("AquacultureFishing.WorkspaceUnknown");
+                healthBadge.Text = L("AquacultureFishing.WorkspaceDossierHealthUnknown");
+                foodReserveMeter.Current = 0f;
+                foodReserveMeter.Maximum = 1f;
+                foodReserveMeter.SetValueText(L("AquacultureFishing.WorkspaceUnknown"));
+                habitatFitMeter.Current = 0f;
+                habitatFitMeter.Maximum = 1f;
+                habitatFitMeter.SetValueText(L("AquacultureFishing.WorkspaceUnknown"));
+                return;
+            }
+
+            healthCallout.Severity = HealthSeverity(snapshot.HealthState);
+            healthCallout.Title = HealthLabel(snapshot.HealthState);
+            healthCallout.Body = HealthBody(snapshot);
+            healthBadge.Text = HealthLabel(snapshot.HealthState);
+            foodReserveMeter.Current = snapshot.FoodReserve < 0f ? 0f : Mathf.Clamp01(snapshot.FoodReserve);
+            foodReserveMeter.Maximum = 1f;
+            foodReserveMeter.SetValueText(snapshot.FoodReserve < 0f
+                ? L("AquacultureFishing.WorkspaceUnknown") : snapshot.FoodReserve.ToStringPercent());
+            habitatFitMeter.Current = snapshot.HabitatFit < 0f ? 0f : Mathf.Clamp01(snapshot.HabitatFit);
+            habitatFitMeter.Maximum = 1f;
+            habitatFitMeter.SetValueText(snapshot.HabitatFit < 0f
+                ? L("AquacultureFishing.WorkspaceUnknown") : snapshot.HabitatFit.ToStringPercent());
+        }
+
+        private static InsightUiCalloutSeverity HealthSeverity(AquacultureDossierHealthState state)
+        {
+            switch (state)
+            {
+                case AquacultureDossierHealthState.Healthy: return InsightUiCalloutSeverity.Success;
+                case AquacultureDossierHealthState.Attention: return InsightUiCalloutSeverity.Warning;
+                case AquacultureDossierHealthState.Critical:
+                case AquacultureDossierHealthState.Dead: return InsightUiCalloutSeverity.Error;
+                default: return InsightUiCalloutSeverity.Info;
+            }
+        }
+
+        private static string HealthLabel(AquacultureDossierHealthState state)
+        {
+            switch (state)
+            {
+                case AquacultureDossierHealthState.Healthy: return L("AquacultureFishing.WorkspaceDossierHealthHealthy");
+                case AquacultureDossierHealthState.Attention: return L("AquacultureFishing.WorkspaceDossierHealthAttention");
+                case AquacultureDossierHealthState.Critical: return L("AquacultureFishing.WorkspaceDossierHealthCritical");
+                case AquacultureDossierHealthState.Dead: return L("AquacultureFishing.WorkspaceDossierHealthDead");
+                default: return L("AquacultureFishing.WorkspaceDossierHealthUnknown");
+            }
+        }
+
+        private static string HealthBody(AquacultureFishDossierSnapshot current)
+        {
+            if (current.HealthState == AquacultureDossierHealthState.Dead)
+                return L("AquacultureFishing.WorkspaceDossierHealthDeadBody");
+            if (current.HealthState == AquacultureDossierHealthState.Unknown)
+                return L("AquacultureFishing.WorkspaceDossierHealthUnknownBody");
+            return LF("AquacultureFishing.WorkspaceDossierHealthSummary",
+                current.FoodReserve.ToStringPercent(), current.HabitatFit.ToStringPercent(),
+                current.StarvationProgress > 0f ? L("AquacultureFishing.WorkspaceStarvation") : string.Empty);
         }
 
         private InsightUiElement BuildRoot()
@@ -97,20 +173,43 @@ namespace AquacultureFishing
             traitsList.Overscan = 2;
             traitsList.CacheLimit = 48;
             traitsList.SetHeight(InsightLength.Fixed(190f));
+            healthCallout = InsightUi.Callout("dossier.health.callout", InsightUiCalloutSeverity.Info,
+                L("AquacultureFishing.WorkspaceDossierHealthUnknown"), string.Empty);
+            healthBadge = InsightUi.Badge("dossier.health.badge", L("AquacultureFishing.WorkspaceDossierHealthUnknown"));
+            foodReserveMeter = InsightUi.Meter("dossier.health.food", 0f, 1f)
+                .SetLabel(L("AquacultureFishing.WorkspaceFoodReserve"));
+            habitatFitMeter = InsightUi.Meter("dossier.health.habitat", 0f, 1f)
+                .SetLabel(L("AquacultureFishing.WorkspaceHabitatFit"));
             InsightUiStack content = InsightUi.Column("dossier.content").SetGap(7f).Add(
                 InsightUi.SectionHeader("dossier.header", L("AquacultureFishing.WorkspaceFishDossier"),
                     L("AquacultureFishing.WorkspaceFishDossierSubtitle"), null, null, true),
-                InsightUi.Label("dossier.species", string.Empty).SetTextProvider(() => snapshot?.Species ?? string.Empty),
-                DynamicRow("dossier.sex", L("AquacultureFishing.WorkspaceSex"), () => snapshot?.Sex),
-                DynamicRow("dossier.stage", L("AquacultureFishing.WorkspaceLifeStage"), () => snapshot?.LifeStage),
-                DynamicRow("dossier.breed", L("AquacultureFishing.WorkspaceBreed"), () => snapshot?.Breed),
-                DynamicRow("dossier.generation", L("AquacultureFishing.WorkspaceGeneration"), () => snapshot?.Generation),
-                DynamicRow("dossier.condition", L("AquacultureFishing.WorkspaceCondition"), () => snapshot?.Condition),
-                DynamicRow("dossier.production", L("AquacultureFishing.WorkspaceProduction"), () => snapshot?.Production),
+                InsightUi.Row("dossier.species.header").SetGap(7f).SetAlignment(InsightAlignment.Start, InsightAlignment.Center).Add(
+                    InsightUi.Label("dossier.species", string.Empty, InsightUiTextStyle.Heading)
+                        .SetTextProvider(() => snapshot?.Species ?? string.Empty),
+                    InsightUi.Spacer("dossier.species.space").SetFlex(1f), healthBadge),
+                healthCallout, foodReserveMeter, habitatFitMeter,
+                InsightUi.Expander("dossier.identity", L("AquacultureFishing.WorkspaceDossierIdentity"),
+                    InsightUi.Column("dossier.identity.content").SetGap(4f).Add(
+                        DynamicRow("dossier.sex", L("AquacultureFishing.WorkspaceSex"), () => snapshot?.Sex),
+                        DynamicRow("dossier.stage", L("AquacultureFishing.WorkspaceLifeStage"), () => snapshot?.LifeStage),
+                        DynamicRow("dossier.breed", L("AquacultureFishing.WorkspaceBreed"), () => snapshot?.Breed),
+                        DynamicRow("dossier.generation", L("AquacultureFishing.WorkspaceGeneration"), () => snapshot?.Generation)), true),
+                InsightUi.Expander("dossier.production.group", L("AquacultureFishing.WorkspaceDossierProduction"),
+                    InsightUi.Column("dossier.production.content").SetGap(4f).Add(
+                        DynamicRow("dossier.yield", L("AquacultureFishing.WorkspaceMeatYield"), () =>
+                            snapshot == null || snapshot.ExpectedMeatYield < 0 ? L("AquacultureFishing.WorkspaceUnknown") :
+                                snapshot.ExpectedMeatYield.ToString()),
+                        DynamicRow("dossier.sterilized", L("AquacultureFishing.WorkspaceSterilized"), () =>
+                            snapshot == null ? L("AquacultureFishing.WorkspaceUnknown") :
+                                snapshot.Sterilized ? L("AquacultureFishing.WorkspaceYes") : L("AquacultureFishing.WorkspaceNo"))), true),
                 InsightUi.SectionHeader("dossier.traits.header", L("AquacultureFishing.WorkspaceTraits"),
                     L("AquacultureFishing.WorkspaceTraitsSubtitle"), null, null, true), traitsList,
                 InsightUi.Callout("dossier.knowledge", InsightUiCalloutSeverity.Info,
                     L("AquacultureFishing.WorkspaceKnowledgeTitle"), string.Empty),
+                InsightUi.Label("dossier.knowledge.state", string.Empty, InsightUiTextStyle.Caption)
+                    .SetTextProvider(() => string.IsNullOrEmpty(snapshot?.KnowledgeLink)
+                        ? L("AquacultureFishing.WorkspaceKnowledgeHidden")
+                        : L("AquacultureFishing.WorkspaceKnowledgeKnown")),
                 InsightUi.Label("dossier.knowledge.body", string.Empty, InsightUiTextStyle.Caption)
                     .SetTextProvider(() => snapshot?.Knowledge ?? string.Empty),
                 InsightUi.Button("dossier.knowledge.open", L("AquacultureFishing.WorkspaceOpenKnowledge"), () =>
@@ -118,7 +217,7 @@ namespace AquacultureFishing
                     ThingDef def = capturedComp?.parent?.def;
                     if (def != null) MainTabWindow_AquacultureJournal.OpenSpecies(def);
                 }));
-            return InsightUi.Scroll("dossier.scroll", content);
+            return InsightUi.Scroll("dossier.scroll", AquacultureUiComponents.Panel("dossier", content));
         }
 
         private static InsightUiElement DynamicRow(string id, string label, Func<string> value)
@@ -162,5 +261,10 @@ namespace AquacultureFishing
         }
 
         private static string L(string key) => key.Translate().ToString();
+
+        private static string LF(string key, params object[] args)
+        {
+            return string.Format(L(key), args);
+        }
     }
 }

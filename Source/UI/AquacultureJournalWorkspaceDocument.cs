@@ -18,6 +18,7 @@ namespace AquacultureFishing
         private readonly AquacultureUiSnapshotCache uiCache = new AquacultureUiSnapshotCache();
         private readonly List<PondEntry> ponds = new List<PondEntry>();
         private readonly List<PondEntry> filteredPonds = new List<PondEntry>();
+        private readonly List<PondEntry> actionablePonds = new List<PondEntry>();
         private readonly List<AquacultureSpeciesViewSnapshot> species = new List<AquacultureSpeciesViewSnapshot>();
         private readonly List<AquacultureSpeciesViewSnapshot> filteredSpecies = new List<AquacultureSpeciesViewSnapshot>();
         private readonly List<FishBreedRecord> breeds = new List<FishBreedRecord>();
@@ -38,6 +39,7 @@ namespace AquacultureFishing
         private string speciesSearch = string.Empty;
         private string breedSearch = string.Empty;
         private string waterSearch = string.Empty;
+        private AquaculturePondFilter pondFilter = AquaculturePondFilter.All;
         private string knowledgeExpertiseText = string.Empty;
         private CommissionUiSnapshot commissionSnapshot;
         private bool pondkeepingAvailable;
@@ -46,6 +48,7 @@ namespace AquacultureFishing
         private bool selectiveBreedingAvailable;
 
         private InsightUiVirtualList pondList;
+        private InsightUiVirtualList overviewPriorityList;
         private InsightUiVirtualList speciesList;
         private InsightUiVirtualList breedList;
         private InsightUiVirtualList waterList;
@@ -60,9 +63,22 @@ namespace AquacultureFishing
         private InsightUiSlider populationLimitSlider;
         private InsightUiSlider populationTargetSlider;
         private InsightUiSelect breedingModeSelect;
+        private InsightUiSelect pondFilterSelect;
         private InsightUiSplit pondsSplit;
         private InsightUiSplit speciesSplit;
         private InsightUiSplit breedsSplit;
+        private InsightUiCallout overviewAttentionCallout;
+        private InsightUiLabel overviewPriorityEmptyLabel;
+        private InsightUiLabel pondEmptyLabel;
+        private InsightUiButton pondEmptyAction;
+        private InsightUiLabel speciesEmptyLabel;
+        private InsightUiLabel breedEmptyLabel;
+        private InsightUiLabel waterEmptyLabel;
+        private InsightUiCallout pondHealthCallout;
+        private InsightUiCallout pondResearchCallout;
+        private InsightUiButton pondFocusButton;
+        private InsightUiButton pondPlannerButton;
+        private InsightUiCallout commissionStatusCallout;
 
         private const float CompactSplitBreakpoint = 960f;
 
@@ -72,14 +88,11 @@ namespace AquacultureFishing
         {
             document = new InsightUiDocument("aquaculture.journal.workspace.v2", BuildRoot())
             {
-                Theme = AquacultureInsightTheme.Create(),
-                Density = InsightUiDensity.Normal,
-                HighContrast = false,
-                ReducedMotion = false,
                 TrackDuplicateIds = true,
                 DrawBackground = true
             };
             Host = new InsightUiHost(document);
+            AquacultureInsightPresentation.Apply(document);
         }
 
         public InsightUiDocument Document => document;
@@ -117,7 +130,8 @@ namespace AquacultureFishing
 
         private void UpdateResponsiveLayout(float width)
         {
-            bool compact = width < CompactSplitBreakpoint;
+            bool compact = AquacultureUiResponsiveLayout.MasterDetailMode(width, CompactSplitBreakpoint) ==
+                AquacultureUiMasterDetailMode.Stacked;
             InsightUiSplit[] splits = { pondsSplit, speciesSplit, breedsSplit };
             for (int i = 0; i < splits.Length; i++)
             {
@@ -166,15 +180,22 @@ namespace AquacultureFishing
                     ponds.Add(CapturePond(proxy, pondComponent, raw, i, revision));
                 }
             }
+            ponds.Sort((left, right) => AquacultureWorkspaceOrdering.Compare(left.Status, right.Status));
+            actionablePonds.Clear();
+            actionablePonds.AddRange(ponds.Where(item => item.Priority != AquacultureHealthPriority.Healthy));
 
             waters.Clear();
             waters.AddRange((AquacultureSnapshotCache.Waters(map) ?? Array.Empty<NaturalWaterViewSnapshot>())
                 .OrderBy(item => item.anchor.z).ThenBy(item => item.anchor.x));
 
-            if (ponds.Count > 0 && !ponds.Any(item => item.StableId == selectedPondId)) selectedPondId = ponds[0].StableId;
-            if (species.Count > 0 && !species.Any(item => SpeciesId(item) == selectedSpeciesId)) selectedSpeciesId = SpeciesId(species[0]);
-            if (breeds.Count > 0 && !breeds.Any(item => item.id == selectedBreedId)) selectedBreedId = breeds[0].id;
-            if (waters.Count > 0 && !waters.Any(item => WaterId(item) == selectedWaterId)) selectedWaterId = WaterId(waters[0]);
+            selectedPondId = AquacultureWorkspaceOrdering.PreserveSelection(selectedPondId,
+                ponds.Select(item => item.StableId));
+            selectedSpeciesId = AquacultureWorkspaceOrdering.PreserveSelection(selectedSpeciesId,
+                species.Select(SpeciesId));
+            selectedBreedId = AquacultureWorkspaceOrdering.PreserveSelection(selectedBreedId,
+                breeds.Select(item => item.id));
+            selectedWaterId = AquacultureWorkspaceOrdering.PreserveSelection(selectedWaterId,
+                waters.Select(WaterId));
             filterRevision = -1;
             RefreshFilters();
         }
@@ -214,10 +235,17 @@ namespace AquacultureFishing
         {
             if (filterRevision == capturedRevision) return;
             filterRevision = capturedRevision;
-            FilterInto(ponds, filteredPonds, pondSearch, item => item.Display.Label);
+            filteredPonds.Clear();
+            foreach (PondEntry item in ponds)
+                if (AquacultureWorkspaceOrdering.Matches(item.Status, pondSearch, pondFilter)) filteredPonds.Add(item);
             FilterInto(species, filteredSpecies, speciesSearch, SpeciesLabel);
             FilterInto(breeds, filteredBreeds, breedSearch, item => item.name);
             FilterInto(waters, filteredWaters, waterSearch, item => item.habitat.ToString());
+            if (overviewPriorityList != null)
+            {
+                overviewPriorityList.ItemCount = actionablePonds.Count;
+                overviewPriorityList.Refresh();
+            }
             if (pondList != null)
             {
                 pondList.ItemCount = filteredPonds.Count;
@@ -238,6 +266,31 @@ namespace AquacultureFishing
                 waterList.ItemCount = filteredWaters.Count;
                 waterList.Refresh();
             }
+            UpdateEmptyState(pondEmptyLabel, pondEmptyAction, filteredPonds.Count == 0,
+                ponds.Count == 0 ? L("AquacultureFishing.WorkspaceNoPonds") :
+                    L("AquacultureFishing.WorkspaceNoMatchingPonds"), ponds.Count > 0);
+            UpdateEmptyState(speciesEmptyLabel, null, filteredSpecies.Count == 0,
+                species.Count == 0 ? L("AquacultureFishing.WorkspaceNoSpecies") :
+                    L("AquacultureFishing.WorkspaceNoMatchingSpecies"), false);
+            UpdateEmptyState(breedEmptyLabel, null, filteredBreeds.Count == 0,
+                breeds.Count == 0 ? L("AquacultureFishing.WorkspaceNoBreeds") :
+                    L("AquacultureFishing.WorkspaceNoMatchingBreeds"), false);
+            UpdateEmptyState(waterEmptyLabel, null, filteredWaters.Count == 0,
+                waters.Count == 0 ? L("AquacultureFishing.WorkspaceNoWaters") :
+                    L("AquacultureFishing.WorkspaceNoMatchingWaters"), false);
+            if (overviewPriorityEmptyLabel != null)
+                overviewPriorityEmptyLabel.Visible = actionablePonds.Count == 0;
+        }
+
+        private static void UpdateEmptyState(InsightUiLabel label, InsightUiButton action, bool visible,
+            string message, bool canClear)
+        {
+            if (label != null)
+            {
+                label.Text = message ?? string.Empty;
+                label.Visible = visible;
+            }
+            if (action != null) action.Visible = visible && canClear;
         }
 
         private static void FilterInto<T>(IEnumerable<T> source, List<T> target, string search, Func<T, string> label)
@@ -266,9 +319,10 @@ namespace AquacultureFishing
             navigation.Add("conservation", L("AquacultureFishing.WorkspaceConservation"), BuildConservationPage());
             navigation.Add("commissions", L("AquacultureFishing.WorkspaceCommissions"), BuildCommissionsPage());
             navigation.SetFlex(1f);
-            return InsightUi.Column("workspace.root").SetGap(10f).SetPadding(4f).Add(
-                InsightUi.SectionHeader("workspace.header", L("AquacultureFishing.WorkspaceTitle"),
-                    L("AquacultureFishing.WorkspaceSubtitle"), null, null, true), navigation);
+            return AquacultureUiComponents.Panel("workspace.root",
+                InsightUi.Column("workspace.root.content").SetGap(10f).SetPadding(4f).Add(
+                    InsightUi.SectionHeader("workspace.header", L("AquacultureFishing.WorkspaceTitle"),
+                        L("AquacultureFishing.WorkspaceSubtitle"), null, null, true), navigation));
         }
 
         private InsightUiElement BuildOverviewPage()
@@ -276,6 +330,19 @@ namespace AquacultureFishing
             InsightUiStack content = InsightUi.Column("workspace.overview.content").SetGap(8f);
             content.Add(InsightUi.SectionHeader("overview.header", L("AquacultureFishing.WorkspaceOverview"),
                 L("AquacultureFishing.WorkspaceOverviewSubtitle"), null, null, true));
+            overviewAttentionCallout = InsightUi.Callout("overview.attention", InsightUiCalloutSeverity.Info,
+                L("AquacultureFishing.WorkspaceAttentionTitle"), L("AquacultureFishing.WorkspaceAttentionEmpty"));
+            overviewPriorityList = InsightUi.VirtualList("overview.priority.list", 0, 58f,
+                index => BuildOverviewPriorityRow(actionablePonds[index]));
+            overviewPriorityList.SetHeight(InsightLength.Fixed(238f));
+            overviewPriorityList.Overscan = 2;
+            overviewPriorityList.CacheLimit = 24;
+            overviewPriorityEmptyLabel = InsightUi.Label("overview.priority.empty", string.Empty,
+                InsightUiTextStyle.Caption);
+            content.Add(overviewAttentionCallout,
+                InsightUi.SectionHeader("overview.priority.header", L("AquacultureFishing.WorkspacePrioritySection"),
+                    L("AquacultureFishing.WorkspacePrioritySectionSubtitle"), null, null, true),
+                overviewPriorityList, overviewPriorityEmptyLabel);
             content.Add(DynamicStat("overview.species", L("AquacultureFishing.WorkspaceDiscovered"),
                 () => JournalDiscovered() + " / " + species.Count));
             content.Add(DynamicStat("overview.ponds", L("AquacultureFishing.WorkspacePondCount"),
@@ -312,6 +379,20 @@ namespace AquacultureFishing
             return InsightUi.Scroll("workspace.overview.scroll", content);
         }
 
+        private InsightUiElement BuildOverviewPriorityRow(PondEntry entry)
+        {
+            InsightUiButton button = InsightUi.Button(AquacultureUiStableIds.For("overview.pond.select", entry.StableId),
+                entry.Display.Label, () => SelectAndFocusPond(entry)) as InsightUiButton;
+            button.SelectedProvider = () => selectedPondId == entry.StableId;
+            button.SetTooltip(L("AquacultureFishing.WorkspaceOpenPondTooltip"));
+            return InsightUi.Column(AquacultureUiStableIds.For("overview.pond.row", entry.StableId)).SetGap(2f).Add(
+                InsightUi.Row(AquacultureUiStableIds.For("overview.pond.header", entry.StableId)).SetGap(6f).Add(
+                    button, InsightUi.Spacer(AquacultureUiStableIds.For("overview.pond.space", entry.StableId)).SetFlex(1f),
+                    AquacultureUiComponents.Badge("overview.pond.status." + entry.StableId, entry.StatusLine)),
+                InsightUi.Label(AquacultureUiStableIds.For("overview.pond.reason", entry.StableId),
+                    entry.Details.FirstOrDefault() ?? entry.StatusLine, InsightUiTextStyle.Caption));
+        }
+
         private InsightUiElement BuildPondsPage()
         {
             InsightUiSearchField search = InsightUi.SearchField("ponds.search", string.Empty, L("AquacultureFishing.WorkspaceSearchPonds"))
@@ -321,10 +402,22 @@ namespace AquacultureFishing
                     filterRevision = -1;
                     RefreshFilters();
                 });
+            pondFilterSelect = InsightUi.Select("ponds.filter", L("AquacultureFishing.WorkspacePondFilter"),
+                PondFilterLabels(), 0).Bind(() => (int)pondFilter, index =>
+                {
+                    if (index < 0 || index > (int)AquaculturePondFilter.Healthy) return;
+                    pondFilter = (AquaculturePondFilter)index;
+                    filterRevision = -1;
+                    RefreshFilters();
+                });
+            pondFilterSelect.SetTooltip(L("AquacultureFishing.WorkspacePondFilterTooltip"));
             pondList = InsightUi.VirtualList("ponds.list", filteredPonds.Count, 66f, index => BuildPondRow(filteredPonds[index]));
             pondList.SetFlex(1f);
             pondList.Overscan = 2;
             pondList.CacheLimit = 64;
+            pondEmptyLabel = InsightUi.Label("ponds.empty.label", string.Empty, InsightUiTextStyle.Caption);
+            pondEmptyAction = InsightUi.Button("ponds.empty.clear", L("AquacultureFishing.WorkspaceClearPondFilter"),
+                ClearPondFilter) as InsightUiButton;
 
             pondPopulationMeter = InsightUi.Meter("pond.detail.population", 0f, 1f)
                 .SetLabel(L("AquacultureFishing.PondPopulation"));
@@ -356,28 +449,67 @@ namespace AquacultureFishing
                         SetSelectedPond((component, cell) => component.SetBreedingMode(cell, mode));
                     });
 
+            InsightUiElement feedDaysSetting = AquacultureUiComponents.SliderSetting("pond.control.feed-days",
+                L("AquacultureFishing.WorkspaceTargetFeedDays"), L("AquacultureFishing.WorkspaceTargetFeedDaysTooltip"),
+                feedDaysSlider, () => LF("AquacultureFishing.WorkspaceFeedDaysValue",
+                    (SelectedPond?.TargetFeedDays ?? 1f).ToString("0.##")));
+            InsightUiElement populationLimitSetting = AquacultureUiComponents.SliderSetting("pond.control.limit",
+                L("AquacultureFishing.WorkspacePopulationLimit"), L("AquacultureFishing.WorkspacePopulationLimitTooltip"),
+                populationLimitSlider, () => LF("AquacultureFishing.WorkspacePopulationLimitValue",
+                    Mathf.RoundToInt(SelectedPond?.PopulationLimit ?? 0f)));
+            InsightUiElement populationTargetSetting = AquacultureUiComponents.SliderSetting("pond.control.target",
+                L("AquacultureFishing.WorkspacePopulationTarget"), L("AquacultureFishing.WorkspacePopulationTargetTooltip"),
+                populationTargetSlider, () => LF("AquacultureFishing.WorkspacePopulationTargetValue",
+                    Mathf.RoundToInt(SelectedPond?.PopulationTarget ?? 0f)));
+
+            pondHealthCallout = InsightUi.Callout("pond.detail.health", InsightUiCalloutSeverity.Info,
+                L("AquacultureFishing.WorkspacePondHealthy"), L("AquacultureFishing.WorkspaceSelectPond"));
+            pondResearchCallout = InsightUi.Callout("pond.detail.research", InsightUiCalloutSeverity.Info,
+                L("AquacultureFishing.WorkspaceResearchDisclosure"),
+                L("AquacultureFishing.WorkspaceResearchDisclosureBody"));
+            pondFocusButton = InsightUi.Button("pond.detail.focus", L("AquacultureFishing.WorkspaceFocusPond"),
+                FocusSelectedPond) as InsightUiButton;
+            pondPlannerButton = InsightUi.Button("pond.detail.planner", L("AquacultureFishing.WorkspaceOpenPlanner"),
+                OpenPlannerForSelected) as InsightUiButton;
+
+            InsightUiElement healthGroup = InsightUi.Expander("pond.group.health",
+                L("AquacultureFishing.WorkspacePondHealthGroup"), InsightUi.Column("pond.group.health.content").SetGap(6f).Add(
+                    pondHealthCallout, pondPopulationMeter, pondFeedMeter,
+                    InsightUi.Label("pond.detail.issues", string.Empty, InsightUiTextStyle.Caption)
+                        .SetTextProvider(() => SelectedPond == null ? string.Empty : string.Join("\n", SelectedPond.Details.ToArray()))), true);
+            InsightUiElement feedingGroup = InsightUi.Expander("pond.group.feeding",
+                L("AquacultureFishing.WorkspacePondFeedingGroup"), InsightUi.Column("pond.group.feeding.content").SetGap(5f).Add(
+                    automaticFeedingToggle, feedDaysSetting), true);
+            InsightUiElement harvestingGroup = InsightUi.Expander("pond.group.harvesting",
+                L("AquacultureFishing.WorkspacePondHarvestingGroup"), InsightUi.Column("pond.group.harvesting.content").SetGap(5f).Add(
+                    adultsOnlyToggle, protectFemalesToggle, surplusHarvestToggle), false);
+            InsightUiElement breedingGroup = InsightUi.Expander("pond.group.breeding",
+                L("AquacultureFishing.WorkspacePondBreedingGroup"), InsightUi.Column("pond.group.breeding.content").SetGap(5f).Add(
+                    breedingModeSelect), false);
+            InsightUiElement populationGroup = InsightUi.Expander("pond.group.population",
+                L("AquacultureFishing.WorkspacePondPopulationGroup"), InsightUi.Column("pond.group.population.content").SetGap(5f).Add(
+                    predationToggle, populationLimitSetting, populationTargetSetting), false);
+
             InsightUiElement detail = InsightUi.Scroll("pond.detail.scroll", InsightUi.Column("pond.detail.content").SetGap(7f).Add(
                 InsightUi.SectionHeader("pond.detail.header", L("AquacultureFishing.WorkspacePondDetail"),
                     L("AquacultureFishing.WorkspacePondDetailSubtitle"), null, null, true),
-                InsightUi.Label("pond.detail.status", string.Empty).SetTextProvider(() => SelectedPond?.StatusLine ?? L("AquacultureFishing.WorkspaceSelectPond")),
-                pondPopulationMeter, pondFeedMeter,
-                InsightUi.Label("pond.detail.issues", string.Empty, InsightUiTextStyle.Caption).SetTextProvider(() => SelectedPond == null
-                    ? string.Empty : string.Join("\n", SelectedPond.Details.ToArray())),
-                InsightUi.Callout("pond.detail.research", InsightUiCalloutSeverity.Info,
-                    L("AquacultureFishing.WorkspaceResearchDisclosure"),
-                    L("AquacultureFishing.WorkspaceResearchDisclosureBody")),
+                InsightUi.Row("pond.detail.actions").SetGap(6f).Add(
+                    pondFocusButton, pondPlannerButton),
+                healthGroup,
+                pondResearchCallout,
                 InsightUi.Label("pond.detail.research-status", string.Empty, InsightUiTextStyle.Caption)
                     .SetTextProvider(ResearchStatus),
                 InsightUi.SectionHeader("pond.control.header", L("AquacultureFishing.WorkspacePondControls"),
                     L("AquacultureFishing.WorkspacePondControlsSubtitle"), null, null, true),
-                breedingModeSelect, adultsOnlyToggle, protectFemalesToggle, automaticFeedingToggle,
-                feedDaysSlider, predationToggle, surplusHarvestToggle, populationLimitSlider, populationTargetSlider));
+                feedingGroup, harvestingGroup, breedingGroup, populationGroup));
 
-            pondsSplit = InsightUi.Split("ponds.split", InsightUi.Column("ponds.master").SetGap(6f).Add(pondList), detail, 0.34f);
+            pondsSplit = InsightUi.Split("ponds.split", InsightUi.Column("ponds.master").SetGap(6f).Add(
+                search, pondFilterSelect, pondList,
+                InsightUi.Column("ponds.empty").SetGap(5f).Add(pondEmptyLabel, pondEmptyAction)), detail, 0.34f);
             pondsSplit.SetFlex(1f);
             InsightUiStack root = InsightUi.Column("workspace.ponds.content").SetGap(8f).Add(
                 InsightUi.SectionHeader("ponds.header", L("AquacultureFishing.WorkspacePonds"),
-                    L("AquacultureFishing.WorkspacePondsSubtitle"), null, null, true), search,
+                    L("AquacultureFishing.WorkspacePondsSubtitle"), null, null, true),
                 pondsSplit);
             return root;
         }
@@ -395,7 +527,7 @@ namespace AquacultureFishing
             return InsightUi.Column(AquacultureUiStableIds.For("pond.row", entry.StableId)).SetGap(2f).Add(
                 InsightUi.Row(AquacultureUiStableIds.For("pond.row.header", entry.StableId)).SetGap(6f).Add(
                     button, InsightUi.Spacer(AquacultureUiStableIds.For("pond.row.space", entry.StableId)).SetFlex(1f),
-                    InsightUi.Label(AquacultureUiStableIds.For("pond.row.status", entry.StableId), entry.StatusLine, InsightUiTextStyle.Caption)),
+                    AquacultureUiComponents.Badge("pond.row.status." + entry.StableId, entry.StatusLine)),
                 InsightUi.Label(AquacultureUiStableIds.For("pond.row.detail", entry.StableId),
                     LF("AquacultureFishing.WorkspacePondSummary",
                         L("AquacultureFishing.WorkspacePondWater"), entry.Display.WaterKind,
@@ -418,6 +550,7 @@ namespace AquacultureFishing
             speciesList.SetFlex(1f);
             speciesList.Overscan = 2;
             speciesList.CacheLimit = 64;
+            speciesEmptyLabel = InsightUi.Label("species.empty", string.Empty, InsightUiTextStyle.Caption);
             InsightUiElement detail = InsightUi.Scroll("species.detail.scroll", InsightUi.Column("species.detail.content").SetGap(7f).Add(
                 InsightUi.SectionHeader("species.detail.header", L("AquacultureFishing.WorkspaceSpeciesDetail"),
                     L("AquacultureFishing.WorkspaceKnowledgeCanonical"), null, null, true),
@@ -426,11 +559,12 @@ namespace AquacultureFishing
                 InsightUi.Label("species.detail.facets", string.Empty, InsightUiTextStyle.Caption).SetTextProvider(SelectedSpeciesFacets),
                 InsightUi.Callout("species.detail.knowledge-callout", InsightUiCalloutSeverity.Info,
                     L("AquacultureFishing.WorkspaceKnowledgeTitle"), L("AquacultureFishing.WorkspaceKnowledgeBody"))));
-            speciesSplit = InsightUi.Split("species.split", InsightUi.Column("species.master").SetGap(6f).Add(speciesList), detail, 0.34f);
+            speciesSplit = InsightUi.Split("species.split", InsightUi.Column("species.master").SetGap(6f).Add(
+                search, speciesList, speciesEmptyLabel), detail, 0.34f);
             speciesSplit.SetFlex(1f);
             return InsightUi.Column("workspace.species.content").SetGap(8f).Add(
                 InsightUi.SectionHeader("species.header", L("AquacultureFishing.WorkspaceSpecies"),
-                    L("AquacultureFishing.WorkspaceSpeciesSubtitle"), null, null, true), search,
+                    L("AquacultureFishing.WorkspaceSpeciesSubtitle"), null, null, true),
                 speciesSplit);
         }
 
@@ -445,7 +579,9 @@ namespace AquacultureFishing
             button.SelectedProvider = () => selectedSpeciesId == id;
             return InsightUi.Row(AquacultureUiStableIds.For("species.row", id)).SetGap(6f).Add(button,
                 InsightUi.Spacer(AquacultureUiStableIds.For("species.space", id)).SetFlex(1f),
-                InsightUi.Label(AquacultureUiStableIds.For("species.stage", id), KnowledgeLine(snapshot), InsightUiTextStyle.Caption));
+                AquacultureUiComponents.Badge("species.knowledge." + id, snapshot.identityKnown
+                    ? L("AquacultureFishing.WorkspaceIdentityKnown")
+                    : L("AquacultureFishing.WorkspaceKnowledgeHidden")));
         }
 
         private InsightUiElement BuildBreedsPage()
@@ -462,6 +598,7 @@ namespace AquacultureFishing
             breedList.SetFlex(1f);
             breedList.Overscan = 2;
             breedList.CacheLimit = 64;
+            breedEmptyLabel = InsightUi.Label("breeds.empty", string.Empty, InsightUiTextStyle.Caption);
             InsightUiElement detail = InsightUi.Scroll("breeds.detail.scroll", InsightUi.Column("breeds.detail.content").SetGap(7f).Add(
                 InsightUi.SectionHeader("breeds.detail.header", L("AquacultureFishing.WorkspaceBreedDetail"),
                     L("AquacultureFishing.WorkspaceBreedsSubtitle"), null, null, true),
@@ -470,11 +607,12 @@ namespace AquacultureFishing
                 InsightUi.Label("breeds.detail.traits", string.Empty, InsightUiTextStyle.Caption).SetTextProvider(SelectedBreedTraits),
                 InsightUi.Callout("breeds.detail.rules", InsightUiCalloutSeverity.Info,
                     L("AquacultureFishing.WorkspaceBreedRules"), L("AquacultureFishing.WorkspaceBreedRulesBody"))));
-            breedsSplit = InsightUi.Split("breeds.split", InsightUi.Column("breeds.master").SetGap(6f).Add(breedList), detail, 0.34f);
+            breedsSplit = InsightUi.Split("breeds.split", InsightUi.Column("breeds.master").SetGap(6f).Add(
+                search, breedList, breedEmptyLabel), detail, 0.34f);
             breedsSplit.SetFlex(1f);
             return InsightUi.Column("workspace.breeds.content").SetGap(8f).Add(
                 InsightUi.SectionHeader("breeds.header", L("AquacultureFishing.WorkspaceBreeds"),
-                    L("AquacultureFishing.WorkspaceBreedsSubtitle"), null, null, true), search,
+                    L("AquacultureFishing.WorkspaceBreedsSubtitle"), null, null, true),
                 breedsSplit);
         }
 
@@ -489,7 +627,7 @@ namespace AquacultureFishing
             button.SelectedProvider = () => selectedBreedId == id;
             return InsightUi.Row(AquacultureUiStableIds.For("breed.row", id)).SetGap(6f).Add(button,
                 InsightUi.Spacer(AquacultureUiStableIds.For("breed.space", id)).SetFlex(1f),
-                InsightUi.Label(AquacultureUiStableIds.For("breed.stability", id), breed.Stability.ToStringPercent(), InsightUiTextStyle.Caption));
+                AquacultureUiComponents.Badge("breed.status." + id, BreedStatus(breed)));
         }
 
         private InsightUiElement BuildConservationPage()
@@ -506,9 +644,11 @@ namespace AquacultureFishing
             waterList.SetFlex(1f);
             waterList.Overscan = 2;
             waterList.CacheLimit = 64;
+            waterEmptyLabel = InsightUi.Label("conservation.empty", string.Empty, InsightUiTextStyle.Caption);
             return InsightUi.Scroll("workspace.conservation.scroll", InsightUi.Column("workspace.conservation.content").SetGap(8f).Add(
                 InsightUi.SectionHeader("conservation.header", L("AquacultureFishing.WorkspaceConservation"),
                     L("AquacultureFishing.WorkspaceConservationSubtitle"), null, null, true), search, waterList,
+                waterEmptyLabel,
                 InsightUi.Label("conservation.disclosure", string.Empty).SetTextProvider(() => SelectedWaterDetails()),
                 InsightUi.Callout("conservation.drf", InsightUiCalloutSeverity.Info,
                     L("AquacultureFishing.WorkspaceConservationAuthority"),
@@ -523,19 +663,23 @@ namespace AquacultureFishing
                 {
                     selectedWaterId = id;
                     document.Invalidate();
-                });
+            });
             button.SelectedProvider = () => selectedWaterId == id;
             return InsightUi.Row(AquacultureUiStableIds.For("water.row", id)).SetGap(6f).Add(button,
                 InsightUi.Spacer(AquacultureUiStableIds.For("water.space", id)).SetFlex(1f),
+                AquacultureUiComponents.Badge("water.status." + id, WaterStatus(water)),
                 InsightUi.Label(AquacultureUiStableIds.For("water.abundance", id),
-                    water.AbundanceLabel + "  •  " + WaterConservationLine(water), InsightUiTextStyle.Caption));
+                    water.AbundanceLabel, InsightUiTextStyle.Caption));
         }
 
         private InsightUiElement BuildCommissionsPage()
         {
+            commissionStatusCallout = InsightUi.Callout("commissions.status.callout", InsightUiCalloutSeverity.Info,
+                L("AquacultureFishing.WorkspaceCommissionAuthority"), L("AquacultureFishing.WorkspaceNoActiveCommission"));
             return InsightUi.Scroll("workspace.commissions.scroll", InsightUi.Column("workspace.commissions.content").SetGap(8f).Add(
                 InsightUi.SectionHeader("commissions.header", L("AquacultureFishing.WorkspaceCommissions"),
                     L("AquacultureFishing.WorkspaceCommissionsSubtitle"), null, null, true),
+                commissionStatusCallout,
                 InsightUi.Label("commissions.status", string.Empty).SetTextProvider(CommissionStatus),
                 InsightUi.Label("commissions.requirements", string.Empty).SetTextProvider(CommissionRequirements),
                 InsightUi.Callout("commissions.rules", InsightUiCalloutSeverity.Info,
@@ -547,6 +691,49 @@ namespace AquacultureFishing
         private void UpdateDynamicControls()
         {
             PondEntry selected = SelectedPond;
+            if (overviewAttentionCallout != null)
+            {
+                if (ponds.Count == 0)
+                {
+                    overviewAttentionCallout.Severity = InsightUiCalloutSeverity.Info;
+                    overviewAttentionCallout.Title = L("AquacultureFishing.WorkspaceNoPonds");
+                    overviewAttentionCallout.Body = L("AquacultureFishing.WorkspaceAttentionEmpty");
+                }
+                else if (actionablePonds.Count == 0)
+                {
+                    overviewAttentionCallout.Severity = InsightUiCalloutSeverity.Success;
+                    overviewAttentionCallout.Title = L("AquacultureFishing.WorkspaceAllHealthyTitle");
+                    overviewAttentionCallout.Body = L("AquacultureFishing.WorkspaceAllHealthyBody");
+                }
+                else
+                {
+                    int critical = CriticalPondCount();
+                    int warning = WarningPondCount();
+                    PondEntry next = actionablePonds[0];
+                    overviewAttentionCallout.Severity = critical > 0
+                        ? InsightUiCalloutSeverity.Error : InsightUiCalloutSeverity.Warning;
+                    overviewAttentionCallout.Title = critical > 0
+                        ? L("AquacultureFishing.WorkspaceCriticalAttentionTitle")
+                        : L("AquacultureFishing.WorkspaceAttentionTitle");
+                    overviewAttentionCallout.Body = LF("AquacultureFishing.WorkspaceAttentionSummary", critical, warning) +
+                        "\n" + LF("AquacultureFishing.WorkspaceNextAction", next.Display.Label,
+                            next.Details.FirstOrDefault() ?? next.StatusLine);
+                }
+            }
+            if (overviewPriorityEmptyLabel != null)
+            {
+                overviewPriorityEmptyLabel.Text = ponds.Count == 0
+                    ? L("AquacultureFishing.WorkspaceNoPonds")
+                    : L("AquacultureFishing.WorkspaceAllHealthyBody");
+            }
+            if (pondHealthCallout != null)
+            {
+                AquacultureUiStatus status = selected == null ? AquacultureUiStatus.Unknown : StatusFor(selected.Priority);
+                pondHealthCallout.Severity = CalloutSeverity(status);
+                pondHealthCallout.Title = selected == null ? L("AquacultureFishing.WorkspaceSelectPond") : selected.StatusLine;
+                pondHealthCallout.Body = selected == null ? string.Empty :
+                    (selected.Details.FirstOrDefault() ?? L("AquacultureFishing.WorkspacePondHealthy"));
+            }
             if (pondPopulationMeter != null)
             {
                 pondPopulationMeter.Current = selected?.Display.Population ?? 0f;
@@ -572,6 +759,17 @@ namespace AquacultureFishing
             populationLimitSlider.Enabled = enabled && industrialAquacultureAvailable;
             populationTargetSlider.Enabled = enabled && industrialAquacultureAvailable;
             breedingModeSelect.Enabled = enabled && selectiveBreedingAvailable;
+            if (pondFocusButton != null) pondFocusButton.Enabled = enabled;
+            if (pondPlannerButton != null) pondPlannerButton.Enabled = enabled && industrialAquacultureAvailable;
+            if (pondResearchCallout != null)
+                pondResearchCallout.Body = L("AquacultureFishing.WorkspaceResearchDisclosureBody") + "\n" + ResearchStatus();
+            if (commissionStatusCallout != null)
+            {
+                commissionStatusCallout.Title = commissionSnapshot == null
+                    ? L("AquacultureFishing.WorkspaceNoActiveCommission")
+                    : L("AquacultureFishing.WorkspaceCommissionActive");
+                commissionStatusCallout.Body = CommissionStatus() + "\n" + CommissionRequirements();
+            }
         }
 
         private void CaptureResearchAvailability()
@@ -590,6 +788,62 @@ namespace AquacultureFishing
             document.Invalidate();
         }
 
+        private string[] PondFilterLabels()
+        {
+            return new[]
+            {
+                L("AquacultureFishing.WorkspacePondFilterAll"),
+                L("AquacultureFishing.WorkspacePondFilterAttention"),
+                L("AquacultureFishing.WorkspacePondFilterCritical"),
+                L("AquacultureFishing.WorkspacePondFilterHealthy")
+            };
+        }
+
+        private void ClearPondFilter()
+        {
+            pondSearch = string.Empty;
+            pondFilter = AquaculturePondFilter.All;
+            filterRevision = -1;
+            RefreshFilters();
+            document.Invalidate();
+        }
+
+        private void SelectAndFocusPond(PondEntry entry)
+        {
+            if (entry == null) return;
+            selectedPondId = entry.StableId;
+            activePage = "ponds";
+            pondSearch = string.Empty;
+            pondFilter = AquaculturePondFilter.All;
+            filterRevision = -1;
+            RefreshFilters();
+            FocusPond(entry);
+            document.Invalidate();
+        }
+
+        private void FocusSelectedPond()
+        {
+            FocusPond(SelectedPond);
+        }
+
+        private static void FocusPond(PondEntry entry)
+        {
+            PondProxyThing proxy = entry?.Component?.ProxyFor(entry.Cell);
+            if (proxy == null || !proxy.Spawned) return;
+            Find.Selector.ClearSelection();
+            Find.Selector.Select(proxy);
+            CameraJumper.TryJump(proxy);
+        }
+
+        private void OpenPlannerForSelected()
+        {
+            PondEntry selected = SelectedPond;
+            if (selected == null || !industrialAquacultureAvailable) return;
+            PondProxyThing proxy = selected.Component?.ProxyFor(selected.Cell);
+            if (proxy != null && proxy.Spawned)
+                Find.WindowStack.Add(new Dialog_PondStockingPlanner(proxy, selected.Component));
+        }
+
         private PondEntry SelectedPond => ponds.FirstOrDefault(item => item.StableId == selectedPondId);
         private AquacultureSpeciesViewSnapshot SelectedSpecies => species.FirstOrDefault(item => SpeciesId(item) == selectedSpeciesId);
         private FishBreedRecord SelectedBreed => breeds.FirstOrDefault(item => item.id == selectedBreedId);
@@ -597,9 +851,10 @@ namespace AquacultureFishing
 
         private string OverviewHealthText()
         {
-            PondEntry worst = ponds.OrderByDescending(item => AquacultureHealthPriorityRules.Rank(item.Priority)).FirstOrDefault();
-            return worst == null ? L("AquacultureFishing.WorkspaceNoPonds") :
-                L("AquacultureFishing.WorkspaceWorstPond") + ": " + worst.Display.Label + " — " + worst.StatusLine;
+            if (ponds.Count == 0) return L("AquacultureFishing.WorkspaceNoPonds");
+            if (actionablePonds.Count == 0) return L("AquacultureFishing.WorkspaceAllHealthyBody");
+            PondEntry worst = actionablePonds[0];
+            return L("AquacultureFishing.WorkspaceWorstPond") + ": " + worst.Display.Label + " — " + worst.StatusLine;
         }
 
         private int PondCount(AquacultureHealthPriority priority) => ponds.Count(item => item.Priority == priority);
@@ -609,6 +864,25 @@ namespace AquacultureFishing
 
         private int CriticalPondCount() => ponds.Count(item => AquacultureHealthPriorityRules.Rank(item.Priority) >=
             AquacultureHealthPriorityRules.Rank(AquacultureHealthPriority.SevereStress));
+
+        private static AquacultureUiStatus StatusFor(AquacultureHealthPriority priority)
+        {
+            return priority == AquacultureHealthPriority.Healthy ? AquacultureUiStatus.Healthy :
+                AquacultureHealthPriorityRules.Rank(priority) >=
+                    AquacultureHealthPriorityRules.Rank(AquacultureHealthPriority.SevereStress)
+                    ? AquacultureUiStatus.Critical : AquacultureUiStatus.Attention;
+        }
+
+        private static InsightUiCalloutSeverity CalloutSeverity(AquacultureUiStatus status)
+        {
+            switch (status)
+            {
+                case AquacultureUiStatus.Healthy: return InsightUiCalloutSeverity.Success;
+                case AquacultureUiStatus.Critical: return InsightUiCalloutSeverity.Error;
+                case AquacultureUiStatus.Attention: return InsightUiCalloutSeverity.Warning;
+                default: return InsightUiCalloutSeverity.Info;
+            }
+        }
 
         private string ResearchStatus()
         {
@@ -702,6 +976,24 @@ namespace AquacultureFishing
             ? L("AquacultureFishing.WorkspaceNoDefiningTraits")
             : (breedTraitText.TryGetValue(SelectedBreed.id, out string value)
                 ? value : L("AquacultureFishing.WorkspaceNoDefiningTraits"));
+
+        private string BreedStatus(FishBreedRecord breed)
+        {
+            if (breed == null) return L("AquacultureFishing.WorkspaceUnknown");
+            return breed.Stability >= 0.80f ? L("AquacultureFishing.WorkspaceBreedStable") :
+                breed.Stability >= 0.50f ? L("AquacultureFishing.WorkspaceBreedDeveloping") :
+                L("AquacultureFishing.WorkspaceBreedNeedsAttention");
+        }
+
+        private string WaterStatus(NaturalWaterViewSnapshot water)
+        {
+            if (water == null) return L("AquacultureFishing.WorkspaceUnknown");
+            int atRisk = water.conservation.Values.Count(status => status.atRisk);
+            return atRisk > 0 ? L("AquacultureFishing.WorkspaceWaterAtRisk") :
+                water.conservation.Values.Any(status => status.recovering)
+                    ? L("AquacultureFishing.WorkspaceWaterRecovering")
+                    : L("AquacultureFishing.WorkspaceWaterStable");
+        }
 
         private string SelectedWaterDetails()
         {

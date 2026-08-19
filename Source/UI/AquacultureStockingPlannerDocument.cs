@@ -31,14 +31,11 @@ namespace AquacultureFishing
             this.owner = owner;
             document = new InsightUiDocument("aquaculture.stocking.planner.v2", BuildRoot())
             {
-                Theme = AquacultureInsightTheme.Create(),
-                Density = InsightUiDensity.Normal,
-                HighContrast = false,
-                ReducedMotion = false,
                 TrackDuplicateIds = true,
                 DrawBackground = true
             };
             Host = new InsightUiHost(document);
+            AquacultureInsightPresentation.Apply(document);
             RefreshSnapshot();
         }
 
@@ -186,10 +183,11 @@ namespace AquacultureFishing
             // This keeps the branch responsive without doing layout work during Paint.
             InsightUiElement responsive = InsightUi.Grid("planner.responsive", 320f).Add(
                 available, plannedPanel, forecastPanel);
-            return InsightUi.Column("planner.root").SetGap(8f).SetPadding(4f).Add(
-                InsightUi.SectionHeader("planner.header", L("AquacultureFishing.PondPlannerTitle"),
-                    L("AquacultureFishing.PondPlannerSubtitle"), null, null, true),
-                responsive);
+            return AquacultureUiComponents.Panel("planner.root",
+                InsightUi.Column("planner.root.content").SetGap(8f).SetPadding(4f).Add(
+                    InsightUi.SectionHeader("planner.header", L("AquacultureFishing.PondPlannerTitle"),
+                        L("AquacultureFishing.PondPlannerSubtitle"), null, null, true),
+                    responsive));
         }
 
         private InsightUiElement BuildAvailableRow(ThingDef def)

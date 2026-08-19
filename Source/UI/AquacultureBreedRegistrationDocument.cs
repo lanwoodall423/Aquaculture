@@ -22,14 +22,11 @@ namespace AquacultureFishing
             this.owner = owner;
             document = new InsightUiDocument("aquaculture.breed.registration.v2", BuildRoot())
             {
-                Theme = AquacultureInsightTheme.Create(),
-                Density = InsightUiDensity.Normal,
-                HighContrast = false,
-                ReducedMotion = false,
                 TrackDuplicateIds = true,
                 DrawBackground = true
             };
             Host = new InsightUiHost(document);
+            AquacultureInsightPresentation.Apply(document);
         }
 
         public InsightUiHost Host { get; private set; }
@@ -57,20 +54,21 @@ namespace AquacultureFishing
             registerButton = InsightUi.Button("breed-registration.register",
                 L("AquacultureFishing.BreedRegistrationRegister"), owner.AcceptForUi);
             return InsightUi.Scroll("breed-registration.scroll",
-                InsightUi.Column("breed-registration.content").SetGap(8f).SetPadding(8f).Add(
-                    InsightUi.SectionHeader("breed-registration.header",
-                        L("AquacultureFishing.BreedRegistrationTitle"),
-                        L("AquacultureFishing.BreedRegistrationSubtitle"), null, null, true),
-                    InsightUi.Label("breed-registration.name-label",
-                        L("AquacultureFishing.BreedRegistrationName"), InsightUiTextStyle.Label),
-                    nameField,
-                    InsightUi.Label("breed-registration.validation", string.Empty,
-                        InsightUiTextStyle.Caption).SetTextProvider(() => owner.ValidationMessageForUi),
-                    InsightUi.Row("breed-registration.actions").SetGap(8f).Add(
-                        InsightUi.Spacer("breed-registration.action-space").SetFlex(1f),
-                        InsightUi.Button("breed-registration.cancel",
-                            L("AquacultureFishing.BreedRegistrationCancel"), owner.CancelForUi),
-                        registerButton)));
+                AquacultureUiComponents.Panel("breed-registration",
+                    InsightUi.Column("breed-registration.content").SetGap(8f).Add(
+                        InsightUi.SectionHeader("breed-registration.header",
+                            L("AquacultureFishing.BreedRegistrationTitle"),
+                            L("AquacultureFishing.BreedRegistrationSubtitle"), null, null, true),
+                        InsightUi.Label("breed-registration.name-label",
+                            L("AquacultureFishing.BreedRegistrationName"), InsightUiTextStyle.Label),
+                        nameField,
+                        InsightUi.Label("breed-registration.validation", string.Empty,
+                            InsightUiTextStyle.Caption).SetTextProvider(() => owner.ValidationMessageForUi),
+                        InsightUi.Row("breed-registration.actions").SetGap(8f).Add(
+                            InsightUi.Spacer("breed-registration.action-space").SetFlex(1f),
+                            InsightUi.Button("breed-registration.cancel",
+                                L("AquacultureFishing.BreedRegistrationCancel"), owner.CancelForUi),
+                            registerButton))));
         }
 
         private static string L(string key) => key.Translate().ToString();

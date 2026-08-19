@@ -432,14 +432,15 @@ Deliver the living fish through the breed record in the Aquaculture Journal. Del
   <AquacultureFishing.SettingsMaximumMutationsTip>Maximum new mutations per offspring.</AquacultureFishing.SettingsMaximumMutationsTip>
   <AquacultureFishing.SettingsBreedReliabilityTip>Reliability of registered breed-defining traits.</AquacultureFishing.SettingsBreedReliabilityTip>
   <AquacultureFishing.SettingsPresentation>Presentation</AquacultureFishing.SettingsPresentation>
-  <AquacultureFishing.SettingsPresentationSubtitle>These preferences belong to this document and are not serialized gameplay settings.</AquacultureFishing.SettingsPresentationSubtitle>
+  <AquacultureFishing.SettingsPresentationSubtitle>Saved Aquaculture presentation preferences shared by every Aquaculture Insight Canvas document. These choices do not change gameplay values.</AquacultureFishing.SettingsPresentationSubtitle>
   <AquacultureFishing.SettingsHighContrast>High contrast</AquacultureFishing.SettingsHighContrast>
   <AquacultureFishing.SettingsHighContrastTip>Use the document's accessibility-adjusted theme.</AquacultureFishing.SettingsHighContrastTip>
   <AquacultureFishing.SettingsReducedMotion>Reduced motion</AquacultureFishing.SettingsReducedMotion>
   <AquacultureFishing.SettingsReducedMotionTip>Suppress document-local animated transitions.</AquacultureFishing.SettingsReducedMotionTip>
   <AquacultureFishing.SettingsMigrationBoundary>Migration boundary</AquacultureFishing.SettingsMigrationBoundary>
-  <AquacultureFishing.SettingsMigrationBoundaryBody>Journal, pond, fish traits, stocking planner, commission, and other substantial dialogs remain on their existing owners until later prompts.</AquacultureFishing.SettingsMigrationBoundaryBody>
+  <AquacultureFishing.SettingsMigrationBoundaryBody>Presentation preferences apply immediately to this settings document and to subsequently opened Aquaculture Canvas documents. They change readability and motion only; gameplay authorities, saves, and balance remain unchanged.</AquacultureFishing.SettingsMigrationBoundaryBody>
   <AquacultureFishing.SettingsResetTraitRules>Reset trait rules</AquacultureFishing.SettingsResetTraitRules>
+  <AquacultureFishing.SettingsResetComplete>{0} settings reset.</AquacultureFishing.SettingsResetComplete>
   <AquacultureFishing.SettingsTraitWeight>Weight</AquacultureFishing.SettingsTraitWeight>
   <AquacultureFishing.SettingsHoursValue>{0} h</AquacultureFishing.SettingsHoursValue>
   <AquacultureFishing.SettingsMultiplierValue>{0}x</AquacultureFishing.SettingsMultiplierValue>
@@ -478,6 +479,15 @@ Deliver the living fish through the breed record in the Aquaculture Journal. Del
   <AquacultureFishing.WorkspaceKnowledgeHidden>Identity is not yet known.</AquacultureFishing.WorkspaceKnowledgeHidden>
   <AquacultureFishing.WorkspaceHealthLegend>Priority order: lethal habitat, starvation, severe stress, reproduction blocker, advice, then healthy. Warnings also use text and controls, not color alone.</AquacultureFishing.WorkspaceHealthLegend>
   <AquacultureFishing.WorkspaceHealthSummary>Operational pond health</AquacultureFishing.WorkspaceHealthSummary>
+  <AquacultureFishing.WorkspaceAttentionTitle>Needs attention</AquacultureFishing.WorkspaceAttentionTitle>
+  <AquacultureFishing.WorkspaceCriticalAttentionTitle>Critical ponds need attention</AquacultureFishing.WorkspaceCriticalAttentionTitle>
+  <AquacultureFishing.WorkspaceAttentionEmpty>No pond snapshot is available yet. Open a map with ponds to see operational priorities.</AquacultureFishing.WorkspaceAttentionEmpty>
+  <AquacultureFishing.WorkspaceAttentionSummary>{0} critical, {1} warning pond(s).</AquacultureFishing.WorkspaceAttentionSummary>
+  <AquacultureFishing.WorkspaceNextAction>Next: open {0} — {1}</AquacultureFishing.WorkspaceNextAction>
+  <AquacultureFishing.WorkspaceAllHealthyTitle>All ponds are healthy</AquacultureFishing.WorkspaceAllHealthyTitle>
+  <AquacultureFishing.WorkspaceAllHealthyBody>No pond needs attention in the captured snapshot.</AquacultureFishing.WorkspaceAllHealthyBody>
+  <AquacultureFishing.WorkspacePrioritySection>Priority ponds</AquacultureFishing.WorkspacePrioritySection>
+  <AquacultureFishing.WorkspacePrioritySectionSubtitle>Critical conditions appear before warnings. Select a row to open the pond workspace and focus the pond.</AquacultureFishing.WorkspacePrioritySectionSubtitle>
   <AquacultureFishing.WorkspaceHealthyPonds>Healthy ponds</AquacultureFishing.WorkspaceHealthyPonds>
   <AquacultureFishing.WorkspaceWarningPonds>Warning ponds</AquacultureFishing.WorkspaceWarningPonds>
   <AquacultureFishing.WorkspaceCriticalPonds>Critical ponds</AquacultureFishing.WorkspaceCriticalPonds>
@@ -498,6 +508,23 @@ Deliver the living fish through the breed record in the Aquaculture Journal. Del
   <AquacultureFishing.WorkspacePondHealthy>Healthy</AquacultureFishing.WorkspacePondHealthy>
   <AquacultureFishing.WorkspacePondStatus>Priority</AquacultureFishing.WorkspacePondStatus>
   <AquacultureFishing.WorkspaceSearchPonds>Search ponds</AquacultureFishing.WorkspaceSearchPonds>
+  <AquacultureFishing.WorkspacePondFilter>Status filter</AquacultureFishing.WorkspacePondFilter>
+  <AquacultureFishing.WorkspacePondFilterTooltip>Filter by explicit health status; the list remains urgency-first within each result.</AquacultureFishing.WorkspacePondFilterTooltip>
+  <AquacultureFishing.WorkspacePondFilterAll>All ponds</AquacultureFishing.WorkspacePondFilterAll>
+  <AquacultureFishing.WorkspacePondFilterAttention>Needs attention</AquacultureFishing.WorkspacePondFilterAttention>
+  <AquacultureFishing.WorkspacePondFilterCritical>Critical only</AquacultureFishing.WorkspacePondFilterCritical>
+  <AquacultureFishing.WorkspacePondFilterHealthy>Healthy only</AquacultureFishing.WorkspacePondFilterHealthy>
+  <AquacultureFishing.WorkspaceClearPondFilter>Clear search and filter</AquacultureFishing.WorkspaceClearPondFilter>
+  <AquacultureFishing.WorkspaceNoMatchingPonds>No ponds match this search or status filter.</AquacultureFishing.WorkspaceNoMatchingPonds>
+  <AquacultureFishing.WorkspaceNoSpecies>No species have been captured.</AquacultureFishing.WorkspaceNoSpecies>
+  <AquacultureFishing.WorkspaceNoMatchingSpecies>No species match this search.</AquacultureFishing.WorkspaceNoMatchingSpecies>
+  <AquacultureFishing.WorkspaceNoBreeds>No registered breeds have been captured.</AquacultureFishing.WorkspaceNoBreeds>
+  <AquacultureFishing.WorkspaceNoMatchingBreeds>No breeds match this search.</AquacultureFishing.WorkspaceNoMatchingBreeds>
+  <AquacultureFishing.WorkspaceNoWaters>No prepared waters have been captured.</AquacultureFishing.WorkspaceNoWaters>
+  <AquacultureFishing.WorkspaceNoMatchingWaters>No prepared waters match this search.</AquacultureFishing.WorkspaceNoMatchingWaters>
+  <AquacultureFishing.WorkspaceOpenPondTooltip>Open the pond workspace, keep this pond selected, and focus it on the map.</AquacultureFishing.WorkspaceOpenPondTooltip>
+  <AquacultureFishing.WorkspaceFocusPond>Focus selected pond</AquacultureFishing.WorkspaceFocusPond>
+  <AquacultureFishing.WorkspaceOpenPlanner>Open stocking planner</AquacultureFishing.WorkspaceOpenPlanner>
   <AquacultureFishing.WorkspaceSearchSpecies>Search species</AquacultureFishing.WorkspaceSearchSpecies>
   <AquacultureFishing.WorkspaceSearchBreeds>Search breeds</AquacultureFishing.WorkspaceSearchBreeds>
   <AquacultureFishing.WorkspaceSearchWater>Search prepared waters</AquacultureFishing.WorkspaceSearchWater>
@@ -521,6 +548,20 @@ Deliver the living fish through the breed record in the Aquaculture Journal. Del
   <AquacultureFishing.WorkspaceResearchBreeding>Selective fish breeding</AquacultureFishing.WorkspaceResearchBreeding>
   <AquacultureFishing.WorkspacePondControls>Pond controls</AquacultureFishing.WorkspacePondControls>
   <AquacultureFishing.WorkspacePondControlsSubtitle>These settings change the selected pond through its existing callbacks.</AquacultureFishing.WorkspacePondControlsSubtitle>
+  <AquacultureFishing.WorkspacePondHealthGroup>Health and current state</AquacultureFishing.WorkspacePondHealthGroup>
+  <AquacultureFishing.WorkspacePondFeedingGroup>Feeding</AquacultureFishing.WorkspacePondFeedingGroup>
+  <AquacultureFishing.WorkspacePondHarvestingGroup>Harvesting</AquacultureFishing.WorkspacePondHarvestingGroup>
+  <AquacultureFishing.WorkspacePondBreedingGroup>Breeding</AquacultureFishing.WorkspacePondBreedingGroup>
+  <AquacultureFishing.WorkspacePondPopulationGroup>Population management</AquacultureFishing.WorkspacePondPopulationGroup>
+  <AquacultureFishing.WorkspaceTargetFeedDays>Target feed coverage</AquacultureFishing.WorkspaceTargetFeedDays>
+  <AquacultureFishing.WorkspaceTargetFeedDaysTooltip>Set how many days of prepared feed the selected pond should keep available.</AquacultureFishing.WorkspaceTargetFeedDaysTooltip>
+  <AquacultureFishing.WorkspaceFeedDaysValue>{0} days</AquacultureFishing.WorkspaceFeedDaysValue>
+  <AquacultureFishing.WorkspacePopulationLimit>Population limit</AquacultureFishing.WorkspacePopulationLimit>
+  <AquacultureFishing.WorkspacePopulationLimitTooltip>Set the maximum population target enforced by pond management.</AquacultureFishing.WorkspacePopulationLimitTooltip>
+  <AquacultureFishing.WorkspacePopulationLimitValue>{0} fish</AquacultureFishing.WorkspacePopulationLimitValue>
+  <AquacultureFishing.WorkspacePopulationTarget>Management target</AquacultureFishing.WorkspacePopulationTarget>
+  <AquacultureFishing.WorkspacePopulationTargetTooltip>Set the desired population for managed stocking and surplus handling.</AquacultureFishing.WorkspacePopulationTargetTooltip>
+  <AquacultureFishing.WorkspacePopulationTargetValue>{0} fish</AquacultureFishing.WorkspacePopulationTargetValue>
   <AquacultureFishing.WorkspaceBreedingMode>Breeding mode</AquacultureFishing.WorkspaceBreedingMode>
   <AquacultureFishing.WorkspaceAdultsOnly>Harvest adults only</AquacultureFishing.WorkspaceAdultsOnly>
   <AquacultureFishing.WorkspaceProtectFemales>Protect breeding females</AquacultureFishing.WorkspaceProtectFemales>
@@ -532,6 +573,7 @@ Deliver the living fish through the breed record in the Aquaculture Journal. Del
   <AquacultureFishing.WorkspaceConservationAuthority>Deferred Reality authority</AquacultureFishing.WorkspaceConservationAuthority>
   <AquacultureFishing.WorkspaceConservationAuthorityBody>Natural-water abundance, recovery, and regional context remain owned by Deferred Reality and the conservation map component. This page presents prepared views only.</AquacultureFishing.WorkspaceConservationAuthorityBody>
   <AquacultureFishing.WorkspaceCommissionRules>Commission authority</AquacultureFishing.WorkspaceCommissionRules>
+  <AquacultureFishing.WorkspaceCommissionAuthority>Commission status</AquacultureFishing.WorkspaceCommissionAuthority>
   <AquacultureFishing.WorkspaceCommissionRulesBody>Eligibility, requirements, deadlines, rewards, and delivery remain owned by the commission component.</AquacultureFishing.WorkspaceCommissionRulesBody>
   <AquacultureFishing.WorkspaceCommissionDisclosure>Knowledge and commission records are not duplicated here; use their owner for canonical browsing and delivery.</AquacultureFishing.WorkspaceCommissionDisclosure>
   <AquacultureFishing.WorkspaceBreedRules>Breed rules</AquacultureFishing.WorkspaceBreedRules>
@@ -540,15 +582,22 @@ Deliver the living fish through the breed record in the Aquaculture Journal. Del
   <AquacultureFishing.WorkspaceGeneration>Generation</AquacultureFishing.WorkspaceGeneration>
   <AquacultureFishing.WorkspaceSuccess>Success rate</AquacultureFishing.WorkspaceSuccess>
   <AquacultureFishing.WorkspaceDefiningTraits>Defining traits</AquacultureFishing.WorkspaceDefiningTraits>
+  <AquacultureFishing.WorkspaceBreedStable>Stable</AquacultureFishing.WorkspaceBreedStable>
+  <AquacultureFishing.WorkspaceBreedDeveloping>Developing</AquacultureFishing.WorkspaceBreedDeveloping>
+  <AquacultureFishing.WorkspaceBreedNeedsAttention>Needs attention</AquacultureFishing.WorkspaceBreedNeedsAttention>
   <AquacultureFishing.WorkspaceNoDefiningTraits>No defining traits recorded.</AquacultureFishing.WorkspaceNoDefiningTraits>
   <AquacultureFishing.WorkspaceWaterDetails>Water summary</AquacultureFishing.WorkspaceWaterDetails>
   <AquacultureFishing.WorkspaceWaterConservationSummary>{0} {1}  /  {2} {3}</AquacultureFishing.WorkspaceWaterConservationSummary>
+  <AquacultureFishing.WorkspaceWaterAtRisk>At risk</AquacultureFishing.WorkspaceWaterAtRisk>
+  <AquacultureFishing.WorkspaceWaterRecovering>Recovering</AquacultureFishing.WorkspaceWaterRecovering>
+  <AquacultureFishing.WorkspaceWaterStable>Stable</AquacultureFishing.WorkspaceWaterStable>
   <AquacultureFishing.WorkspaceSpeciesCount>species</AquacultureFishing.WorkspaceSpeciesCount>
   <AquacultureFishing.WorkspaceCommissionActive>Commission active</AquacultureFishing.WorkspaceCommissionActive>
   <AquacultureFishing.WorkspaceNoActiveCommission>No active commission.</AquacultureFishing.WorkspaceNoActiveCommission>
   <AquacultureFishing.WorkspaceNoCommissionRequirements>No commission requirements are active.</AquacultureFishing.WorkspaceNoCommissionRequirements>
   <AquacultureFishing.WorkspaceEligibleSpecimens>Eligible specimens</AquacultureFishing.WorkspaceEligibleSpecimens>
   <AquacultureFishing.WorkspaceKnownFacets>Known facets</AquacultureFishing.WorkspaceKnownFacets>
+  <AquacultureFishing.WorkspaceIdentityKnown>Identity known</AquacultureFishing.WorkspaceIdentityKnown>
   <AquacultureFishing.WorkspaceNoKnownFacets>No known facets are recorded.</AquacultureFishing.WorkspaceNoKnownFacets>
   <AquacultureFishing.WorkspaceKnowledgeStage>Knowledge stage</AquacultureFishing.WorkspaceKnowledgeStage>
   <AquacultureFishing.WorkspaceConfidence>Confidence</AquacultureFishing.WorkspaceConfidence>
@@ -571,6 +620,17 @@ Deliver the living fish through the breed record in the Aquaculture Journal. Del
   <AquacultureFishing.WorkspaceFishDossierSubtitle>Operational fish details inside the native inspection tab.</AquacultureFishing.WorkspaceFishDossierSubtitle>
   <AquacultureFishing.WorkspaceOpenKnowledge>Open Knowledge view</AquacultureFishing.WorkspaceOpenKnowledge>
   <AquacultureFishing.WorkspaceBackToJournal>Back to Aquaculture Journal</AquacultureFishing.WorkspaceBackToJournal>
+  <AquacultureFishing.WorkspaceKnowledgeKnown>Knowledge link available</AquacultureFishing.WorkspaceKnowledgeKnown>
+  <AquacultureFishing.WorkspaceDossierIdentity>Identity and lineage</AquacultureFishing.WorkspaceDossierIdentity>
+  <AquacultureFishing.WorkspaceDossierProduction>Production and yield</AquacultureFishing.WorkspaceDossierProduction>
+  <AquacultureFishing.WorkspaceDossierHealthHealthy>Healthy</AquacultureFishing.WorkspaceDossierHealthHealthy>
+  <AquacultureFishing.WorkspaceDossierHealthAttention>Needs attention</AquacultureFishing.WorkspaceDossierHealthAttention>
+  <AquacultureFishing.WorkspaceDossierHealthCritical>Critical condition</AquacultureFishing.WorkspaceDossierHealthCritical>
+  <AquacultureFishing.WorkspaceDossierHealthDead>Dead</AquacultureFishing.WorkspaceDossierHealthDead>
+  <AquacultureFishing.WorkspaceDossierHealthUnknown>Health unknown</AquacultureFishing.WorkspaceDossierHealthUnknown>
+  <AquacultureFishing.WorkspaceDossierHealthDeadBody>This fish is no longer alive.</AquacultureFishing.WorkspaceDossierHealthDeadBody>
+  <AquacultureFishing.WorkspaceDossierHealthUnknownBody>Food or habitat data is not available for this fish.</AquacultureFishing.WorkspaceDossierHealthUnknownBody>
+  <AquacultureFishing.WorkspaceDossierHealthSummary>Food reserve {0}; habitat fit {1}{2}.</AquacultureFishing.WorkspaceDossierHealthSummary>
   <AquacultureFishing.WorkspaceFoodReserve>Food reserve</AquacultureFishing.WorkspaceFoodReserve>
   <AquacultureFishing.WorkspaceHabitatFit>Habitat fit</AquacultureFishing.WorkspaceHabitatFit>
   <AquacultureFishing.WorkspaceStarvation>starvation pressure</AquacultureFishing.WorkspaceStarvation>

@@ -82,6 +82,7 @@ namespace AquacultureFishing
     {
         public const int CurrentCapacityModelVersion = 2;
         public const int CurrentTraitBreedingSettingsVersion = 1;
+        public const int CurrentPresentationSettingsVersion = 1;
         public const float DefaultWildExceptionalTraitChance = 0.20f;
         public const float DefaultParentalTraitInheritanceChance = 0.55f;
         public const int DefaultMaximumInheritedTraits = 2;
@@ -138,6 +139,23 @@ namespace AquacultureFishing
         public bool caustics = true;
         public bool pseudoDepth = true;
         public bool pondRipples = true;
+        // Aquaculture-owned player presentation preferences. These are intentionally separate from
+        // Insight Canvas global settings and do not change gameplay or balance semantics.
+        public int presentationDensity = AquaculturePresentationPreferences.DefaultDensityIndex;
+        public bool presentationHighContrast;
+        public bool presentationReducedMotion;
+        public int presentationSettingsVersion;
+
+        public AquaculturePresentationPreferences PresentationPreferences =>
+            AquaculturePresentationPreferences.FromSerializedValues(
+                presentationDensity, presentationHighContrast, presentationReducedMotion);
+
+        public void SetPresentationPreferences(AquaculturePresentationPreferences preferences)
+        {
+            presentationDensity = preferences.DensityIndex;
+            presentationHighContrast = preferences.HighContrast;
+            presentationReducedMotion = preferences.ReducedMotion;
+        }
 
         public FishTraitSetting GetTraitSetting(FishTraitDef trait, bool create = true)
         {
@@ -183,7 +201,11 @@ namespace AquacultureFishing
 
         public override void ExposeData()
         {
-            if (Scribe.mode == LoadSaveMode.Saving) traitBreedingSettingsVersion = CurrentTraitBreedingSettingsVersion;
+            if (Scribe.mode == LoadSaveMode.Saving)
+            {
+                traitBreedingSettingsVersion = CurrentTraitBreedingSettingsVersion;
+                presentationSettingsVersion = CurrentPresentationSettingsVersion;
+            }
             Scribe_Values.Look(ref dataVersion, "dataVersion", 1);
             Scribe_Values.Look(ref enableResearchProgression, "enableResearchProgression", true);
             Scribe_Values.Look(ref fishingDurationFactor, "fishingDurationFactor", 0.30f);
@@ -232,6 +254,11 @@ namespace AquacultureFishing
             Scribe_Values.Look(ref caustics, "caustics", true);
             Scribe_Values.Look(ref pseudoDepth, "pseudoDepth", true);
             Scribe_Values.Look(ref pondRipples, "pondRipples", true);
+            Scribe_Values.Look(ref presentationDensity, "presentationDensity",
+                AquaculturePresentationPreferences.DefaultDensityIndex);
+            Scribe_Values.Look(ref presentationHighContrast, "presentationHighContrast", false);
+            Scribe_Values.Look(ref presentationReducedMotion, "presentationReducedMotion", false);
+            Scribe_Values.Look(ref presentationSettingsVersion, "presentationSettingsVersion", 0);
             if (traitSettings == null) traitSettings = new List<FishTraitSetting>();
             if (fishExpertiseSettings == null) fishExpertiseSettings = new List<FishExpertiseSetting>();
             if (masks == null) masks = new List<FishMaskRecord>();
@@ -255,6 +282,13 @@ namespace AquacultureFishing
             else if (Scribe.mode == LoadSaveMode.Saving)
             {
                 capacityModelVersion = CurrentCapacityModelVersion;
+            }
+            if (Scribe.mode == LoadSaveMode.PostLoadInit &&
+                presentationSettingsVersion < CurrentPresentationSettingsVersion)
+            {
+                // There were no earlier serialized presentation keys. Missing values have already
+                // received the safe defaults above; retain any valid values and advance the marker.
+                presentationSettingsVersion = CurrentPresentationSettingsVersion;
             }
             dataVersion = 1;
             fishingDurationFactor = Mathf.Clamp(fishingDurationFactor, 0.1f, 1f);
@@ -282,6 +316,9 @@ namespace AquacultureFishing
             feedValuePerUnit = Mathf.Clamp(feedValuePerUnit, 0.005f, 1f);
             feederRange = Mathf.Clamp(feederRange, 1f, 30f);
             animaFishPerTree = Mathf.Clamp(animaFishPerTree, 1, 100);
+            presentationDensity = AquaculturePresentationPreferences.ClampDensityIndex(presentationDensity);
+            if (Scribe.mode == LoadSaveMode.Saving)
+                presentationSettingsVersion = CurrentPresentationSettingsVersion;
         }
     }
 

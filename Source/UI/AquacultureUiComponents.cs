@@ -3,7 +3,7 @@ using InsightCanvas;
 
 namespace AquacultureFishing
 {
-    /// <summary>Small stable-ID-scoped compositions shared by settings and future Insight Canvas screens.</summary>
+    /// <summary>Stable-ID-scoped compositions shared by all Aquaculture Insight Canvas screens.</summary>
     public static class AquacultureUiComponents
     {
         public static InsightUiElement Callout(string id, InsightUiCalloutSeverity severity, string title, string body)
@@ -14,6 +14,12 @@ namespace AquacultureFishing
         public static InsightUiElement Stat(string id, string label, string value)
         {
             return InsightUi.StatRow(AquacultureUiStableIds.For(id, "stat"), label, value);
+        }
+
+        /// <summary>Compact status pill whose text remains explicit in every contrast mode.</summary>
+        public static InsightUiElement Badge(string id, string label)
+        {
+            return InsightUi.Badge(AquacultureUiStableIds.For(id, "badge"), label ?? string.Empty);
         }
 
         public static InsightUiElement Meter(string id, string label, float current, float maximum, string valueText)
@@ -29,9 +35,29 @@ namespace AquacultureFishing
             return Callout(id, InsightUiCalloutSeverity.Info, title, body);
         }
 
+        /// <summary>Semantic status presentation that includes a readable status label as well as tone.</summary>
+        public static InsightUiElement Status(string id, AquacultureUiStatus status, string label, string body)
+        {
+            InsightUiCalloutSeverity severity;
+            switch (status)
+            {
+                case AquacultureUiStatus.Healthy: severity = InsightUiCalloutSeverity.Success; break;
+                case AquacultureUiStatus.Attention: severity = InsightUiCalloutSeverity.Warning; break;
+                case AquacultureUiStatus.Critical: severity = InsightUiCalloutSeverity.Error; break;
+                default: severity = InsightUiCalloutSeverity.Info; break;
+            }
+            return Callout(id, severity, label ?? string.Empty, body ?? string.Empty);
+        }
+
         public static InsightUiElement Empty(string id, string message)
         {
             return InsightUi.Empty(AquacultureUiStableIds.For(id, "empty"), message);
+        }
+
+        /// <summary>One restrained, document-local surface for a coherent content section.</summary>
+        public static InsightUiElement Panel(string id, InsightUiElement content)
+        {
+            return InsightUi.Surface(AquacultureUiStableIds.For(id, "panel"), content).SetPadding(10f);
         }
 
         public static InsightUiElement Description(string id, string text)
@@ -54,11 +80,18 @@ namespace AquacultureFishing
         public static InsightUiElement SliderSetting(string id, string label, string description,
             float minimum, float maximum, Func<float> getter, Action<float> setter, Func<float, string> formatter)
         {
-            InsightUiLabel value = InsightUi.Label(AquacultureUiStableIds.For(id, "value"), string.Empty,
-                InsightUiTextStyle.Caption).SetTextProvider(() => formatter(getter()));
             InsightUiSlider slider = InsightUi.Slider(AquacultureUiStableIds.For(id, "slider"), getter(), minimum, maximum)
                 .Bind(getter, setter);
-            slider.SetTooltip(description);
+            return SliderSetting(id, label, description, slider, () => formatter(getter()));
+        }
+
+        /// <summary>Wraps an existing slider with a live human-readable value and tooltip.</summary>
+        public static InsightUiElement SliderSetting(string id, string label, string description,
+            InsightUiSlider slider, Func<string> valueProvider)
+        {
+            InsightUiLabel value = InsightUi.Label(AquacultureUiStableIds.For(id, "value"), string.Empty,
+                InsightUiTextStyle.Caption).SetTextProvider(valueProvider);
+            if (slider != null) slider.SetTooltip(description);
             InsightUiStack header = InsightUi.Row(AquacultureUiStableIds.For(id, "header"))
                 .SetGap(8f)
                 .SetAlignment(InsightAlignment.Start, InsightAlignment.Center)
@@ -87,8 +120,11 @@ namespace AquacultureFishing
 
         public static InsightUiElement ResetButton(string id, string label, Action reset)
         {
-            return InsightUi.Button(AquacultureUiStableIds.For(id, "reset"), label, reset)
-                .SetMinSize(150f, 30f);
+            InsightUiElement button = InsightUi.Button(AquacultureUiStableIds.For(id, "reset"), label, reset)
+                .SetMinSize(150f, 30f)
+                .SetTooltip(label);
+            return InsightUi.Column(AquacultureUiStableIds.For(id, "reset-group")).SetGap(4f).Add(
+                InsightUi.Divider(AquacultureUiStableIds.For(id, "reset-divider")), button);
         }
 
         public static InsightUiElement Page(string id, string title, string subtitle, params InsightUiElement[] content)
@@ -97,7 +133,8 @@ namespace AquacultureFishing
                 .SetGap(10f)
                 .Add(InsightUi.SectionHeader(AquacultureUiStableIds.For(id, "header"), title, subtitle, null, null, true));
             column.Add(content);
-            return InsightUi.Scroll(AquacultureUiStableIds.For(id, "scroll"), column);
+            return InsightUi.Scroll(AquacultureUiStableIds.For(id, "scroll"),
+                Panel(id, column));
         }
     }
 }

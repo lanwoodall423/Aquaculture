@@ -9,7 +9,11 @@
       "covers": [
         { "kind": "csharp_type", "name": "AquacultureFishing.AquacultureMod" },
         { "kind": "csharp_type", "name": "AquacultureFishing.FishPondMapComponent" },
-        { "kind": "csharp_type", "name": "AquacultureFishing.NaturalFishPopulationMapComponent" }
+        { "kind": "csharp_type", "name": "AquacultureFishing.NaturalFishPopulationMapComponent" },
+        { "kind": "csharp_type", "name": "AquacultureFishing.MainTabWindow_AquacultureJournal" },
+        { "kind": "csharp_type", "name": "AquacultureFishing.FishTraitsTab" },
+        { "kind": "csharp_type", "name": "AquacultureFishing.AquacultureJournalWorkspaceDocument" },
+        { "kind": "csharp_type", "name": "AquacultureFishing.AquacultureFishDossierDocument" }
       ],
       "cost": "medium",
       "isolation": {
