@@ -210,3 +210,42 @@ gate was not executed.**
 Two earlier affected attempts were infrastructure/freshness failures while the
 DevBridge owner was restarting; they were not treated as application failures.
 The stabilized final run above is the authoritative current-source result.
+
+## Prompt 3 authority and release-safety revalidation — 2026-08-19
+
+This is the current worktree ledger for the Prompt 3 request. Historical
+closure entries above remain provenance only; this entry does not claim a clean
+commit or a complete interactive player review.
+
+| Check | Status | Evidence |
+|---|---|---|
+| Prompt 2 prerequisite | PASS | The prior Prompt 2 candidate had passing portable contracts, production smoke, and artifact freshness; its remaining interactive gate was explicitly recorded as unrun rather than treated as an implementation failure. |
+| Prompt 3 authority/scenario contracts | PASS | `DevTools/InsightCanvasUiTests.csproj` Release build and run passed. New A–H contracts cover research/Knowledge separation, event-conditioned pages, exact-diagnostic filters, initialized-fish gating, and stale-page fallback. |
+| Layout/scroll contracts | PASS | The same portable suite passed content-aware empty/few/many list sizing, bounded viewport rules, responsive master/detail math, stable selection, duplicate-ID diagnostics, density, high-contrast, and reduced-motion adoption contracts. |
+| Trait regression suite | PASS | `DevTools/TraitBreedingRules.Tests.csproj` Release build and executable suite passed. |
+| Localization | PASS | `DevTools\Test-AquacultureLocalization.ps1`; one English keyed language file and 581 referenced keys passed duplicate/missing-key validation. |
+| RimTest readiness | PASS | `rimtest doctor --json`; `status=ready`, catalog/rimctx/devbridge/rimerror `ok`, RimBridge `configured`. |
+| RimTest affected production build/runtime | PASS | Final owner workflow `rw-c457644011e44a4bb06a9f238500796d`, transaction `93a25af0ced24d13b32acb99efe0e269`, generation 335, run `run-bf55c82d0a2b4b3b8624006416e2cfea`, one smoke test passed/zero failed. Source fingerprint `2597d829aa5b3d12d8a376163544e73db82db5a5248d2e74a964c16152d44f92`; built/deployed SHA256 `d339634e4879556f8f7d9f7c017d559a97e4df022f39b03cacd5552e23769c00`; `loadedArtifactFreshnessProven=true`, proof `identical-deployment-hash-plus-owned-generation-state`. Selection was conservative with `RIMCONTEXT_INDEX_PARTIAL` and the declared smoke fallback. |
+| Supported interactive UI targets | NOT RUN | `rimtest capabilities --json` and `rimtest ui targets --json` returned `RIMBRIDGE_LEASE_REQUIRED` for generation 335. No supported target/screenshot/focus session was available. |
+| Width/density/accessibility live matrix | NOT RUN | Compact/wide, Comfortable/Normal/Compact, high-contrast, reduced-motion, keyboard focus, repeated open/close, and live list visual review were not executed through the supported workflow. |
+| Owner-scoped log inspection | NOT RUN | The successful smoke result emitted no failure diagnostic query, and the supported CLI exposes bounded log inspection through an active DevBridge lease. Direct Player.log reads are prohibited by the repository workflow; no unrestricted or lease-scoped log result is claimed here. |
+
+### Prompt 3 corrections
+
+- Exact pond metrics and the Critical filter now share the Industrial-plus-known-
+  health entitlement; the dossier also requires an initialized specimen before
+  exact health values are rendered.
+- The stocking planner filters its species catalog and prunes current/blueprint
+  plan entries unless identity, feeding, habitat, and pond-compatibility facts
+  are colony-known. Its owner forecast therefore cannot reveal hidden profile
+  data through rows, warnings, totals, or saved UI state.
+- Native pond causal summaries now fail closed to coarse observed status until
+  the same diagnostic entitlement is present. Managed colonies do not get
+  later-stage native page clutter, and pre-entitlement native metrics no longer
+  expose exact breeding/industrial diagnostics.
+
+Strict Prompt 3 verdict: **BLOCKED for release closure**. The tested source
+contracts, localization, build, owner smoke, and artifact freshness pass, but
+the required live UI/layout/accessibility/focus and owner-scoped log gates were
+not available through the supported RimTest lease. No live PASS is claimed for
+those gates.

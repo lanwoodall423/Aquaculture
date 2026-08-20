@@ -150,6 +150,34 @@ namespace AquacultureFishing
         }
     }
 
+    /// <summary>
+    /// Pure viewport math for Insight Canvas virtual lists. Empty lists collapse, short lists
+    /// measure to their content, and long lists receive a bounded virtualized viewport.
+    /// </summary>
+    public static class AquacultureUiListSizing
+    {
+        public static float HeightForCount(int itemCount, float rowHeight, float minimumHeight,
+            float maximumHeight)
+        {
+            if (itemCount <= 0) return 0f;
+
+            float safeRowHeight = IsFinite(rowHeight) ? Math.Max(0f, rowHeight) : 0f;
+            float safeMinimum = IsFinite(minimumHeight) ? Math.Max(0f, minimumHeight) : 0f;
+            float safeMaximum = IsFinite(maximumHeight) && maximumHeight > 0f
+                ? maximumHeight : float.PositiveInfinity;
+            safeMinimum = Math.Min(safeMinimum, safeMaximum);
+
+            float desired = itemCount * safeRowHeight;
+            if (float.IsInfinity(desired) || float.IsNaN(desired)) desired = safeMaximum;
+            return Math.Min(safeMaximum, Math.Max(safeMinimum, desired));
+        }
+
+        private static bool IsFinite(float value)
+        {
+            return !float.IsNaN(value) && !float.IsInfinity(value);
+        }
+    }
+
     /// <summary>Immutable display-only fish row snapshot. It contains no Thing or map ownership.</summary>
     public sealed class FishUiSnapshot
     {
@@ -550,6 +578,208 @@ namespace AquacultureFishing
         public bool Sterilized { get; private set; }
         public AquacultureDossierHealthState HealthState { get; private set; }
         public int Revision { get; private set; }
+    }
+
+    /// <summary>
+    /// Immutable presentation permissions for the Journal. Research fields describe capabilities;
+    /// knowledge/gameplay fields describe meaningful colony state. No simulation or knowledge data is
+    /// stored here.
+    /// </summary>
+    public sealed class AquacultureUiDisclosureSnapshot : IEquatable<AquacultureUiDisclosureSnapshot>
+    {
+        public AquacultureUiDisclosureSnapshot(bool pondkeepingAvailable, bool managedAquacultureAvailable,
+            bool industrialAquacultureAvailable, bool selectiveBreedingAvailable, bool hasPonds,
+            bool hasKnownSpecies, bool hasEstablishedSpecies, bool hasKnownHealth, bool hasKnownPopulation,
+            bool hasConservationKnowledge, bool hasBreeds, bool hasActiveCommission)
+        {
+            PondkeepingAvailable = pondkeepingAvailable;
+            ManagedAquacultureAvailable = managedAquacultureAvailable;
+            IndustrialAquacultureAvailable = industrialAquacultureAvailable;
+            SelectiveBreedingAvailable = selectiveBreedingAvailable;
+            HasPonds = hasPonds;
+            HasKnownSpecies = hasKnownSpecies;
+            HasEstablishedSpecies = hasEstablishedSpecies;
+            HasKnownHealth = hasKnownHealth;
+            HasKnownPopulation = hasKnownPopulation;
+            HasConservationKnowledge = hasConservationKnowledge;
+            HasBreeds = hasBreeds;
+            HasActiveCommission = hasActiveCommission;
+        }
+
+        public static AquacultureUiDisclosureSnapshot None => new AquacultureUiDisclosureSnapshot(
+            false, false, false, false, false, false, false, false, false, false, false, false);
+
+        public bool PondkeepingAvailable { get; private set; }
+        public bool ManagedAquacultureAvailable { get; private set; }
+        public bool IndustrialAquacultureAvailable { get; private set; }
+        public bool SelectiveBreedingAvailable { get; private set; }
+        public bool HasPonds { get; private set; }
+        public bool HasKnownSpecies { get; private set; }
+        public bool HasEstablishedSpecies { get; private set; }
+        public bool HasKnownHealth { get; private set; }
+        public bool HasKnownPopulation { get; private set; }
+        public bool HasConservationKnowledge { get; private set; }
+        public bool HasBreeds { get; private set; }
+        public bool HasActiveCommission { get; private set; }
+
+        public bool SpeciesPageVisible => true;
+        public bool PondsPageVisible => PondkeepingAvailable || HasPonds;
+        public bool BreedsPageVisible => SelectiveBreedingAvailable || HasBreeds;
+        public bool ConservationPageVisible => HasConservationKnowledge;
+        public bool CommissionsPageVisible => HasActiveCommission || HasBreeds;
+
+        public bool BasicPondFactsVisible => PondsPageVisible;
+        public bool ManagedFeedingVisible => ManagedAquacultureAvailable;
+        public bool ManagedHarvestingVisible => ManagedAquacultureAvailable;
+        public bool IndustrialDiagnosticsVisible => IndustrialAquacultureAvailable;
+        public bool PopulationManagementVisible => IndustrialAquacultureAvailable;
+        public bool SelectiveBreedingControlsVisible => SelectiveBreedingAvailable;
+
+        /// <summary>Industrial diagnostics still require a relevant learned health observation.</summary>
+        public bool PondDiagnosisVisible => IndustrialAquacultureAvailable && HasKnownHealth;
+        public bool ExactPondMetricsVisible => PondDiagnosisVisible;
+        public bool CriticalPondFilterVisible => PondDiagnosisVisible;
+
+        public IReadOnlyList<string> VisibleJournalPageIds
+        {
+            get
+            {
+                List<string> pages = new List<string> { "overview", "species" };
+                if (PondsPageVisible) pages.Add("ponds");
+                if (BreedsPageVisible) pages.Add("breeds");
+                if (ConservationPageVisible) pages.Add("conservation");
+                if (CommissionsPageVisible) pages.Add("commissions");
+                return pages.AsReadOnly();
+            }
+        }
+
+        public string ResolveActiveJournalPage(string requestedPage)
+        {
+            if (string.IsNullOrEmpty(requestedPage)) return "overview";
+            IReadOnlyList<string> pages = VisibleJournalPageIds;
+            for (int i = 0; i < pages.Count; i++)
+                if (pages[i] == requestedPage) return requestedPage;
+            return "overview";
+        }
+
+        public bool Equals(AquacultureUiDisclosureSnapshot other)
+        {
+            return other != null &&
+                PondkeepingAvailable == other.PondkeepingAvailable &&
+                ManagedAquacultureAvailable == other.ManagedAquacultureAvailable &&
+                IndustrialAquacultureAvailable == other.IndustrialAquacultureAvailable &&
+                SelectiveBreedingAvailable == other.SelectiveBreedingAvailable &&
+                HasPonds == other.HasPonds && HasKnownSpecies == other.HasKnownSpecies &&
+                HasEstablishedSpecies == other.HasEstablishedSpecies && HasKnownHealth == other.HasKnownHealth &&
+                HasKnownPopulation == other.HasKnownPopulation &&
+                HasConservationKnowledge == other.HasConservationKnowledge && HasBreeds == other.HasBreeds &&
+                HasActiveCommission == other.HasActiveCommission;
+        }
+
+        public override bool Equals(object obj) => Equals(obj as AquacultureUiDisclosureSnapshot);
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                int hash = PondkeepingAvailable ? 1 : 0;
+                hash = hash * 31 + (ManagedAquacultureAvailable ? 1 : 0);
+                hash = hash * 31 + (IndustrialAquacultureAvailable ? 1 : 0);
+                hash = hash * 31 + (SelectiveBreedingAvailable ? 1 : 0);
+                hash = hash * 31 + (HasPonds ? 1 : 0);
+                hash = hash * 31 + (HasKnownSpecies ? 1 : 0);
+                hash = hash * 31 + (HasEstablishedSpecies ? 1 : 0);
+                hash = hash * 31 + (HasKnownHealth ? 1 : 0);
+                hash = hash * 31 + (HasKnownPopulation ? 1 : 0);
+                hash = hash * 31 + (HasConservationKnowledge ? 1 : 0);
+                hash = hash * 31 + (HasBreeds ? 1 : 0);
+                return hash * 31 + (HasActiveCommission ? 1 : 0);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Immutable, per-fish field permissions. Research grants measuring/acting capability while
+    /// Knowledge Framework facets grant learned interpretation of identity and biology.
+    /// </summary>
+    public sealed class AquacultureFishDossierDisclosure : IEquatable<AquacultureFishDossierDisclosure>
+    {
+        public AquacultureFishDossierDisclosure(bool initialized, bool identityKnown, bool traitsKnown,
+            bool sizeKnown, bool healthKnown, bool breedingKnown, bool hasRegisteredBreed, bool sterilized,
+            bool managedAquacultureAvailable, bool industrialAquacultureAvailable,
+            bool selectiveBreedingAvailable)
+        {
+            Initialized = initialized;
+            IdentityKnown = identityKnown;
+            TraitsKnown = traitsKnown;
+            SizeKnown = sizeKnown;
+            HealthKnown = healthKnown;
+            BreedingKnown = breedingKnown;
+            HasRegisteredBreed = hasRegisteredBreed;
+            Sterilized = sterilized;
+            ManagedAquacultureAvailable = managedAquacultureAvailable;
+            IndustrialAquacultureAvailable = industrialAquacultureAvailable;
+            SelectiveBreedingAvailable = selectiveBreedingAvailable;
+        }
+
+        public bool Initialized { get; private set; }
+        public bool IdentityKnown { get; private set; }
+        public bool TraitsKnown { get; private set; }
+        public bool SizeKnown { get; private set; }
+        public bool HealthKnown { get; private set; }
+        public bool BreedingKnown { get; private set; }
+        public bool HasRegisteredBreed { get; private set; }
+        public bool Sterilized { get; private set; }
+        public bool ManagedAquacultureAvailable { get; private set; }
+        public bool IndustrialAquacultureAvailable { get; private set; }
+        public bool SelectiveBreedingAvailable { get; private set; }
+
+        public bool SpeciesIdentityVisible => IdentityKnown;
+        public bool SexVisible => Initialized;
+        public bool LifeStageVisible => Initialized;
+        public bool TraitsVisible => Initialized && TraitsKnown;
+        public bool BreedVisible => Initialized && HasRegisteredBreed;
+        public bool GenerationVisible => Initialized && HasRegisteredBreed && BreedingKnown;
+        public bool ExactHealthMetricsVisible => Initialized && IndustrialAquacultureAvailable && HealthKnown;
+        public bool FoodReserveVisible => ExactHealthMetricsVisible;
+        public bool HabitatFitVisible => ExactHealthMetricsVisible;
+        public bool StarvationStateVisible => ExactHealthMetricsVisible;
+        public bool HealthClassificationVisible => Initialized;
+        public bool ExpectedMeatYieldVisible => Initialized && ManagedAquacultureAvailable && IdentityKnown && SizeKnown;
+        public bool SterilizationVisible => Initialized &&
+            (Sterilized || (SelectiveBreedingAvailable && BreedingKnown));
+        public bool KnowledgeVisible => IdentityKnown;
+        public bool ProductionGroupVisible => ExpectedMeatYieldVisible || SterilizationVisible;
+
+        public bool Equals(AquacultureFishDossierDisclosure other)
+        {
+            return other != null && Initialized == other.Initialized && IdentityKnown == other.IdentityKnown &&
+                TraitsKnown == other.TraitsKnown && SizeKnown == other.SizeKnown && HealthKnown == other.HealthKnown &&
+                BreedingKnown == other.BreedingKnown && HasRegisteredBreed == other.HasRegisteredBreed &&
+                Sterilized == other.Sterilized && ManagedAquacultureAvailable == other.ManagedAquacultureAvailable &&
+                IndustrialAquacultureAvailable == other.IndustrialAquacultureAvailable &&
+                SelectiveBreedingAvailable == other.SelectiveBreedingAvailable;
+        }
+
+        public override bool Equals(object obj) => Equals(obj as AquacultureFishDossierDisclosure);
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                int hash = Initialized ? 1 : 0;
+                hash = hash * 31 + (IdentityKnown ? 1 : 0);
+                hash = hash * 31 + (TraitsKnown ? 1 : 0);
+                hash = hash * 31 + (SizeKnown ? 1 : 0);
+                hash = hash * 31 + (HealthKnown ? 1 : 0);
+                hash = hash * 31 + (BreedingKnown ? 1 : 0);
+                hash = hash * 31 + (HasRegisteredBreed ? 1 : 0);
+                hash = hash * 31 + (Sterilized ? 1 : 0);
+                hash = hash * 31 + (ManagedAquacultureAvailable ? 1 : 0);
+                hash = hash * 31 + (IndustrialAquacultureAvailable ? 1 : 0);
+                return hash * 31 + (SelectiveBreedingAvailable ? 1 : 0);
+            }
+        }
     }
 
     /// <summary>Pure planner output copied from the authoritative forecast calculation.</summary>

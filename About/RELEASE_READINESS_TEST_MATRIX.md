@@ -10,6 +10,11 @@
 > The owner has selected GPL-3.0-or-later for Aquaculture and waived the
 > dedicated production-art requirement for this candidate.
 
+> **Current worktree addendum (2026-08-19):** The historical closure rows below
+> are retained for provenance. The current Prompt 3 authority/scenario result
+> is the dated ledger at the end of this file; it is based on the dirty shared
+> worktree and does not claim a clean commit or live interactive UI evidence.
+
 ## Prompt 3 closure evidence ledger
 
 | Gate | Current status | Evidence/boundary |
@@ -160,3 +165,19 @@ environment failures prevent a PASS verdict. Production art is waived for this
 candidate and is not part of the remaining engineering blockers.
 Do not create `About/BETA_TEST_PLAN.md` until those blockers are cleared and the
 verdict is exactly `PASS — ready for external RC/beta testing`.
+
+## Prompt 3 current worktree authority gate — 2026-08-19
+
+| Gate | Status | Current evidence/boundary |
+|---|---|---|
+| Prompt 2 prerequisite | PASS | Prior Prompt 2 portable/owner smoke and freshness evidence passed; the explicitly unrun interactive gate was not relabeled. |
+| Authority matrix and A–H logical scenarios | PASS | Portable Insight Canvas contracts passed research/Knowledge separation, event-conditioned navigation, exact-diagnostic filtering, initialized dossier state, and stale-page fallback. |
+| Layout invariants | PASS (portable) | Content-aware empty/few/many lists, bounded virtualization, master/detail scroll ownership, responsive math, stable selection, presentation preferences, and duplicate-ID contracts passed. |
+| Localization and production build | PASS | Localization validator passed 581 keys; RimTest built the current source and reported a matching deployed artifact. |
+| RimTest affected smoke | PASS | `rw-c457644011e44a4bb06a9f238500796d`, generation 335, `run-bf55c82d0a2b4b3b8624006416e2cfea`, one passed/zero failed; source fingerprint `2597d829aa5b3d12d8a376163544e73db82db5a5248d2e74a964c16152d44f92`; built/deployed SHA256 `d339634e4879556f8f7d9f7c017d559a97e4df022f39b03cacd5552e23769c00`; `loadedArtifactFreshnessProven=true`. |
+| Live progression/UI/layout matrix | NOT RUN | `rimtest capabilities --json` and `rimtest ui targets --json` were blocked by `RIMBRIDGE_LEASE_REQUIRED` for generation 335; no width, density, focus, screenshot, or repeated open/close session ran. |
+| Duplicate/render/focus/log gate | NOT RUN | Portable duplicate-ID contracts passed, but no lease-scoped live diagnostic query was available. Direct Player.log inspection is outside the repository workflow. |
+
+Current release decision: **BLOCKED**. The source-level authority corrections and
+owner smoke are current PASS evidence, while the required interactive and
+owner-scoped diagnostic gates remain unproven.

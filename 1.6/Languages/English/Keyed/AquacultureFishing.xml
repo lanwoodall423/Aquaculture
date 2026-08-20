@@ -71,6 +71,7 @@
   <AquacultureFishing.PondPlannerUnsupported>Plan is physically possible but ecologically unsupported; {0} support is limiting.</AquacultureFishing.PondPlannerUnsupported>
   <AquacultureFishing.PondPhysicalSpaceShort>Physical space</AquacultureFishing.PondPhysicalSpaceShort>
   <AquacultureFishing.PondSustainableShort>Sustainable now</AquacultureFishing.PondSustainableShort>
+  <AquacultureFishing.PondCapacityShort>Pond capacity</AquacultureFishing.PondCapacityShort>
   <AquacultureFishing.PondIndustrialShort>Industrial support</AquacultureFishing.PondIndustrialShort>
   <AquacultureFishing.PondWorkShort>Harvestable / pending work</AquacultureFishing.PondWorkShort>
   <AquacultureFishing.PondCausalTitle>Why this pond is succeeding or failing</AquacultureFishing.PondCausalTitle>
@@ -215,6 +216,7 @@ Habitat: {6}</AquacultureFishing.PondFishStats>
   <AquacultureFishing.PondPlannerPlannedWater>Planned water</AquacultureFishing.PondPlannerPlannedWater>
   <AquacultureFishing.PondPlannerWaterTip>This changes the forecast only. Empty ponds can be refilled through basic management.</AquacultureFishing.PondPlannerWaterTip>
   <AquacultureFishing.PondPlannerAvailableSpecies>Available species</AquacultureFishing.PondPlannerAvailableSpecies>
+  <AquacultureFishing.PondPlannerNoAvailableSpecies>No matching species are available.</AquacultureFishing.PondPlannerNoAvailableSpecies>
   <AquacultureFishing.PondPlannerSpeciesMeta>{0} | {1}</AquacultureFishing.PondPlannerSpeciesMeta>
   <AquacultureFishing.PondPlannerPlannedStock>Planned stock</AquacultureFishing.PondPlannerPlannedStock>
   <AquacultureFishing.PondPlannerTotals>{0} species | {1} fish</AquacultureFishing.PondPlannerTotals>
@@ -465,6 +467,7 @@ Deliver the living fish through the breed record in the Aquaculture Journal. Del
   <AquacultureFishing.WorkspaceBreedsSubtitle>Registered populations, lineage metrics, and defining traits.</AquacultureFishing.WorkspaceBreedsSubtitle>
   <AquacultureFishing.WorkspaceConservation>Conservation</AquacultureFishing.WorkspaceConservation>
   <AquacultureFishing.WorkspaceConservationSubtitle>Prepared natural-water views and recovery context.</AquacultureFishing.WorkspaceConservationSubtitle>
+  <AquacultureFishing.WorkspaceConservationDetail>Water detail</AquacultureFishing.WorkspaceConservationDetail>
   <AquacultureFishing.WorkspaceCommissions>Commissions</AquacultureFishing.WorkspaceCommissions>
   <AquacultureFishing.WorkspaceCommissionsSubtitle>Current collector requirements and eligibility status.</AquacultureFishing.WorkspaceCommissionsSubtitle>
   <AquacultureFishing.WorkspaceDiscovered>Species discovered</AquacultureFishing.WorkspaceDiscovered>
@@ -533,8 +536,9 @@ Deliver the living fish through the breed record in the Aquaculture Journal. Del
   <AquacultureFishing.WorkspaceSelectBreed>Select a breed</AquacultureFishing.WorkspaceSelectBreed>
   <AquacultureFishing.WorkspaceSelectWater>Select a prepared water</AquacultureFishing.WorkspaceSelectWater>
   <AquacultureFishing.WorkspacePondDetail>Pond detail</AquacultureFishing.WorkspacePondDetail>
-  <AquacultureFishing.WorkspacePondDetailSubtitle>Health causes are captured before rendering; controls call the pond authority.</AquacultureFishing.WorkspacePondDetailSubtitle>
+  <AquacultureFishing.WorkspacePondDetailSubtitle>Current observations are captured before rendering; available controls call the pond authority.</AquacultureFishing.WorkspacePondDetailSubtitle>
   <AquacultureFishing.WorkspacePondSummary>{0}: {1}   {2} / {3}   {4} C</AquacultureFishing.WorkspacePondSummary>
+  <AquacultureFishing.WorkspacePondBasicSummary>{0}: {1}   {2} / {3}</AquacultureFishing.WorkspacePondBasicSummary>
   <AquacultureFishing.WorkspacePondPopulationValue>{0} / {1}</AquacultureFishing.WorkspacePondPopulationValue>
   <AquacultureFishing.WorkspaceFeedHoursValue>{0} h</AquacultureFishing.WorkspaceFeedHoursValue>
   <AquacultureFishing.WorkspaceFeedReserve>Feed reserve</AquacultureFishing.WorkspaceFeedReserve>
@@ -553,6 +557,8 @@ Deliver the living fish through the breed record in the Aquaculture Journal. Del
   <AquacultureFishing.WorkspacePondHarvestingGroup>Harvesting</AquacultureFishing.WorkspacePondHarvestingGroup>
   <AquacultureFishing.WorkspacePondBreedingGroup>Breeding</AquacultureFishing.WorkspacePondBreedingGroup>
   <AquacultureFishing.WorkspacePondPopulationGroup>Population management</AquacultureFishing.WorkspacePondPopulationGroup>
+  <AquacultureFishing.WorkspacePondObservedDistress>Fish appear distressed; inspect the pond for an observable cause.</AquacultureFishing.WorkspacePondObservedDistress>
+  <AquacultureFishing.WorkspacePondDiagnosisCoarse>A feeding or habitat problem is suspected.</AquacultureFishing.WorkspacePondDiagnosisCoarse>
   <AquacultureFishing.WorkspaceTargetFeedDays>Target feed coverage</AquacultureFishing.WorkspaceTargetFeedDays>
   <AquacultureFishing.WorkspaceTargetFeedDaysTooltip>Set how many days of prepared feed the selected pond should keep available.</AquacultureFishing.WorkspaceTargetFeedDaysTooltip>
   <AquacultureFishing.WorkspaceFeedDaysValue>{0} days</AquacultureFishing.WorkspaceFeedDaysValue>
@@ -587,6 +593,7 @@ Deliver the living fish through the breed record in the Aquaculture Journal. Del
   <AquacultureFishing.WorkspaceBreedNeedsAttention>Needs attention</AquacultureFishing.WorkspaceBreedNeedsAttention>
   <AquacultureFishing.WorkspaceNoDefiningTraits>No defining traits recorded.</AquacultureFishing.WorkspaceNoDefiningTraits>
   <AquacultureFishing.WorkspaceWaterDetails>Water summary</AquacultureFishing.WorkspaceWaterDetails>
+  <AquacultureFishing.WorkspaceWaterAbundanceHidden>Abundance is not yet measured</AquacultureFishing.WorkspaceWaterAbundanceHidden>
   <AquacultureFishing.WorkspaceWaterConservationSummary>{0} {1}  /  {2} {3}</AquacultureFishing.WorkspaceWaterConservationSummary>
   <AquacultureFishing.WorkspaceWaterAtRisk>At risk</AquacultureFishing.WorkspaceWaterAtRisk>
   <AquacultureFishing.WorkspaceWaterRecovering>Recovering</AquacultureFishing.WorkspaceWaterRecovering>
@@ -630,6 +637,7 @@ Deliver the living fish through the breed record in the Aquaculture Journal. Del
   <AquacultureFishing.WorkspaceDossierHealthUnknown>Health unknown</AquacultureFishing.WorkspaceDossierHealthUnknown>
   <AquacultureFishing.WorkspaceDossierHealthDeadBody>This fish is no longer alive.</AquacultureFishing.WorkspaceDossierHealthDeadBody>
   <AquacultureFishing.WorkspaceDossierHealthUnknownBody>Food or habitat data is not available for this fish.</AquacultureFishing.WorkspaceDossierHealthUnknownBody>
+  <AquacultureFishing.WorkspaceDossierHealthObservedBody>Observed condition: {0}. Exact reserves require learned health data and industrial diagnostics.</AquacultureFishing.WorkspaceDossierHealthObservedBody>
   <AquacultureFishing.WorkspaceDossierHealthSummary>Food reserve {0}; habitat fit {1}{2}.</AquacultureFishing.WorkspaceDossierHealthSummary>
   <AquacultureFishing.WorkspaceFoodReserve>Food reserve</AquacultureFishing.WorkspaceFoodReserve>
   <AquacultureFishing.WorkspaceHabitatFit>Habitat fit</AquacultureFishing.WorkspaceHabitatFit>

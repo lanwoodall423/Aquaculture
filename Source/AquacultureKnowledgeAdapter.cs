@@ -773,7 +773,7 @@ namespace AquacultureFishing
                 (colony ? "colony" : "personal"));
         }
 
-        private static bool IsPlayerReadableTrait(string name)
+        public static bool IsPlayerReadableTrait(string name)
         {
             return !name.NullOrEmpty() && (name.StartsWith("AF_Color_", StringComparison.Ordinal) ||
                 name.StartsWith("AF_Pattern_", StringComparison.Ordinal) || name.StartsWith("AF_Scale_", StringComparison.Ordinal) ||

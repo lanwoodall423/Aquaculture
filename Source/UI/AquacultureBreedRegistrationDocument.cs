@@ -55,7 +55,7 @@ namespace AquacultureFishing
                 L("AquacultureFishing.BreedRegistrationRegister"), owner.AcceptForUi);
             return InsightUi.Scroll("breed-registration.scroll",
                 AquacultureUiComponents.Panel("breed-registration",
-                    InsightUi.Column("breed-registration.content").SetGap(8f).Add(
+                    InsightUi.Column("breed-registration.content").SetGap(AquacultureUiSpacing.Section).Add(
                         InsightUi.SectionHeader("breed-registration.header",
                             L("AquacultureFishing.BreedRegistrationTitle"),
                             L("AquacultureFishing.BreedRegistrationSubtitle"), null, null, true),
@@ -64,7 +64,7 @@ namespace AquacultureFishing
                         nameField,
                         InsightUi.Label("breed-registration.validation", string.Empty,
                             InsightUiTextStyle.Caption).SetTextProvider(() => owner.ValidationMessageForUi),
-                        InsightUi.Row("breed-registration.actions").SetGap(8f).Add(
+                        InsightUi.Row("breed-registration.actions").SetGap(AquacultureUiSpacing.Row).Add(
                             InsightUi.Spacer("breed-registration.action-space").SetFlex(1f),
                             InsightUi.Button("breed-registration.cancel",
                                 L("AquacultureFishing.BreedRegistrationCancel"), owner.CancelForUi),

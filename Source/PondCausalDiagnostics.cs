@@ -309,6 +309,13 @@ namespace AquacultureFishing
 
     public static class PondCausalUi
     {
+        public static bool ExactDiagnosticsVisible()
+        {
+            if (!AquacultureProgression.IsAvailable("AF_IndustrialAquaculture")) return false;
+            AquacultureJournalViewSnapshot journal = AquacultureSnapshotCache.Journal(null, true);
+            return journal?.species?.Any(item => AquacultureUiDisclosure.HasFacet(item, "health")) == true;
+        }
+
         public static float DrawSafetySummary(Rect rect, PondMenuSnapshot snapshot)
         {
             PondCausalSummary summary = snapshot?.causalSummary;
@@ -318,6 +325,16 @@ namespace AquacultureFishing
             Widgets.Label(new Rect(rect.x + 10f, rect.y + 7f, rect.width - 20f, 26f),
                 "AquacultureFishing.PondSafetyTitle".Translate());
             Text.Font = GameFont.Small;
+            if (!ExactDiagnosticsVisible())
+            {
+                GUI.color = summary.issues.Count == 0 ? new Color(0.55f, 0.86f, 0.62f) : Color.white;
+                Widgets.Label(new Rect(rect.x + 10f, rect.y + 36f, rect.width - 20f, 24f),
+                    summary.issues.Count == 0
+                        ? "AquacultureFishing.WorkspacePondHealthy".Translate()
+                        : "AquacultureFishing.WorkspacePondObservedDistress".Translate());
+                GUI.color = Color.white;
+                return 68f;
+            }
             int visible = Mathf.Min(3, summary.issues.Count);
             if (visible == 0)
             {
@@ -343,21 +360,30 @@ namespace AquacultureFishing
         {
             PondCausalSummary summary = snapshot?.causalSummary;
             if (summary == null) return 0f;
+            if (!ExactDiagnosticsVisible()) return DrawCoarseSummary(rect, snapshot);
+
+            bool showBreeding = AquacultureProgression.IsAvailable("AF_SelectiveBreeding");
+            List<PondCausalIssue> visibleIssues = summary.issues
+                .Where(issue => showBreeding || issue?.priority != PondCausalPriority.Reproduction).ToList();
             Widgets.DrawMenuSection(rect);
             Text.Font = GameFont.Medium;
             Widgets.Label(new Rect(rect.x + 10f, rect.y + 7f, rect.width - 20f, 28f),
                 "AquacultureFishing.PondCausalTitle".Translate());
             Text.Font = GameFont.Small;
-            Widgets.Label(new Rect(rect.x + 10f, rect.y + 37f, rect.width - 20f, 22f), summary.populationLine);
-            Widgets.Label(new Rect(rect.x + 10f, rect.y + 59f, rect.width - 20f, 22f), summary.foodLine);
-            Widgets.Label(new Rect(rect.x + 10f, rect.y + 81f, rect.width - 20f, 22f), summary.waterLine);
-            Widgets.Label(new Rect(rect.x + 10f, rect.y + 103f, rect.width - 20f, 22f), summary.temperatureLine);
-            Widgets.Label(new Rect(rect.x + 10f, rect.y + 125f, rect.width - 20f, 22f), summary.habitatLine);
-            Widgets.Label(new Rect(rect.x + 10f, rect.y + 147f, rect.width - 20f, 22f), summary.breedingLine);
-            if (!string.IsNullOrEmpty(summary.nextBreedingLine))
-                Widgets.Label(new Rect(rect.x + 10f, rect.y + 169f, rect.width - 20f, 22f), summary.nextBreedingLine);
-            float issueY = rect.y + (string.IsNullOrEmpty(summary.nextBreedingLine) ? 169f : 191f);
-            if (summary.issues.Count == 0)
+            List<string> lines = new List<string>
+            {
+                summary.populationLine, summary.foodLine, summary.waterLine,
+                summary.temperatureLine, summary.habitatLine
+            };
+            if (showBreeding)
+            {
+                lines.Add(summary.breedingLine);
+                if (!string.IsNullOrEmpty(summary.nextBreedingLine)) lines.Add(summary.nextBreedingLine);
+            }
+            for (int i = 0; i < lines.Count; i++)
+                Widgets.Label(new Rect(rect.x + 10f, rect.y + 37f + i * 22f, rect.width - 20f, 22f), lines[i]);
+            float issueY = rect.y + 37f + lines.Count * 22f;
+            if (visibleIssues.Count == 0)
             {
                 GUI.color = new Color(0.55f, 0.86f, 0.62f);
                 Widgets.Label(new Rect(rect.x + 10f, issueY, rect.width - 20f, 22f),
@@ -365,10 +391,10 @@ namespace AquacultureFishing
                 GUI.color = Color.white;
                 return issueY - rect.y + 28f;
             }
-            int visible = Mathf.Min(3, summary.issues.Count);
+            int visible = Mathf.Min(3, visibleIssues.Count);
             for (int i = 0; i < visible; i++)
             {
-                PondCausalIssue issue = summary.issues[i];
+                PondCausalIssue issue = visibleIssues[i];
                 Rect row = new Rect(rect.x + 8f, issueY + i * 28f, rect.width - 16f, 26f);
                 GUI.color = issue.Color;
                 GUI.DrawTexture(new Rect(row.x, row.y + 3f, 20f, 20f), issue.Icon, ScaleMode.ScaleToFit);
@@ -384,6 +410,25 @@ namespace AquacultureFishing
                 TooltipHandler.TipRegion(row, issue.text);
             }
             return issueY - rect.y + visible * 28f + 4f;
+        }
+
+        private static float DrawCoarseSummary(Rect rect, PondMenuSnapshot snapshot)
+        {
+            Widgets.DrawMenuSection(rect);
+            Text.Font = GameFont.Medium;
+            Widgets.Label(new Rect(rect.x + 10f, rect.y + 7f, rect.width - 20f, 28f),
+                "AquacultureFishing.PondCausalTitle".Translate());
+            Text.Font = GameFont.Small;
+            Widgets.Label(new Rect(rect.x + 10f, rect.y + 37f, rect.width - 20f, 22f),
+                "AquacultureFishing.PondPhysicalSpaceShort".Translate() + ": " +
+                snapshot.population + " / " + snapshot.capacity);
+            GUI.color = snapshot.causalSummary?.issues?.Count > 0 ? Color.white : new Color(0.55f, 0.86f, 0.62f);
+            Widgets.Label(new Rect(rect.x + 10f, rect.y + 59f, rect.width - 20f, 22f),
+                snapshot.causalSummary?.issues?.Count > 0
+                    ? "AquacultureFishing.WorkspacePondObservedDistress".Translate()
+                    : "AquacultureFishing.WorkspacePondHealthy".Translate());
+            GUI.color = Color.white;
+            return 92f;
         }
     }
 }

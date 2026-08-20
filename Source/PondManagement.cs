@@ -821,11 +821,23 @@ namespace AquacultureFishing
             Widgets.Label(new Rect(rect.x, rect.y, rect.width, 34f), "AquacultureFishing.PondManagementTitle".Translate());
             Text.Font = GameFont.Small;
             float tabY = rect.y + 40f;
-            float tabWidth = (rect.width - 12f) / 4f;
-            DrawPageButton(new Rect(rect.x, tabY, tabWidth, 34f), 0, "AquacultureFishing.PondPageBasic".Translate().ToString());
-            DrawPageButton(new Rect(rect.x + tabWidth + 4f, tabY, tabWidth, 34f), 1, "AquacultureFishing.PondPageAdvanced".Translate().ToString());
-            DrawPageButton(new Rect(rect.x + (tabWidth + 4f) * 2f, tabY, tabWidth, 34f), 2, "AquacultureFishing.PondPageBreeding".Translate().ToString());
-            DrawPageButton(new Rect(rect.x + (tabWidth + 4f) * 3f, tabY, tabWidth, 34f), 3, "AquacultureFishing.PondPagePlanner".Translate().ToString());
+            bool industrialAvailable = AquacultureProgression.IsAvailable("AF_IndustrialAquaculture");
+            bool selectiveAvailable = AquacultureProgression.IsAvailable("AF_SelectiveBreeding");
+            if ((page == 1 || page == 3) && !industrialAvailable || page == 2 && !selectiveAvailable) page = 0;
+            int tabCount = 1 + (industrialAvailable ? 2 : 0) + (selectiveAvailable ? 1 : 0);
+            float tabWidth = (rect.width - (tabCount - 1) * 4f) / tabCount;
+            int visibleTab = 0;
+            DrawPageButton(new Rect(rect.x + visibleTab++ * (tabWidth + 4f), tabY, tabWidth, 34f),
+                0, "AquacultureFishing.PondPageBasic".Translate().ToString());
+            if (industrialAvailable)
+                DrawPageButton(new Rect(rect.x + visibleTab++ * (tabWidth + 4f), tabY, tabWidth, 34f),
+                    1, "AquacultureFishing.PondPageAdvanced".Translate().ToString());
+            if (selectiveAvailable)
+                DrawPageButton(new Rect(rect.x + visibleTab++ * (tabWidth + 4f), tabY, tabWidth, 34f),
+                    2, "AquacultureFishing.PondPageBreeding".Translate().ToString());
+            if (industrialAvailable)
+                DrawPageButton(new Rect(rect.x + visibleTab * (tabWidth + 4f), tabY, tabWidth, 34f),
+                    3, "AquacultureFishing.PondPagePlanner".Translate().ToString());
 
             PondMenuSnapshot snapshot = component.MenuSnapshotAt(pond.Position) ?? new PondMenuSnapshot();
             Rect content = new Rect(rect.x, tabY + 44f, rect.width, rect.height - 84f);
@@ -846,6 +858,10 @@ namespace AquacultureFishing
         private static void DrawBasicPage(Rect rect, PondProxyThing pond, FishPondMapComponent component,
             PondMenuSnapshot snapshot, Action<int> navigate)
         {
+            bool industrialAvailable = AquacultureProgression.IsAvailable("AF_IndustrialAquaculture");
+            bool selectiveAvailable = AquacultureProgression.IsAvailable("AF_SelectiveBreeding");
+            int pendingWork = snapshot.pendingHarvest + (selectiveAvailable
+                ? snapshot.pendingEggRemoval + snapshot.pendingSterilization : 0);
             DrawMetrics(rect, new[]
             {
                 new Metric(TexCommand.SelectCarriedThing, "AquacultureFishing.PondPhysicalSpaceShort".Translate().ToString(),
@@ -854,12 +870,15 @@ namespace AquacultureFishing
                 new Metric(TexCommand.DesirePower, "AquacultureFishing.PondSustainableShort".Translate().ToString(),
                     "~" + snapshot.sustainableCapacity,
                     snapshot.population > snapshot.sustainableCapacity ? new Color(1f, 0.78f, 0.35f) : Color.white),
-                new Metric(TexCommand.Attack, "AquacultureFishing.PondIndustrialShort".Translate().ToString(),
-                    snapshot.industrialCapacity.ToString(),
-                    snapshot.population > snapshot.industrialCapacity ? new Color(1f, 0.55f, 0.35f) : Color.white),
+                new Metric(TexCommand.Attack, industrialAvailable
+                        ? "AquacultureFishing.PondIndustrialShort".Translate().ToString()
+                        : "AquacultureFishing.PondCapacityShort".Translate().ToString(),
+                    (industrialAvailable ? snapshot.industrialCapacity : snapshot.capacity).ToString(),
+                    industrialAvailable && snapshot.population > snapshot.industrialCapacity
+                        ? new Color(1f, 0.55f, 0.35f) : Color.white),
                 new Metric(TexCommand.ForbidOff, "AquacultureFishing.PondWorkShort".Translate().ToString(),
-                    snapshot.eligibleHarvest + " / " + (snapshot.pendingHarvest + snapshot.pendingEggRemoval + snapshot.pendingSterilization),
-                    snapshot.pendingHarvest + snapshot.pendingEggRemoval + snapshot.pendingSterilization > 0 ? new Color(1f, 0.82f, 0.35f) : Color.white)
+                    snapshot.eligibleHarvest + " / " + pendingWork,
+                    pendingWork > 0 ? new Color(1f, 0.82f, 0.35f) : Color.white)
             });
             PondCausalUi.DrawSummary(new Rect(rect.x, rect.y + 78f, rect.width, 286f), snapshot, navigate);
             float y = rect.y + 378f;
@@ -891,27 +910,34 @@ namespace AquacultureFishing
             Widgets.CheckboxLabeled(new Rect(rect.x, y, rect.width, 30f), "AquacultureFishing.PondProtectBreedingFemales".Translate(), ref protectFemales);
             if (protectFemales != oldProtectFemales) component.SetProtectBreedingFemales(pond.Position, protectFemales);
             y += 48f;
-            DrawPendingWork(rect, y, snapshot);
+            DrawPendingWork(rect, y, snapshot, selectiveAvailable);
         }
 
         private static void DrawAdvancedPage(Rect rect, PondProxyThing pond, FishPondMapComponent component, PondMenuSnapshot snapshot)
         {
-            DrawMetrics(rect, new[]
-            {
-                new Metric(TexCommand.DesirePower, "Feed Reserve", snapshot.feedHours <= 0f ? "None" : snapshot.feedHours.ToString("0.#") + " h",
-                    snapshot.feedHours < 12f ? new Color(1f, 0.65f, 0.35f) : Color.white),
-                new Metric(TexCommand.Install, "Algae", snapshot.algaePercent.ToStringPercent(), Color.white),
-                new Metric(TexCommand.SelectCarriedThing, "Hungry", (snapshot.hungry + snapshot.starving).ToString(),
-                    snapshot.hungry + snapshot.starving > 0 ? new Color(1f, 0.55f, 0.35f) : Color.white),
-                new Metric(TexCommand.ForbidOff, "Stress", (snapshot.wrongWater + snapshot.temperatureStressed).ToString(),
-                    snapshot.wrongWater + snapshot.temperatureStressed > 0 ? new Color(1f, 0.55f, 0.35f) : Color.white)
-            });
-            float y = rect.y + 86f;
             if (!AquacultureProgression.IsAvailable("AF_IndustrialAquaculture"))
             {
-                DrawLocked(rect, y, "Industrial Aquaculture", "Stocking goals, automated harvest designations, feeder control, and ecosystem diagnostics.");
+                DrawLocked(rect, rect.y + 86f, "Industrial Aquaculture", "Stocking goals, automated harvest designations, feeder control, and ecosystem diagnostics.");
                 return;
             }
+            bool exactDiagnostics = PondCausalUi.ExactDiagnosticsVisible();
+            string hidden = "AquacultureFishing.WorkspaceKnowledgeHidden".Translate().ToString();
+            DrawMetrics(rect, new[]
+            {
+                new Metric(TexCommand.DesirePower, "Feed Reserve", exactDiagnostics
+                        ? snapshot.feedHours <= 0f ? "None" : snapshot.feedHours.ToString("0.#") + " h" : hidden,
+                    exactDiagnostics && snapshot.feedHours < 12f ? new Color(1f, 0.65f, 0.35f) : Color.white),
+                new Metric(TexCommand.Install, "Algae", exactDiagnostics ? snapshot.algaePercent.ToStringPercent() : hidden, Color.white),
+                new Metric(TexCommand.SelectCarriedThing, "Hungry", exactDiagnostics
+                        ? (snapshot.hungry + snapshot.starving).ToString() : hidden,
+                    exactDiagnostics && snapshot.hungry + snapshot.starving > 0
+                        ? new Color(1f, 0.55f, 0.35f) : Color.white),
+                new Metric(TexCommand.ForbidOff, "Stress", exactDiagnostics
+                        ? (snapshot.wrongWater + snapshot.temperatureStressed).ToString() : hidden,
+                    exactDiagnostics && snapshot.wrongWater + snapshot.temperatureStressed > 0
+                        ? new Color(1f, 0.55f, 0.35f) : Color.white)
+            });
+            float y = rect.y + 86f;
             DrawSubheading(rect, ref y, "Stocking And Labor");
             int target = component.ManagementPopulationTargetAt(pond.Position);
             DrawIntSlider(rect, ref y, "Population Goal", target, 0, 200,
@@ -941,7 +967,8 @@ namespace AquacultureFishing
             y += 38f;
             Color old = GUI.color;
             GUI.color = new Color(0.72f, 0.72f, 0.72f);
-            Widgets.Label(new Rect(rect.x, y, rect.width, 52f), snapshot.feederStatus ?? "No feeder data.");
+            Widgets.Label(new Rect(rect.x, y, rect.width, 52f), exactDiagnostics
+                ? snapshot.feederStatus ?? "No feeder data." : hidden);
             GUI.color = old;
             y += 58f;
             Widgets.Label(new Rect(rect.x, y, rect.width, 46f), AquacultureMod.Settings?.predationEnabled == false
@@ -953,6 +980,11 @@ namespace AquacultureFishing
 
         private static void DrawBreedingPage(Rect rect, PondProxyThing pond, FishPondMapComponent component, PondMenuSnapshot snapshot)
         {
+            if (!AquacultureProgression.IsAvailable("AF_SelectiveBreeding"))
+            {
+                DrawLocked(rect, rect.y + 86f, "Selective Fish Breeding", "Breeding programs, egg-removal work, and permanent medicine-backed sterilization.");
+                return;
+            }
             PondBreedingMode mode = component.BreedingModeAt(pond.Position);
             DrawMetrics(rect, new[]
             {
@@ -964,11 +996,6 @@ namespace AquacultureFishing
                     snapshot.pendingSterilization > 0 ? new Color(1f, 0.82f, 0.35f) : Color.white)
             });
             float y = rect.y + 86f;
-            if (!AquacultureProgression.IsAvailable("AF_SelectiveBreeding"))
-            {
-                DrawLocked(rect, y, "Selective Fish Breeding", "Breeding programs, egg-removal work, and permanent medicine-backed sterilization.");
-                return;
-            }
             DrawSubheading(rect, ref y, "Breeding Program");
             DrawBreedingChoice(component, pond.Position, rect, ref y, mode, PondBreedingMode.Natural,
                 "Natural", "Normal interval and offspring yield. No intervention cost.");
@@ -986,6 +1013,12 @@ namespace AquacultureFishing
 
         private static void DrawPlannerPage(Rect rect, PondProxyThing pond, FishPondMapComponent component, PondMenuSnapshot snapshot)
         {
+            float y = rect.y + 94f;
+            if (!AquacultureProgression.IsAvailable("AF_IndustrialAquaculture"))
+            {
+                DrawLocked(rect, y, "Industrial Aquaculture", "Predictive stocking, diet balance, feed demand, compatibility, and population planning.");
+                return;
+            }
             bool hasBlueprint = snapshot.blueprintTarget > 0;
             DrawMetrics(rect, new[]
             {
@@ -999,12 +1032,6 @@ namespace AquacultureFishing
                     hasBlueprint && snapshot.blueprintFit >= 0.999f ? new Color(0.52f, 0.92f, 0.58f) :
                     hasBlueprint ? new Color(1f, 0.78f, 0.30f) : Color.white)
             });
-            float y = rect.y + 94f;
-            if (!AquacultureProgression.IsAvailable("AF_IndustrialAquaculture"))
-            {
-                DrawLocked(rect, y, "Industrial Aquaculture", "Predictive stocking, diet balance, feed demand, compatibility, and population planning.");
-                return;
-            }
             DrawSubheading(rect, ref y, "Plan Before Stocking");
             Widgets.Label(new Rect(rect.x, y, rect.width, 68f),
                 "Compare loaded fish species against this pond's water, temperature, carrying capacity, natural food production, predation pressure, breeding potential, beauty, and expected yield.");
@@ -1057,12 +1084,14 @@ namespace AquacultureFishing
             }
         }
 
-        private static void DrawPendingWork(Rect rect, float y, PondMenuSnapshot snapshot)
+        private static void DrawPendingWork(Rect rect, float y, PondMenuSnapshot snapshot, bool showBreedingWork)
         {
             DrawSubheading(rect, ref y, "Pending Handler Work");
-            Widgets.Label(new Rect(rect.x, y, rect.width, 32f),
-                "Harvest: " + snapshot.pendingHarvest + "     Egg removal: " + snapshot.pendingEggRemoval +
-                "     Sterilization: " + snapshot.pendingSterilization);
+            string text = "Harvest: " + snapshot.pendingHarvest;
+            if (showBreedingWork)
+                text += "     Egg removal: " + snapshot.pendingEggRemoval +
+                    "     Sterilization: " + snapshot.pendingSterilization;
+            Widgets.Label(new Rect(rect.x, y, rect.width, 32f), text);
         }
 
         private static void DrawIntSlider(Rect rect, ref float y, string label, int value, int minimum, int maximum, Action<int> setter, string tooltip)

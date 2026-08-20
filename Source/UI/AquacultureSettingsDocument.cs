@@ -116,7 +116,7 @@ namespace AquacultureFishing
             InsightUiSectionHeader header = InsightUi.SectionHeader("settings.title", L("AquacultureFishing.SettingsTitle"),
                 L("AquacultureFishing.SettingsSubtitle"),
                 InsightUiIcon.FromText("≈").WithAccessibleDescription(L("AquacultureFishing.SettingsAccessibleDescription")), null, true);
-            return InsightUi.Column("settings.root").SetGap(10f).SetPadding(4f).Add(header, navigation);
+            return InsightUi.Column("settings.root").SetGap(AquacultureUiSpacing.Section).SetPadding(4f).Add(header, navigation);
         }
 
         private InsightUiElement BuildGameplayPage()
@@ -151,12 +151,9 @@ namespace AquacultureFishing
                     RefreshFishFilter();
                     Invalidate();
                 });
-            fishList = InsightUi.VirtualList("fishing.species.list", filteredFish.Count, 44f,
-                index => BuildFishRow(filteredFish[index]));
-            fishList.SetHeight(InsightLength.Fixed(340f));
-            fishList.CacheLimit = 64;
-            fishList.Overscan = 2;
-            InsightUiStack content = InsightUi.Column("fishing.list.content").SetGap(8f).Add(
+            fishList = AquacultureUiComponents.ContentAwareVirtualList("fishing.species.list", filteredFish.Count,
+                44f, 264f, index => BuildFishRow(filteredFish[index]));
+            InsightUiStack content = InsightUi.Column("fishing.list.content").SetGap(AquacultureUiSpacing.Row).Add(
                 InsightUi.Label("fishing.explanation", L("AquacultureFishing.SettingsFishingExplanation")),
                 search,
                 fishList);
@@ -175,7 +172,7 @@ namespace AquacultureFishing
             });
             select.SetTooltip(L("AquacultureFishing.SettingsExpertiseTip"));
             return InsightUi.Row(AquacultureUiStableIds.For("fishing.row", fish.DefName))
-                .SetGap(8f)
+                .SetGap(AquacultureUiSpacing.Row)
                 .SetAlignment(InsightAlignment.Start, InsightAlignment.Center)
                 .Add(InsightUi.Label(AquacultureUiStableIds.For("fishing.label", fish.DefName), fish.Label).SetFlex(1f), select);
         }
@@ -183,7 +180,7 @@ namespace AquacultureFishing
         private InsightUiElement BuildEcologyPage()
         {
             InsightUiElement warning = InsightUi.Expander("ecology.capacity.transition", L("AquacultureFishing.SettingsCapacityTransition"),
-                InsightUi.Column("ecology.capacity.transition.content").SetGap(6f).Add(
+                InsightUi.Column("ecology.capacity.transition.content").SetGap(AquacultureUiSpacing.Row).Add(
                     InsightUi.Label("ecology.capacity.transition.text", string.Empty).SetTextProvider(() =>
                         settings.capacityTransitionWarning
                             ? "AquacultureFishing.PondCapacityTransitionWarning".Translate(
@@ -289,7 +286,7 @@ namespace AquacultureFishing
 
         private InsightUiElement BuildAppearancePage()
         {
-            InsightUiStack details = InsightUi.Column("appearance.details.content").SetGap(6f).Add(
+            InsightUiStack details = InsightUi.Column("appearance.details.content").SetGap(AquacultureUiSpacing.Row).Add(
                 AquacultureUiComponents.ToggleSetting("appearance.water-type", L("AquacultureFishing.SettingsWaterTypeTint"), L("AquacultureFishing.SettingsWaterTypeTintTip"),
                     () => settings.waterTypeTint, value => Set(() => settings.waterTypeTint = value)),
                 AquacultureUiComponents.ToggleSetting("appearance.algae", L("AquacultureFishing.SettingsAlgaeTint"), L("AquacultureFishing.SettingsAlgaeTintTip"),
@@ -337,10 +334,8 @@ namespace AquacultureFishing
                     RefreshTraitFilter();
                     Invalidate();
                 });
-            traitList = InsightUi.VirtualList("advanced.traits.list", filteredTraits.Count, 76f,
-                index => BuildTraitRow(filteredTraits[index]));
-            traitList.SetHeight(InsightLength.Fixed(360f));
-            traitList.CacheLimit = 64;
+            traitList = AquacultureUiComponents.ContentAwareVirtualList("advanced.traits.list", filteredTraits.Count,
+                76f, 304f, index => BuildTraitRow(filteredTraits[index]));
             InsightUiSegmented densitySelector = InsightUi.Segmented("advanced.density",
                 new[] { L("AquacultureFishing.SettingsDensityComfortable"), L("AquacultureFishing.SettingsDensityNormal"), L("AquacultureFishing.SettingsDensityCompact") },
                 settings.PresentationPreferences.DensityIndex,
@@ -389,7 +384,7 @@ namespace AquacultureFishing
                 trait.EffectLine + " " + trait.Description,
                 () => settings.GetTraitSetting(definition, false)?.enabled ?? true,
                 value => Set(() => settings.GetTraitSetting(definition).enabled = value));
-            return InsightUi.Column(AquacultureUiStableIds.For("advanced.trait.row", trait.DefName)).SetGap(4f).Add(
+            return InsightUi.Column(AquacultureUiStableIds.For("advanced.trait.row", trait.DefName)).SetGap(AquacultureUiSpacing.Micro).Add(
                 enabled,
                 AquacultureUiComponents.SliderSetting(
                     AquacultureUiStableIds.For("advanced.trait.weight", trait.DefName), L("AquacultureFishing.SettingsTraitWeight"), trait.Description,
@@ -407,8 +402,7 @@ namespace AquacultureFishing
                 fish.DefName.IndexOf(fishSearch, StringComparison.OrdinalIgnoreCase) >= 0));
             if (fishList != null)
             {
-                fishList.ItemCount = filteredFish.Count;
-                fishList.Refresh();
+                AquacultureUiComponents.ResizeContentAwareVirtualList(fishList, filteredFish.Count, 264f);
             }
         }
 
@@ -420,8 +414,7 @@ namespace AquacultureFishing
                 trait.DefName.IndexOf(traitSearch, StringComparison.OrdinalIgnoreCase) >= 0));
             if (traitList != null)
             {
-                traitList.ItemCount = filteredTraits.Count;
-                traitList.Refresh();
+                AquacultureUiComponents.ResizeContentAwareVirtualList(traitList, filteredTraits.Count, 304f);
             }
         }
 

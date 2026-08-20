@@ -57,7 +57,31 @@ namespace AquacultureFishing
         /// <summary>One restrained, document-local surface for a coherent content section.</summary>
         public static InsightUiElement Panel(string id, InsightUiElement content)
         {
-            return InsightUi.Surface(AquacultureUiStableIds.For(id, "panel"), content).SetPadding(10f);
+            return InsightUi.Surface(AquacultureUiStableIds.For(id, "panel"), content)
+                .SetPadding(AquacultureUiSpacing.PanelPadding);
+        }
+
+        /// <summary>Creates a bounded list whose viewport follows the current item count.</summary>
+        public static InsightUiVirtualList ContentAwareVirtualList(string id, int itemCount, float itemHeight,
+            float maximumHeight, Func<int, InsightUiElement> itemFactory, int cacheLimit = 64,
+            int overscan = 2)
+        {
+            InsightUiVirtualList list = InsightUi.VirtualList(id, itemCount, itemHeight, itemFactory);
+            list.Overscan = Math.Max(0, overscan);
+            list.CacheLimit = Math.Max(0, cacheLimit);
+            ResizeContentAwareVirtualList(list, itemCount, maximumHeight);
+            return list;
+        }
+
+        /// <summary>Updates count, viewport, and retained rows together after filtering or capture.</summary>
+        public static void ResizeContentAwareVirtualList(InsightUiVirtualList list, int itemCount,
+            float maximumHeight)
+        {
+            if (list == null) return;
+            list.ItemCount = Math.Max(0, itemCount);
+            list.SetHeight(InsightLength.Fixed(AquacultureUiListSizing.HeightForCount(
+                list.ItemCount, list.ItemHeight, 0f, maximumHeight)));
+            list.Refresh();
         }
 
         public static InsightUiElement Description(string id, string text)
@@ -73,7 +97,7 @@ namespace AquacultureFishing
                 .Bind(getter, setter);
             toggle.SetTooltip(description);
             return InsightUi.Column(AquacultureUiStableIds.For(id, "setting"))
-                .SetGap(2f)
+                .SetGap(AquacultureUiSpacing.Micro)
                 .Add(toggle, Description(id, description));
         }
 
@@ -93,12 +117,12 @@ namespace AquacultureFishing
                 InsightUiTextStyle.Caption).SetTextProvider(valueProvider);
             if (slider != null) slider.SetTooltip(description);
             InsightUiStack header = InsightUi.Row(AquacultureUiStableIds.For(id, "header"))
-                .SetGap(8f)
+                .SetGap(AquacultureUiSpacing.Row)
                 .SetAlignment(InsightAlignment.Start, InsightAlignment.Center)
                 .Add(InsightUi.Label(AquacultureUiStableIds.For(id, "label"), label),
                     InsightUi.Spacer(AquacultureUiStableIds.For(id, "spacer")).SetFlex(1f), value);
             return InsightUi.Column(AquacultureUiStableIds.For(id, "setting"))
-                .SetGap(2f)
+                .SetGap(AquacultureUiSpacing.Micro)
                 .Add(header, slider, Description(id, description));
         }
 
@@ -123,14 +147,14 @@ namespace AquacultureFishing
             InsightUiElement button = InsightUi.Button(AquacultureUiStableIds.For(id, "reset"), label, reset)
                 .SetMinSize(150f, 30f)
                 .SetTooltip(label);
-            return InsightUi.Column(AquacultureUiStableIds.For(id, "reset-group")).SetGap(4f).Add(
+            return InsightUi.Column(AquacultureUiStableIds.For(id, "reset-group")).SetGap(AquacultureUiSpacing.Micro).Add(
                 InsightUi.Divider(AquacultureUiStableIds.For(id, "reset-divider")), button);
         }
 
         public static InsightUiElement Page(string id, string title, string subtitle, params InsightUiElement[] content)
         {
             InsightUiStack column = InsightUi.Column(AquacultureUiStableIds.For(id, "content"))
-                .SetGap(10f)
+                .SetGap(AquacultureUiSpacing.Section)
                 .Add(InsightUi.SectionHeader(AquacultureUiStableIds.For(id, "header"), title, subtitle, null, null, true));
             column.Add(content);
             return InsightUi.Scroll(AquacultureUiStableIds.For(id, "scroll"),

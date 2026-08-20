@@ -2,6 +2,15 @@ using InsightCanvas;
 
 namespace AquacultureFishing
 {
+    /// <summary>Local layout tokens shared by the aquatic Insight Canvas compositions.</summary>
+    public static class AquacultureUiSpacing
+    {
+        public const float Micro = 4f;
+        public const float Row = 8f;
+        public const float Section = 12f;
+        public const float PanelPadding = 10f;
+    }
+
     /// <summary>Creates the document-local aquatic theme without touching global GUI skin or RimWorld state.</summary>
     public static class AquacultureInsightTheme
     {

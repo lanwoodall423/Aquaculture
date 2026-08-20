@@ -81,23 +81,19 @@ namespace AquacultureFishing
             rows.AddRange(next);
             if (specimenList != null)
             {
-                specimenList.ItemCount = rows.Count;
-                specimenList.Refresh();
+                AquacultureUiComponents.ResizeContentAwareVirtualList(specimenList, rows.Count, 290f);
             }
             document.Invalidate();
         }
 
         private InsightUiElement BuildRoot()
         {
-            specimenList = InsightUi.VirtualList("commission.delivery.specimens", 0, 58f,
-                index => BuildSpecimenRow(rows[index]));
-            specimenList.Overscan = 2;
-            specimenList.CacheLimit = 48;
-            specimenList.SetFlex(1f);
+            specimenList = AquacultureUiComponents.ContentAwareVirtualList("commission.delivery.specimens", 0,
+                58f, 290f, index => BuildSpecimenRow(rows[index]), 48);
 
             return InsightUi.Scroll("commission.delivery.scroll",
                 AquacultureUiComponents.Panel("commission.delivery",
-                    InsightUi.Column("commission.delivery.content").SetGap(8f).Add(
+                    InsightUi.Column("commission.delivery.content").SetGap(AquacultureUiSpacing.Section).Add(
                         InsightUi.SectionHeader("commission.delivery.header",
                             L("AquacultureFishing.CommissionDeliverTitle"),
                             L("AquacultureFishing.CommissionDeliverInstruction"), null, null, true),
@@ -119,8 +115,8 @@ namespace AquacultureFishing
         private InsightUiElement BuildSpecimenRow(AquacultureCommissionDeliverySnapshot row)
         {
             string id = row.StableId;
-            return InsightUi.Row(id).SetGap(8f).Add(
-                InsightUi.Column(id + ".details").SetGap(2f).SetFlex(1f).Add(
+            return InsightUi.Row(id).SetGap(AquacultureUiSpacing.Row).Add(
+                InsightUi.Column(id + ".details").SetGap(AquacultureUiSpacing.Micro).SetFlex(1f).Add(
                     InsightUi.Label(id + ".label", row.Label),
                     InsightUi.Label(id + ".meta", row.Details, InsightUiTextStyle.Caption)),
                 InsightUi.Button(id + ".deliver", L("AquacultureFishing.CommissionDeliverButton"),

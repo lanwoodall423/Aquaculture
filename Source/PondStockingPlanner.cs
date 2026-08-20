@@ -33,6 +33,7 @@ namespace AquacultureFishing
             plannedWater = component?.StockingBlueprintWaterAt(pond.Position) ?? PondWaterKind.Freshwater;
             species = DefDatabase<ThingDef>.AllDefsListForReading
                 .Where(FishUtility.IsFish)
+                .Where(PlannerFactsKnownToColony)
                 .OrderBy(def => def.label)
                 .ThenBy(def => def.defName)
                 .ToList();
@@ -58,7 +59,8 @@ namespace AquacultureFishing
         }
 
         internal IReadOnlyList<ThingDef> SpeciesCatalog => species;
-        internal IEnumerable<KeyValuePair<ThingDef, int>> PlanEntries => plan;
+        internal IEnumerable<KeyValuePair<ThingDef, int>> PlanEntries => plan
+            .Where(pair => PlannerFactsKnownToColony(pair.Key));
         internal PondWaterKind PlannedWaterValue => plannedWater;
 
         internal void SetPlannedWater(PondWaterKind value)
@@ -90,6 +92,7 @@ namespace AquacultureFishing
 
         internal void SavePlanForUi()
         {
+            PruneUnknownPlanEntries();
             component.SetStockingBlueprint(pond.Position, plan, plannedWater);
             int total = plan.Sum(pair => pair.Value);
             Messages.Message(total > 0
@@ -102,6 +105,7 @@ namespace AquacultureFishing
         {
             get
             {
+                PruneUnknownPlanEntries();
                 string key = AquaculturePlannerCacheContract.Key(plan
                     .Where(pair => pair.Value > 0)
                     .OrderBy(pair => pair.Key.defName, StringComparer.Ordinal)
@@ -208,7 +212,7 @@ namespace AquacultureFishing
             for (int i = 0; i < snapshot.fish.Count; i++)
             {
                 ThingDef def = snapshot.fish[i].fish?.parent?.def;
-                if (def != null) plan[def] = Count(def) + 1;
+                if (PlannerFactsKnownToColony(def)) plan[def] = Count(def) + 1;
             }
         }
 
@@ -218,13 +222,15 @@ namespace AquacultureFishing
             if (saved == null || saved.Count == 0) return false;
             plan.Clear();
             cachedForecastKey = null;
-            foreach (KeyValuePair<ThingDef, int> pair in saved) plan[pair.Key] = pair.Value;
+            foreach (KeyValuePair<ThingDef, int> pair in saved)
+                if (PlannerFactsKnownToColony(pair.Key)) plan[pair.Key] = pair.Value;
             plannedWater = component.StockingBlueprintWaterAt(pond.Position);
             return true;
         }
 
         private void ChangeCount(ThingDef def, int delta)
         {
+            if (!PlannerFactsKnownToColony(def)) return;
             int changed = Mathf.Clamp(Count(def) + delta, 0, 999);
             if (changed <= 0) plan.Remove(def);
             else plan[def] = changed;
@@ -232,6 +238,25 @@ namespace AquacultureFishing
         }
 
         private int Count(ThingDef def) => plan.TryGetValue(def, out int count) ? count : 0;
+
+        private void PruneUnknownPlanEntries()
+        {
+            foreach (ThingDef def in plan.Keys.Where(item => !PlannerFactsKnownToColony(item)).ToList())
+                plan.Remove(def);
+        }
+
+        private static bool PlannerFactsKnownToColony(ThingDef def)
+        {
+            if (def == null) return false;
+            AquacultureKnowledgeView view = AquacultureKnowledgeAdapter.SpeciesView(def, null, true);
+            return view.identityKnown && HasFacet(view, "feeding") && HasFacet(view, "habitat") &&
+                HasFacet(view, "pond_compatibility");
+        }
+
+        private static bool HasFacet(AquacultureKnowledgeView view, string facet)
+        {
+            return view.knownFacets != null && view.knownFacets.Contains(facet, StringComparer.Ordinal);
+        }
 
         private static string WaterLabel(PondWaterKind kind)
         {

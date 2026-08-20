@@ -23,6 +23,9 @@ namespace AquacultureFishing.Tests
             string root = FindRoot();
             TestSnapshotsAndPurity();
             TestStableIdsAndResponsiveMath();
+            TestContentAwareListSizing();
+            TestProgressiveDisclosure();
+            TestPrompt3AuthorityMatrix();
             TestPrompt2Contracts(root);
             TestMetadataAndBuildContract(root);
             TestSerializedSettingsContract(root);
@@ -65,6 +68,193 @@ namespace AquacultureFishing.Tests
                 "narrow navigation uses compact mode");
             Check(AquacultureUiResponsiveLayout.CompactColumns(480f) >= 1,
                 "compact navigation always has a usable column");
+        }
+
+        private static void TestContentAwareListSizing()
+        {
+            Check(AquacultureUiListSizing.HeightForCount(0, 48f, 0f, 240f) == 0f,
+                "empty virtual lists collapse to zero viewport height");
+            Check(AquacultureUiListSizing.HeightForCount(1, 48f, 0f, 240f) == 48f &&
+                AquacultureUiListSizing.HeightForCount(3, 48f, 0f, 240f) == 144f,
+                "one and a few virtual rows use actual content height");
+            Check(AquacultureUiListSizing.HeightForCount(100, 48f, 0f, 240f) == 240f,
+                "many virtual rows stop at the bounded viewport");
+            Check(AquacultureUiListSizing.HeightForCount(1, 10f, 32f, 80f) == 32f &&
+                AquacultureUiListSizing.HeightForCount(20, 10f, 32f, 80f) == 80f,
+                "list sizing honors minimum and maximum bounds");
+            Check(AquacultureUiListSizing.HeightForCount(4, 48f, 0f, 240f) ==
+                AquacultureUiListSizing.HeightForCount(4, 48f, 0f, 240f),
+                "list sizing is stable when disclosure changes without changing the list");
+            Check(AquacultureUiListSizing.HeightForCount(3, 40f, 0f, 200f) == 120f &&
+                AquacultureUiListSizing.HeightForCount(3, 48f, 0f, 240f) == 144f,
+                "compact and wide density row metrics remain deterministic");
+            Check(AquacultureUiListSizing.HeightForCount(0, 48f, 32f, 240f) == 0f,
+                "hidden or empty groups do not reserve list viewport height");
+        }
+
+        private static void TestProgressiveDisclosure()
+        {
+            var minimal = new AquacultureUiDisclosureSnapshot(
+                false, false, false, false, false, false, false, false, false, false, false, false);
+            Check(minimal.VisibleJournalPageIds.SequenceEqual(new[] { "overview", "species" }) &&
+                !minimal.PondsPageVisible && !minimal.BreedsPageVisible &&
+                !minimal.ConservationPageVisible && !minimal.CommissionsPageVisible,
+                "minimal colonies see only overview and species navigation");
+            Check(!minimal.ManagedFeedingVisible && !minimal.IndustrialDiagnosticsVisible &&
+                !minimal.PopulationManagementVisible && !minimal.SelectiveBreedingControlsVisible,
+                "minimal colonies do not construct advanced pond capabilities");
+
+            var pondkeeping = new AquacultureUiDisclosureSnapshot(
+                true, false, false, false, false, false, false, false, false, false, false, false);
+            Check(pondkeeping.PondsPageVisible && !pondkeeping.ManagedFeedingVisible &&
+                !pondkeeping.IndustrialDiagnosticsVisible && !pondkeeping.SelectiveBreedingControlsVisible,
+                "Pondkeeping exposes the pond surface without advanced groups");
+            Check(pondkeeping.VisibleJournalPageIds.SequenceEqual(new[] { "overview", "species", "ponds" }),
+                "Pondkeeping navigation omits future pages");
+
+            var managed = new AquacultureUiDisclosureSnapshot(
+                true, true, false, false, true, false, false, false, false, false, false, false);
+            Check(managed.PondsPageVisible && managed.ManagedFeedingVisible && managed.ManagedHarvestingVisible &&
+                !managed.PopulationManagementVisible && !managed.SelectiveBreedingControlsVisible,
+                "Managed Aquaculture exposes feeding and harvesting only");
+            Check(managed.VisibleJournalPageIds.SequenceEqual(new[] { "overview", "species", "ponds" }),
+                "Managed navigation still omits unencountered breeding and conservation pages");
+
+            var industrial = new AquacultureUiDisclosureSnapshot(
+                true, true, true, false, true, false, false, false, false, false, false, false);
+            Check(industrial.PondsPageVisible && industrial.IndustrialDiagnosticsVisible &&
+                industrial.PopulationManagementVisible && !industrial.SelectiveBreedingControlsVisible &&
+                !industrial.ExactPondMetricsVisible && !industrial.PondDiagnosisVisible,
+                "Industrial capability does not fabricate exact pond knowledge");
+            Check(industrial.VisibleJournalPageIds.SequenceEqual(new[] { "overview", "species", "ponds" }),
+                "Industrial navigation omits unencountered breeding and conservation pages");
+
+            var selective = new AquacultureUiDisclosureSnapshot(
+                true, true, true, true, true, true, true, true, true, true, true, true);
+            Check(selective.BreedsPageVisible && selective.ConservationPageVisible &&
+                selective.CommissionsPageVisible && selective.SelectiveBreedingControlsVisible,
+                "Selective Breeding exposes the breeding, conservation, and commission surfaces when state exists");
+
+            AquacultureFishDossierDisclosure industrialUnknown = new AquacultureFishDossierDisclosure(
+                true, false, false, false, false, false, false, false,
+                industrial.ManagedAquacultureAvailable, industrial.IndustrialAquacultureAvailable,
+                industrial.SelectiveBreedingAvailable);
+            Check(!industrialUnknown.SpeciesIdentityVisible && !industrialUnknown.TraitsVisible &&
+                !industrialUnknown.ExactHealthMetricsVisible && !industrialUnknown.ExpectedMeatYieldVisible &&
+                !industrialUnknown.GenerationVisible && industrialUnknown.SexVisible &&
+                industrialUnknown.FoodReserveVisible == false,
+                "industrial capability does not expose unknown fish facts or exact dossier metrics");
+
+            var strongKnowledge = new AquacultureUiDisclosureSnapshot(
+                false, false, false, false, true, true, true, true, true, true, true, true);
+            Check(strongKnowledge.PondsPageVisible && strongKnowledge.BreedsPageVisible &&
+                strongKnowledge.ConservationPageVisible && strongKnowledge.CommissionsPageVisible &&
+                !strongKnowledge.ManagedFeedingVisible && !strongKnowledge.IndustrialDiagnosticsVisible &&
+                !strongKnowledge.SelectiveBreedingControlsVisible,
+                "strong Knowledge can reveal encountered pages without granting research capabilities");
+            AquacultureFishDossierDisclosure learnedWithoutTech = new AquacultureFishDossierDisclosure(
+                true, true, true, true, true, true, true, false,
+                strongKnowledge.ManagedAquacultureAvailable, strongKnowledge.IndustrialAquacultureAvailable,
+                strongKnowledge.SelectiveBreedingAvailable);
+            Check(learnedWithoutTech.SpeciesIdentityVisible && learnedWithoutTech.TraitsVisible &&
+                learnedWithoutTech.GenerationVisible && learnedWithoutTech.KnowledgeVisible &&
+                !learnedWithoutTech.ExactHealthMetricsVisible && !learnedWithoutTech.ExpectedMeatYieldVisible &&
+                !learnedWithoutTech.SterilizationVisible,
+                "Knowledge can disclose learned fish facts without granting industrial measurements or actions");
+            Check(strongKnowledge.VisibleJournalPageIds.SequenceEqual(new[]
+                { "overview", "species", "ponds", "breeds", "conservation", "commissions" }),
+                "strong Knowledge can add encountered navigation while capability groups remain absent");
+        }
+
+        private static void TestPrompt3AuthorityMatrix()
+        {
+            var fresh = new AquacultureUiDisclosureSnapshot(
+                false, false, false, false, false, false, false, false, false, false, false, false);
+            Check(fresh.VisibleJournalPageIds.SequenceEqual(new[] { "overview", "species" }) &&
+                !fresh.ManagedFeedingVisible && !fresh.IndustrialDiagnosticsVisible &&
+                !fresh.SelectiveBreedingControlsVisible && !fresh.ConservationPageVisible &&
+                !fresh.CommissionsPageVisible,
+                "A fresh colony has sparse navigation with no future-system advertising");
+
+            var pondkeeping = new AquacultureUiDisclosureSnapshot(
+                true, false, false, false, true, false, false, false, false, false, false, false);
+            Check(pondkeeping.PondsPageVisible && pondkeeping.BasicPondFactsVisible &&
+                !pondkeeping.PondDiagnosisVisible && !pondkeeping.IndustrialDiagnosticsVisible &&
+                !pondkeeping.SelectiveBreedingControlsVisible,
+                "B Pondkeeping exposes basic pond workflow without industrial or breeding controls");
+
+            var managed = new AquacultureUiDisclosureSnapshot(
+                true, true, false, false, true, false, false, false, false, false, false, false);
+            Check(managed.ManagedFeedingVisible && managed.ManagedHarvestingVisible &&
+                !managed.IndustrialDiagnosticsVisible && !managed.PopulationManagementVisible &&
+                !managed.SelectiveBreedingControlsVisible,
+                "C Managed Aquaculture exposes management but not later capability tiers");
+
+            var industrialKnowledgePoor = new AquacultureUiDisclosureSnapshot(
+                true, true, true, false, true, false, false, false, false, false, false, false);
+            Check(industrialKnowledgePoor.IndustrialDiagnosticsVisible &&
+                industrialKnowledgePoor.PopulationManagementVisible &&
+                !industrialKnowledgePoor.PondDiagnosisVisible &&
+                !industrialKnowledgePoor.ExactPondMetricsVisible &&
+                !industrialKnowledgePoor.CriticalPondFilterVisible,
+                "D Industrial capability does not create Knowledge-owned pond diagnostics");
+
+            var selectiveWithoutEvents = new AquacultureUiDisclosureSnapshot(
+                true, true, true, true, true, false, false, false, false, false, false, false);
+            Check(selectiveWithoutEvents.BreedsPageVisible &&
+                selectiveWithoutEvents.SelectiveBreedingControlsVisible &&
+                !selectiveWithoutEvents.ConservationPageVisible &&
+                !selectiveWithoutEvents.CommissionsPageVisible,
+                "E Selective Breeding reveals its controls but not unrelated event pages");
+
+            var knowledgeRichResearchPoor = new AquacultureUiDisclosureSnapshot(
+                false, false, false, false, true, true, true, true, true, true, true, true);
+            Check(knowledgeRichResearchPoor.VisibleJournalPageIds.SequenceEqual(new[]
+                    { "overview", "species", "ponds", "breeds", "conservation", "commissions" }) &&
+                !knowledgeRichResearchPoor.ManagedFeedingVisible &&
+                !knowledgeRichResearchPoor.IndustrialDiagnosticsVisible &&
+                !knowledgeRichResearchPoor.SelectiveBreedingControlsVisible,
+                "F Knowledge-rich research-poor colonies gain understanding without technology controls");
+            var learnedFish = new AquacultureFishDossierDisclosure(
+                true, true, true, true, true, true, true, false, false, false, false);
+            Check(learnedFish.SpeciesIdentityVisible && learnedFish.TraitsVisible &&
+                learnedFish.GenerationVisible && learnedFish.KnowledgeVisible &&
+                !learnedFish.ExactHealthMetricsVisible && !learnedFish.ExpectedMeatYieldVisible,
+                "F learned dossier facts remain separate from unavailable measurements and production actions");
+
+            var researchRichKnowledgePoor = industrialKnowledgePoor;
+            var unknownFish = new AquacultureFishDossierDisclosure(
+                true, false, false, false, false, false, false, false, true, true, false);
+            Check(researchRichKnowledgePoor.IndustrialDiagnosticsVisible &&
+                !researchRichKnowledgePoor.HasKnownSpecies && !researchRichKnowledgePoor.HasKnownHealth &&
+                !researchRichKnowledgePoor.HasKnownPopulation && !researchRichKnowledgePoor.PondDiagnosisVisible &&
+                !unknownFish.SpeciesIdentityVisible && !unknownFish.TraitsVisible &&
+                !unknownFish.ExactHealthMetricsVisible && !unknownFish.ExpectedMeatYieldVisible,
+                "G research-rich Knowledge-poor colonies keep species and facet facts undisclosed");
+
+            var eventless = new AquacultureUiDisclosureSnapshot(
+                true, true, true, true, true, true, true, true, true, false, false, false);
+            var commissionTransition = new AquacultureUiDisclosureSnapshot(
+                true, true, true, true, true, true, true, true, true, true, true, true);
+            Check(!eventless.VisibleJournalPageIds.Contains("conservation") &&
+                !eventless.VisibleJournalPageIds.Contains("commissions") &&
+                commissionTransition.VisibleJournalPageIds.Contains("conservation") &&
+                commissionTransition.VisibleJournalPageIds.Contains("commissions") &&
+                eventless.ResolveActiveJournalPage("commissions") == "overview" &&
+                commissionTransition.ResolveActiveJournalPage("commissions") == "commissions",
+                "H event transitions add relevant pages and safely redirect removed active pages");
+
+            var uninitializedIndustrialFish = new AquacultureFishDossierDisclosure(
+                false, false, false, false, true, false, false, false, true, true, false);
+            var initializedIndustrialFish = new AquacultureFishDossierDisclosure(
+                true, true, false, false, true, false, false, false, true, true, false);
+            Check(!uninitializedIndustrialFish.ExactHealthMetricsVisible &&
+                !uninitializedIndustrialFish.HealthClassificationVisible &&
+                !uninitializedIndustrialFish.TraitsVisible && !uninitializedIndustrialFish.BreedVisible &&
+                !uninitializedIndustrialFish.GenerationVisible &&
+                initializedIndustrialFish.ExactHealthMetricsVisible &&
+                initializedIndustrialFish.FoodReserveVisible,
+                "dossier exact health metrics require an initialized specimen as well as research and Knowledge");
         }
 
         private static void TestPrompt2Contracts(string root)
@@ -134,6 +324,7 @@ namespace AquacultureFishing.Tests
             {
                 "Source\\UI\\AquacultureJournalWorkspaceDocument.cs",
                 "Source\\UI\\AquacultureFishDossierDocument.cs",
+                "Source\\UI\\AquacultureSettingsDocument.cs",
                 "Source\\UI\\AquacultureStockingPlannerDocument.cs",
                 "Source\\UI\\AquacultureBreedRegistrationDocument.cs",
                 "Source\\UI\\AquacultureCommissionDeliveryDocument.cs"
@@ -146,11 +337,32 @@ namespace AquacultureFishing.Tests
                 "Prompt 2 documents preserve Knowledge disclosure and forecast snapshots");
             string contracts = File.ReadAllText(Path.Combine(root, "Source\\UI\\AquacultureUiContracts.cs"));
             Check(contracts.Contains("AquacultureWorkspaceOrdering") && allUi.Contains("PondFilter") &&
-                allUi.Contains("InsightUi.Expander") && allUi.Contains("ResearchStatus"),
-                "Prompt 2 documents expose urgency filters, progressive disclosure, and research locks");
+                allUi.Contains("InsightUi.Expander"),
+                "workspace documents expose urgency filters and compositional groups");
             Check(allUi.Contains("DossierHealthRules") && allUi.Contains("FoodReserve") &&
                 allUi.Contains("ExpectedMeatYield"),
                 "fish dossier exposes semantic health indicators and separated yield facts");
+            string journalSource = sourceFiles[0];
+            string dossierSource = sourceFiles[1];
+            string settingsSource = sourceFiles[2];
+            string plannerSource = sourceFiles[3];
+            string commissionSource = sourceFiles[5];
+            string plannerOwnerSource = File.ReadAllText(Path.Combine(root, "Source", "PondStockingPlanner.cs"));
+            Check(allUi.Contains("ContentAwareVirtualList") && allUi.Contains("ResizeContentAwareVirtualList"),
+                "player-facing catalogs use the shared content-aware list composition");
+            Check(!journalSource.Contains("pondList.SetFlex") && !journalSource.Contains("speciesList.SetFlex") &&
+                !journalSource.Contains("breedList.SetFlex") && !journalSource.Contains("waterList.SetFlex") &&
+                !settingsSource.Contains("fishList.SetHeight(InsightLength.Fixed") &&
+                !settingsSource.Contains("traitList.SetHeight(InsightLength.Fixed") &&
+                !plannerSource.Contains("availableList.SetFlex") &&
+                !plannerSource.Contains("plannedList.SetFlex") &&
+                !commissionSource.Contains("specimenList.SetFlex"),
+                "virtual lists no longer flex-grow inside their scrollable compositions");
+            Check(journalSource.Contains("conservation.split") && !journalSource.Contains("workspace.conservation.scroll"),
+                "conservation separates the master list from the detail scroll owner");
+            Check(dossierSource.Contains("dossier.traits.list") && !dossierSource.Contains("traitsList.SetHeight") &&
+                !dossierSource.Contains("private InsightUiVirtualList traitsList"),
+                "fish dossier traits use the primary dossier scroll without a fixed nested viewport");
             Check(allUi.Contains("commission.delivery.specimens") && allUi.Contains("Host.PostClose"),
                 "commission delivery uses a bounded Insight Canvas document with cleanup");
 
@@ -174,6 +386,13 @@ namespace AquacultureFishing.Tests
             Check(planner.Contains("CalculateForecast") && planner.Contains("ForecastSnapshot") &&
                 planner.Contains("SetStockingBlueprint"),
                 "planner retains authoritative forecast and blueprint persistence");
+            Check(journalSource.Contains("CriticalPondFilterVisible") && journalSource.Contains("PondDiagnosisVisible"),
+                "pond filters and exact diagnosis share one entitlement boundary");
+            Check(plannerOwnerSource.Contains("PlannerFactsKnownToColony") &&
+                plannerOwnerSource.Contains("PruneUnknownPlanEntries") &&
+                plannerOwnerSource.Contains("SpeciesView") && plannerOwnerSource.Contains("pond_compatibility") &&
+                plannerOwnerSource.Contains("feeding") && plannerOwnerSource.Contains("habitat"),
+                "stocking planner filters Knowledge-owned species facts before display and forecast");
         }
 
         private static void TestMetadataAndBuildContract(string root)

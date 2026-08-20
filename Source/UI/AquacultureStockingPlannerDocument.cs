@@ -20,6 +20,8 @@ namespace AquacultureFishing
         private InsightUiSearchField searchField;
         private InsightUiVirtualList availableList;
         private InsightUiVirtualList plannedList;
+        private InsightUiLabel availableEmptyLabel;
+        private InsightUiLabel plannedEmptyLabel;
         private InsightUiSelect waterSelect;
         private InsightUiLabel forecastStatus;
         private InsightUiMeter physicalMeter;
@@ -68,14 +70,15 @@ namespace AquacultureFishing
             forecast = owner.ForecastSnapshot;
             if (availableList != null)
             {
-                availableList.ItemCount = filteredSpecies.Count;
-                availableList.Refresh();
+                AquacultureUiComponents.ResizeContentAwareVirtualList(availableList,
+                    filteredSpecies.Count, 260f);
             }
             if (plannedList != null)
             {
-                plannedList.ItemCount = planned.Count;
-                plannedList.Refresh();
+                AquacultureUiComponents.ResizeContentAwareVirtualList(plannedList, planned.Count, 260f);
             }
+            if (availableEmptyLabel != null) availableEmptyLabel.Visible = filteredSpecies.Count == 0;
+            if (plannedEmptyLabel != null) plannedEmptyLabel.Visible = planned.Count == 0;
             if (forecast != null)
             {
                 physicalMeter.Current = forecast.TotalFish;
@@ -97,17 +100,15 @@ namespace AquacultureFishing
                     search = value ?? string.Empty;
                     document.Invalidate();
                 });
-            availableList = InsightUi.VirtualList("planner.available.list", 0, 52f,
-                index => BuildAvailableRow(filteredSpecies[index]));
-            availableList.Overscan = 2;
-            availableList.CacheLimit = 64;
-            availableList.SetFlex(1f);
+            availableList = AquacultureUiComponents.ContentAwareVirtualList("planner.available.list", 0,
+                52f, 260f, index => BuildAvailableRow(filteredSpecies[index]));
+            availableEmptyLabel = InsightUi.Label("planner.available.empty",
+                L("AquacultureFishing.PondPlannerNoAvailableSpecies"), InsightUiTextStyle.Caption);
 
-            plannedList = InsightUi.VirtualList("planner.planned.list", 0, 52f,
-                index => BuildPlannedRow(planned[index]));
-            plannedList.Overscan = 2;
-            plannedList.CacheLimit = 64;
-            plannedList.SetFlex(1f);
+            plannedList = AquacultureUiComponents.ContentAwareVirtualList("planner.planned.list", 0,
+                52f, 260f, index => BuildPlannedRow(planned[index]));
+            plannedEmptyLabel = InsightUi.Label("planner.planned.empty", L("AquacultureFishing.PondPlannerEmpty"),
+                InsightUiTextStyle.Caption);
 
             PondWaterKind[] waterKinds =
             {
@@ -135,7 +136,7 @@ namespace AquacultureFishing
             industrialMeter = InsightUi.Meter("planner.forecast.industrial", 0f, 1f)
                 .SetLabel(L("AquacultureFishing.PondPlannerIndustrial"));
             InsightUiElement forecastPanel = InsightUi.Scroll("planner.forecast.scroll",
-                InsightUi.Column("planner.forecast.content").SetGap(7f).Add(
+                InsightUi.Column("planner.forecast.content").SetGap(AquacultureUiSpacing.Row).Add(
                     InsightUi.SectionHeader("planner.forecast.header", L("AquacultureFishing.PondPlannerForecast"),
                     L("AquacultureFishing.PondPlannerForecastSubtitle"), null, null, true),
                     forecastStatus,
@@ -149,10 +150,11 @@ namespace AquacultureFishing
                     InsightUi.Label("planner.forecast.warning-list", string.Empty, InsightUiTextStyle.Caption)
                         .SetTextProvider(forecastWarnings)));
 
-            InsightUiElement available = InsightUi.Column("planner.available.column").SetGap(6f).Add(
+            InsightUiElement available = InsightUi.Column("planner.available.column").SetGap(AquacultureUiSpacing.Row).Add(
                 InsightUi.SectionHeader("planner.available.header", L("AquacultureFishing.PondPlannerAvailableSpecies"),
-                    L("AquacultureFishing.PondPlannerAvailableSubtitle"), null, null, true), searchField, availableList);
-            InsightUiElement planActions = InsightUi.Row("planner.plan.actions").SetGap(5f).Add(
+                    L("AquacultureFishing.PondPlannerAvailableSubtitle"), null, null, true), searchField,
+                availableList, availableEmptyLabel);
+            InsightUiElement planActions = InsightUi.Row("planner.plan.actions").SetGap(AquacultureUiSpacing.Micro).Add(
                 InsightUi.Button("planner.current", L("AquacultureFishing.PondPlannerCurrent"), () =>
                 {
                     owner.LoadCurrentForUi();
@@ -168,10 +170,10 @@ namespace AquacultureFishing
                     owner.ClearPlanForUi();
                     document.Invalidate();
                 }));
-            InsightUiElement plannedPanel = InsightUi.Column("planner.planned.column").SetGap(6f).Add(
+            InsightUiElement plannedPanel = InsightUi.Column("planner.planned.column").SetGap(AquacultureUiSpacing.Row).Add(
                 InsightUi.SectionHeader("planner.planned.header", L("AquacultureFishing.PondPlannerPlannedStock"),
                     L("AquacultureFishing.PondPlannerPlannedSubtitle"), null, null, true), waterSelect,
-                plannedList, InsightUi.Label("planner.planned.total", string.Empty, InsightUiTextStyle.Caption)
+                plannedList, plannedEmptyLabel, InsightUi.Label("planner.planned.total", string.Empty, InsightUiTextStyle.Caption)
                     .SetTextProvider(() => L("AquacultureFishing.PondPlannerTotals", planned.Sum(item => item.Value).ToString())), planActions,
                 InsightUi.Button("planner.save", L("AquacultureFishing.PondPlannerSave"), () =>
                 {
@@ -184,7 +186,7 @@ namespace AquacultureFishing
             InsightUiElement responsive = InsightUi.Grid("planner.responsive", 320f).Add(
                 available, plannedPanel, forecastPanel);
             return AquacultureUiComponents.Panel("planner.root",
-                InsightUi.Column("planner.root.content").SetGap(8f).SetPadding(4f).Add(
+                InsightUi.Column("planner.root.content").SetGap(AquacultureUiSpacing.Section).SetPadding(4f).Add(
                     InsightUi.SectionHeader("planner.header", L("AquacultureFishing.PondPlannerTitle"),
                         L("AquacultureFishing.PondPlannerSubtitle"), null, null, true),
                     responsive));
@@ -194,7 +196,7 @@ namespace AquacultureFishing
         {
             string id = AquacultureUiStableIds.For("planner.available", def.defName);
             AquaticSpeciesProfile profile = AquaticSpeciesProfile.For(def);
-            return InsightUi.Row(id).SetGap(5f).Add(
+            return InsightUi.Row(id).SetGap(AquacultureUiSpacing.Row).Add(
                 InsightUi.Label(id + ".name", def.LabelCap),
                 InsightUi.Label(id + ".meta", DietLabel(profile.diet) + "  •  " + WaterLabel(profile.waterKind),
                     InsightUiTextStyle.Caption),
@@ -209,7 +211,7 @@ namespace AquacultureFishing
         private InsightUiElement BuildPlannedRow(KeyValuePair<ThingDef, int> entry)
         {
             string id = AquacultureUiStableIds.For("planner.planned", entry.Key.defName);
-            return InsightUi.Row(id).SetGap(5f).Add(
+            return InsightUi.Row(id).SetGap(AquacultureUiSpacing.Row).Add(
                 InsightUi.Label(id + ".name", entry.Key.LabelCap),
                 InsightUi.Spacer(id + ".space").SetFlex(1f),
                 InsightUi.Button(id + ".remove", "-", () =>
