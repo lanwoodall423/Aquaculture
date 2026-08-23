@@ -237,6 +237,9 @@ namespace AquacultureFishing
             PondMenuSnapshot raw, int ordinal, int revision)
         {
             List<PondCausalIssue> issues = raw.causalSummary?.issues ?? new List<PondCausalIssue>();
+            bool pondHealthKnown = AquacultureUiDisclosure.HasFacetForFish(species,
+                (raw.fish ?? new List<FishMenuEntry>()).Select(item => item?.fish?.parent?.def), "health");
+            bool exactDiagnostics = disclosure.IndustrialDiagnosticsVisible && pondHealthKnown;
             bool lethal = issues.Any(issue => issue?.priority == PondCausalPriority.Lethal);
             bool starvation = issues.Any(issue => issue?.priority == PondCausalPriority.Starvation);
             bool severeStress = issues.Any(issue => issue?.priority == PondCausalPriority.SevereStress);
@@ -244,22 +247,24 @@ namespace AquacultureFishing
             bool advice = issues.Any(issue => issue?.priority == PondCausalPriority.Advice);
             AquacultureHealthPriority priority = AquacultureHealthPriorityRules.Highest(
                 lethal, starvation, severeStress, reproduction, advice);
-            List<string> details = disclosure.PondDiagnosisVisible
+            List<string> details = exactDiagnostics
                 ? issues.Where(issue => issue != null)
                     .OrderBy(issue => (int)issue.priority).ThenBy(issue => issue.key, StringComparer.Ordinal)
                     .Select(issue => IssueText(issue)).Where(text => !text.NullOrEmpty()).ToList()
-                : CoarsePondDetails(issues.Count > 0, disclosure.HasKnownHealth);
+                : CoarsePondDetails(issues.Count > 0, pondHealthKnown);
             if (details.Count == 0) details.Add(L("AquacultureFishing.WorkspacePondHealthy"));
-            string statusLabel = disclosure.PondDiagnosisVisible
+            string statusLabel = exactDiagnostics
                 ? PriorityLabel(priority) : CoarsePriorityLabel(priority);
+            AquacultureHealthPriority displayPriority = exactDiagnostics || priority == AquacultureHealthPriority.Healthy
+                ? priority : AquacultureHealthPriority.Advice;
             PondUiSnapshot display = new PondUiSnapshot(
                 AquacultureUiStableIds.For("pond", proxy.Position.x + "." + proxy.Position.z),
                 L("AquacultureFishing.PondLabel") + " " + (ordinal + 1),
                 PondWaterLabel(component.WaterKindAt(proxy.Position)), raw.population, raw.capacity,
                 raw.feedHours, raw.temperature, revision);
             AquacultureWorkspaceRowSnapshot row = new AquacultureWorkspaceRowSnapshot(
-                display.StableId, display.Label, statusLabel, priority, details, revision);
-            return new PondEntry(proxy, component, raw, ordinal, proxy.Position, display, row);
+                display.StableId, display.Label, statusLabel, displayPriority, details, revision);
+            return new PondEntry(proxy, component, raw, ordinal, proxy.Position, display, row, exactDiagnostics);
         }
 
         private static List<string> CoarsePondDetails(bool hasIssue, bool knowledgeInterpretsHealth)
@@ -627,7 +632,7 @@ namespace AquacultureFishing
                     })
                 .SetMinSize(0f, 28f) as InsightUiButton;
             button.SelectedProvider = () => selectedPondId == entry.StableId;
-            string summary = disclosure.ExactPondMetricsVisible
+            string summary = entry.ExactDiagnostics
                 ? LF("AquacultureFishing.WorkspacePondSummary",
                     L("AquacultureFishing.WorkspacePondWater"), entry.Display.WaterKind,
                     entry.Display.Population, entry.Display.Capacity,
@@ -779,7 +784,7 @@ namespace AquacultureFishing
                 InsightUi.Spacer(AquacultureUiStableIds.For("water.space", id)).SetFlex(1f),
                 AquacultureUiComponents.Badge("water.status." + id, WaterStatus(water))
             };
-            if (ExactWaterMetricsVisible())
+            if (ExactWaterMetricsVisible(water))
                 row.Add(InsightUi.Label(AquacultureUiStableIds.For("water.abundance", id),
                     water.AbundanceLabel, InsightUiTextStyle.Caption));
             return InsightUi.Row(AquacultureUiStableIds.For("water.row", id)).SetGap(AquacultureUiSpacing.Row).Add(row.ToArray());
@@ -813,7 +818,7 @@ namespace AquacultureFishing
             if (pondHealthCallout != null)
             {
                 AquacultureUiStatus status = selected == null ? AquacultureUiStatus.Unknown :
-                    disclosure.IndustrialDiagnosticsVisible ? StatusFor(selected.Priority) :
+                    selected.ExactDiagnostics ? StatusFor(selected.Priority) :
                     selected.Priority == AquacultureHealthPriority.Healthy
                         ? AquacultureUiStatus.Healthy : AquacultureUiStatus.Attention;
                 pondHealthCallout.Severity = CalloutSeverity(status);
@@ -831,10 +836,12 @@ namespace AquacultureFishing
             }
             if (pondFeedMeter != null)
             {
+                bool exact = selected?.ExactDiagnostics == true;
+                pondFeedMeter.Visible = exact;
                 pondFeedMeter.Current = selected?.Display.FeedHours ?? 0f;
                 pondFeedMeter.Maximum = Mathf.Max(1f, selected?.Display.FeedHours ?? 1f);
-                pondFeedMeter.SetValueText(selected == null ? string.Empty :
-                        LF("AquacultureFishing.WorkspaceFeedHoursValue", selected.Display.FeedHours.ToString("0.#")));
+                pondFeedMeter.SetValueText(!exact ? string.Empty :
+                    LF("AquacultureFishing.WorkspaceFeedHoursValue", selected.Display.FeedHours.ToString("0.#")));
             }
             bool enabled = selected != null;
             if (adultsOnlyToggle != null) adultsOnlyToggle.Enabled = enabled && disclosure.ManagedHarvestingVisible;
@@ -1068,17 +1075,17 @@ namespace AquacultureFishing
         {
             NaturalWaterViewSnapshot water = SelectedWater;
             if (water == null) return L("AquacultureFishing.WorkspaceSelectWater");
-            string abundance = ExactWaterMetricsVisible() ? water.AbundanceLabel :
+            string abundance = ExactWaterMetricsVisible(water) ? water.AbundanceLabel :
                 L("AquacultureFishing.WorkspaceWaterAbundanceHidden");
             return L("AquacultureFishing.WorkspaceWaterDetails") + ": " + abundance + "  •  " +
                 L("AquacultureFishing.WorkspaceSpeciesCount") + " " + KnownConservationStatuses(water).Count + "\n" +
                 WaterConservationLine(water);
         }
 
-        private bool ExactWaterMetricsVisible()
+        private bool ExactWaterMetricsVisible(NaturalWaterViewSnapshot water)
         {
-            return disclosure.IndustrialDiagnosticsVisible && disclosure.HasKnownPopulation &&
-                disclosure.HasConservationKnowledge;
+            return disclosure.IndustrialDiagnosticsVisible &&
+                AquacultureUiDisclosure.HasCompleteFacetForWater(species, water, "population");
         }
 
         private List<NaturalFishConservationViewSnapshot> KnownConservationStatuses(NaturalWaterViewSnapshot water)
@@ -1208,7 +1215,8 @@ namespace AquacultureFishing
         private sealed class PondEntry
         {
             public PondEntry(PondProxyThing proxy, FishPondMapComponent component, PondMenuSnapshot raw,
-                int ordinal, IntVec3 cell, PondUiSnapshot display, AquacultureWorkspaceRowSnapshot status)
+                int ordinal, IntVec3 cell, PondUiSnapshot display, AquacultureWorkspaceRowSnapshot status,
+                bool exactDiagnostics)
             {
                 Proxy = proxy;
                 Cell = cell;
@@ -1217,6 +1225,7 @@ namespace AquacultureFishing
                 Ordinal = ordinal;
                 Display = display;
                 Status = status;
+                ExactDiagnostics = exactDiagnostics;
                 AdultsOnly = component.HarvestAdultsOnlyAt(cell);
                 ProtectFemales = component.ProtectBreedingFemalesAt(cell);
                 AutomaticFeeding = component.AutomaticFeedingAt(cell);
@@ -1235,6 +1244,7 @@ namespace AquacultureFishing
             public readonly int Ordinal;
             public readonly PondUiSnapshot Display;
             public readonly AquacultureWorkspaceRowSnapshot Status;
+            public readonly bool ExactDiagnostics;
             public AquacultureHealthPriority Priority => Status.Priority;
             public IReadOnlyList<string> Details => Status.Details;
             public readonly bool AdultsOnly;

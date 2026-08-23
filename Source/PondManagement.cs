@@ -920,7 +920,7 @@ namespace AquacultureFishing
                 DrawLocked(rect, rect.y + 86f, "Industrial Aquaculture", "Stocking goals, automated harvest designations, feeder control, and ecosystem diagnostics.");
                 return;
             }
-            bool exactDiagnostics = PondCausalUi.ExactDiagnosticsVisible();
+            bool exactDiagnostics = PondCausalUi.ExactDiagnosticsVisible(snapshot);
             string hidden = "AquacultureFishing.WorkspaceKnowledgeHidden".Translate().ToString();
             DrawMetrics(rect, new[]
             {

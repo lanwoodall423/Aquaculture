@@ -388,11 +388,17 @@ namespace AquacultureFishing.Tests
                 "planner retains authoritative forecast and blueprint persistence");
             Check(journalSource.Contains("CriticalPondFilterVisible") && journalSource.Contains("PondDiagnosisVisible"),
                 "pond filters and exact diagnosis share one entitlement boundary");
+            Check(journalSource.Contains("HasFacetForFish") && journalSource.Contains("HasCompleteFacetForWater") &&
+                 journalSource.Contains("ExactDiagnostics") && journalSource.Contains("string summary = entry.ExactDiagnostics") &&
+                 journalSource.Contains("relevant.All"),
+                 "pond and water diagnostics are scoped to the selected Knowledge subjects");
             Check(plannerOwnerSource.Contains("PlannerFactsKnownToColony") &&
-                plannerOwnerSource.Contains("PruneUnknownPlanEntries") &&
-                plannerOwnerSource.Contains("SpeciesView") && plannerOwnerSource.Contains("pond_compatibility") &&
-                plannerOwnerSource.Contains("feeding") && plannerOwnerSource.Contains("habitat"),
-                "stocking planner filters Knowledge-owned species facts before display and forecast");
+                 !plannerOwnerSource.Contains("PruneUnknownPlanEntries") &&
+                 plannerOwnerSource.Contains("PlanEntries.ToList()") &&
+                 plannerOwnerSource.Contains("forecastEntries.Count") && plannerOwnerSource.Contains("int total = PlanEntries.Sum") &&
+                 plannerOwnerSource.Contains("SpeciesView") && plannerOwnerSource.Contains("pond_compatibility") &&
+                 plannerOwnerSource.Contains("feeding") && plannerOwnerSource.Contains("habitat"),
+                 "stocking planner filters Knowledge-owned species facts for display without pruning authoritative plans");
         }
 
         private static void TestMetadataAndBuildContract(string root)

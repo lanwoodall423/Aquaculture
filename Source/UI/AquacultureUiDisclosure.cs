@@ -61,6 +61,35 @@ namespace AquacultureFishing
                 snapshot.knownFacets.Contains(facet, StringComparer.Ordinal);
         }
 
+        /// <summary>
+        /// Tests a Knowledge facet only for the species represented by the observed rows. Every
+        /// observed species must carry the facet; a colony-wide facet for another species or a
+        /// partial pond observation must not authorize an aggregate exact diagnostic.
+        /// </summary>
+        public static bool HasFacetForFish(IEnumerable<AquacultureSpeciesViewSnapshot> species,
+            IEnumerable<ThingDef> fishDefs, string facet)
+        {
+            HashSet<ThingDef> relevant = new HashSet<ThingDef>((fishDefs ?? Enumerable.Empty<ThingDef>())
+                .Where(def => def != null));
+            if (relevant.Count == 0) return false;
+            List<AquacultureSpeciesViewSnapshot> rows = (species ?? Enumerable.Empty<AquacultureSpeciesViewSnapshot>())
+                .Where(item => item?.fishDef != null && relevant.Contains(item.fishDef)).ToList();
+            return relevant.All(def => rows.Any(item => item.identityKnown && item.fishDef == def && HasFacet(item, facet)));
+        }
+
+        /// <summary>
+        /// Exact water totals require a population claim for every species in the prepared view;
+        /// one known species cannot authorize an aggregate over hidden species.
+        /// </summary>
+        public static bool HasCompleteFacetForWater(IEnumerable<AquacultureSpeciesViewSnapshot> species,
+            NaturalWaterViewSnapshot water, string facet)
+        {
+            if (water?.conservation == null || water.conservation.Count == 0) return false;
+            List<AquacultureSpeciesViewSnapshot> rows = (species ?? Enumerable.Empty<AquacultureSpeciesViewSnapshot>())
+                .Where(item => item?.fishDef != null && item.identityKnown).ToList();
+            return water.conservation.Keys.All(def => rows.Any(item => item.fishDef == def && HasFacet(item, facet)));
+        }
+
         public static bool HasConservationKnowledge(IEnumerable<AquacultureSpeciesViewSnapshot> species,
             IEnumerable<NaturalWaterViewSnapshot> waters)
         {

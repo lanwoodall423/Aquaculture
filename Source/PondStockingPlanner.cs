@@ -92,9 +92,8 @@ namespace AquacultureFishing
 
         internal void SavePlanForUi()
         {
-            PruneUnknownPlanEntries();
             component.SetStockingBlueprint(pond.Position, plan, plannedWater);
-            int total = plan.Sum(pair => pair.Value);
+            int total = PlanEntries.Sum(pair => pair.Value);
             Messages.Message(total > 0
                     ? "AquacultureFishing.PondPlannerSaved".Translate(total).ToString()
                     : "AquacultureFishing.PondPlannerCleared".Translate().ToString(),
@@ -105,14 +104,14 @@ namespace AquacultureFishing
         {
             get
             {
-                PruneUnknownPlanEntries();
-                string key = AquaculturePlannerCacheContract.Key(plan
+                IEnumerable<KeyValuePair<ThingDef, int>> visiblePlan = PlanEntries.ToList();
+                string key = AquaculturePlannerCacheContract.Key(visiblePlan
                     .Where(pair => pair.Value > 0)
                     .OrderBy(pair => pair.Key.defName, StringComparer.Ordinal)
                     .Select(pair => pair.Key.defName + ":" + pair.Value),
                     plannedWater.ToString(), AquacultureSnapshotCache.Revision);
                 if (cachedForecastSnapshot != null && cachedForecastKey == key) return cachedForecastSnapshot;
-                Forecast data = CalculateForecast();
+                Forecast data = CalculateForecast(visiblePlan);
                 cachedForecastKey = key;
                 cachedForecastSnapshot = new AquaculturePlannerForecastSnapshot(data.totalFish,
                     data.physicalCapacity, data.sustainableCapacity, data.industrialCapacity,
@@ -122,8 +121,10 @@ namespace AquacultureFishing
             }
         }
 
-        private Forecast CalculateForecast()
+        private Forecast CalculateForecast(IEnumerable<KeyValuePair<ThingDef, int>> entries)
         {
+            IEnumerable<KeyValuePair<ThingDef, int>> forecastEntries =
+                entries ?? Enumerable.Empty<KeyValuePair<ThingDef, int>>();
             PondMenuSnapshot snapshot = component.MenuSnapshotAt(pond.Position) ?? new PondMenuSnapshot();
             float demandMultiplier = AquacultureMod.Settings?.foodDemandMultiplier ?? 1f;
             float algaeMultiplier = AquacultureMod.Settings?.algaeGrowthMultiplier ?? 1f;
@@ -138,7 +139,7 @@ namespace AquacultureFishing
             };
             float temperature = snapshot.temperature;
 
-            foreach (KeyValuePair<ThingDef, int> pair in plan)
+            foreach (KeyValuePair<ThingDef, int> pair in forecastEntries)
             {
                 if (pair.Value <= 0) continue;
                 ThingDef def = pair.Key;
@@ -180,7 +181,8 @@ namespace AquacultureFishing
                 dailyDemandPerFish, data.industrialCapacity);
             data.sustainableCapacity = Mathf.Min(data.industrialCapacity,
                 Mathf.Min(data.foodSupportedCapacity, data.habitatSupportedCapacity));
-            data.predationRisk = data.predators + data.omnivores > 0 && plan.Count(pair => pair.Value > 0) > 1;
+            data.predationRisk = data.predators + data.omnivores > 0 &&
+                forecastEntries.Count(pair => pair.Value > 0) > 1;
             if (data.totalFish > data.physicalCapacity)
                 data.warnings.Insert(0, "AquacultureFishing.PondPlannerOverPhysical".Translate(
                     data.totalFish - data.physicalCapacity).ToString());
@@ -223,7 +225,7 @@ namespace AquacultureFishing
             plan.Clear();
             cachedForecastKey = null;
             foreach (KeyValuePair<ThingDef, int> pair in saved)
-                if (PlannerFactsKnownToColony(pair.Key)) plan[pair.Key] = pair.Value;
+                if (pair.Key != null && pair.Value > 0) plan[pair.Key] = pair.Value;
             plannedWater = component.StockingBlueprintWaterAt(pond.Position);
             return true;
         }
@@ -238,12 +240,6 @@ namespace AquacultureFishing
         }
 
         private int Count(ThingDef def) => plan.TryGetValue(def, out int count) ? count : 0;
-
-        private void PruneUnknownPlanEntries()
-        {
-            foreach (ThingDef def in plan.Keys.Where(item => !PlannerFactsKnownToColony(item)).ToList())
-                plan.Remove(def);
-        }
 
         private static bool PlannerFactsKnownToColony(ThingDef def)
         {

@@ -309,11 +309,21 @@ namespace AquacultureFishing
 
     public static class PondCausalUi
     {
-        public static bool ExactDiagnosticsVisible()
+        public static bool ExactDiagnosticsVisible(PondMenuSnapshot snapshot)
         {
             if (!AquacultureProgression.IsAvailable("AF_IndustrialAquaculture")) return false;
-            AquacultureJournalViewSnapshot journal = AquacultureSnapshotCache.Journal(null, true);
-            return journal?.species?.Any(item => AquacultureUiDisclosure.HasFacet(item, "health")) == true;
+            IEnumerable<ThingDef> fishDefs = (snapshot?.fish ?? new List<FishMenuEntry>())
+                .Select(item => item?.fish?.parent?.def).Where(def => def != null).Distinct();
+            bool hasFish = false;
+            foreach (ThingDef fishDef in fishDefs)
+            {
+                hasFish = true;
+                AquacultureKnowledgeView view = AquacultureKnowledgeAdapter.SpeciesView(fishDef, null, true);
+                if (view.identityKnown && view.knownFacets != null &&
+                    view.knownFacets.Contains("health", StringComparer.Ordinal)) continue;
+                return false;
+            }
+            return hasFish;
         }
 
         public static float DrawSafetySummary(Rect rect, PondMenuSnapshot snapshot)
@@ -325,7 +335,7 @@ namespace AquacultureFishing
             Widgets.Label(new Rect(rect.x + 10f, rect.y + 7f, rect.width - 20f, 26f),
                 "AquacultureFishing.PondSafetyTitle".Translate());
             Text.Font = GameFont.Small;
-            if (!ExactDiagnosticsVisible())
+            if (!ExactDiagnosticsVisible(snapshot))
             {
                 GUI.color = summary.issues.Count == 0 ? new Color(0.55f, 0.86f, 0.62f) : Color.white;
                 Widgets.Label(new Rect(rect.x + 10f, rect.y + 36f, rect.width - 20f, 24f),
@@ -360,7 +370,7 @@ namespace AquacultureFishing
         {
             PondCausalSummary summary = snapshot?.causalSummary;
             if (summary == null) return 0f;
-            if (!ExactDiagnosticsVisible()) return DrawCoarseSummary(rect, snapshot);
+            if (!ExactDiagnosticsVisible(snapshot)) return DrawCoarseSummary(rect, snapshot);
 
             bool showBreeding = AquacultureProgression.IsAvailable("AF_SelectiveBreeding");
             List<PondCausalIssue> visibleIssues = summary.issues
