@@ -420,6 +420,12 @@ namespace AquacultureFishing.Tests
             Check(project.Contains("<Private>false</Private>"), "framework references are not copied by the project");
             Check(project.Contains("InsightCanvasDir") && project.Contains("InsightCanvasAssemblyPath"),
                 "Insight Canvas build paths are configurable");
+            string providerProject = File.ReadAllText(Path.Combine(root, "Source", "DeferredRealityProvider", "DeferredReality.Aquaculture.csproj"));
+            string harmonyEnvGuard = "'$(HarmonyPath)' == '' and '$(DEFERRED_REALITY_HARMONY_PATH)' != '' and Exists('$(DEFERRED_REALITY_HARMONY_PATH)')";
+            Check(project.Contains(harmonyEnvGuard) && providerProject.Contains(harmonyEnvGuard) &&
+                project.Contains("$(RimWorldDir)/../../workshop/content/294100/2009463077/Current/Assemblies/0Harmony.dll") &&
+                !project.Contains("$(RimWorldDir)/../../steamapps/workshop"),
+                "primary and provider builds use RimTest's verified Harmony path or the valid Steam Workshop layout");
             Check(!project.Contains("C:\\Games\\Steam\\"), "project has no machine-specific absolute reference path");
             Check(!Directory.GetFiles(root, "InsightCanvas.dll", SearchOption.AllDirectories).Any(),
                 "Aquaculture tree contains no bundled InsightCanvas.dll");
