@@ -1,0 +1,177 @@
+{
+  "schemaVersion": 1,
+  "projectId": "aquaculture",
+  "displayName": "Aquaculture (RimWorld mod)",
+  "capabilities": {
+    "checks": [
+      {
+        "capabilityId": "validation.trait-rules",
+        "title": "Aquaculture portable trait and rules tests",
+        "tier": "development-confidence",
+        "taskCheckName": "Aquaculture portable trait and rules tests",
+        "command": {
+          "executable": "dotnet",
+          "args": [
+            "run",
+            "--project",
+            "DevTools/TraitBreedingRules.Tests.csproj",
+            "--configuration",
+            "Release",
+            "--nologo"
+          ],
+          "cwd": "."
+        },
+        "requirements": {
+          "platform": "win32"
+        },
+        "maxAttempts": 2,
+        "reuse": {
+          "mode": "exact-candidate"
+        },
+        "concurrency": {
+          "mode": "serial"
+        }
+      },
+      {
+        "capabilityId": "validation.ui-contracts",
+        "title": "Aquaculture portable UI contract tests",
+        "tier": "development-confidence",
+        "taskCheckName": "Aquaculture portable UI contract tests",
+        "command": {
+          "executable": "dotnet",
+          "args": [
+            "run",
+            "--project",
+            "DevTools/InsightCanvasUiTests.csproj",
+            "--configuration",
+            "Release",
+            "--nologo"
+          ],
+          "cwd": "."
+        },
+        "requirements": {
+          "platform": "win32"
+        },
+        "maxAttempts": 2,
+        "reuse": {
+          "mode": "exact-candidate"
+        },
+        "concurrency": {
+          "mode": "serial"
+        }
+      }
+    ],
+    "transforms": []
+  },
+  "validationPack": {
+    "schemaVersion": 1,
+    "releaseTargets": [
+      "win32"
+    ],
+    "profiles": [
+      {
+        "profileId": "portable",
+        "title": "Portable development tests",
+        "checkIds": [
+          "validation.trait-rules",
+          "validation.ui-contracts"
+        ],
+        "procedureIds": []
+      },
+      {
+        "profileId": "runtime-smoke",
+        "title": "Isolated RimTest load and gameplay smoke",
+        "checkIds": [
+          "validation.trait-rules",
+          "validation.ui-contracts"
+        ],
+        "procedureIds": [
+          "rimtest.dev-check",
+          "rimtest.gameplay"
+        ]
+      },
+      {
+        "profileId": "release-candidate",
+        "title": "Windows release-candidate qualification",
+        "checkIds": [
+          "validation.trait-rules",
+          "validation.ui-contracts"
+        ],
+        "procedureIds": [
+          "rimtest.dev-check",
+          "rimtest.gameplay",
+          "rimtest.visual",
+          "rimtest.persistence",
+          "rimtest.package"
+        ]
+      }
+    ],
+    "procedures": [
+      {
+        "procedureId": "rimtest.dev-check",
+        "title": "RimTest isolated mod build and content-load smoke",
+        "steps": [
+          "Run the supported installed RimTest CLI against the exact Aquaculture candidate workspace using rimtest dev-check <workspace> --json; do not launch RimWorld or deploy assemblies manually.",
+          "Require BUILD_PASS, STATIC_PASS, RUNTIME_LOAD_PASS, INFRASTRUCTURE_PASS and CLEANUP_PASS in the structured result; record candidate source identity and the result evidence.",
+          "Treat any failed or unavailable stage as BLOCKED or FAIL; a runtime-load pass does not establish pond gameplay, persistence, or UI behavior."
+        ],
+        "requirements": {
+          "platform": "win32",
+          "hardware": []
+        }
+      },
+      {
+        "procedureId": "rimtest.gameplay",
+        "title": "RimTest gameplay and framework smoke",
+        "steps": [
+          "In an approved isolated RimTest/RimLiaison game session, run the Aquaculture affected or smoke suite from TestCatalog/rimtest.catalog.json.",
+          "Verify the built/deployed/loaded Aquaculture assembly identities match the exact candidate, and require loadedArtifactFreshnessProven=true.",
+          "Exercise real pond, fish population, rod, commission, Knowledge Framework and Deferred Reality paths; record per-test outcomes and controlled lease release."
+        ],
+        "requirements": {
+          "platform": "win32",
+          "hardware": []
+        }
+      },
+      {
+        "procedureId": "rimtest.visual",
+        "title": "Live UI accessibility and visual acceptance",
+        "steps": [
+          "After reaching a valid RimLiaison-managed live UI state, inspect semantic targets and targeted screenshots for settings, pond, fish dossier and Journal.",
+          "Check wide/medium/narrow layout, density, contrast, reduced motion, focus, scrolling, repeated open/close, and relevant diagnostics.",
+          "Record NOT RUN if the required owner-managed bridge session, lease, or visual evidence is unavailable."
+        ],
+        "requirements": {
+          "platform": "win32",
+          "hardware": []
+        }
+      },
+      {
+        "procedureId": "rimtest.persistence",
+        "title": "Gameplay persistence and compatibility acceptance",
+        "steps": [
+          "In disposable RimTest-owned colonies and saves, exercise save/reload and legacy migration, interrupted rod restoration, natural populations, cross-framework duplicate suppression and multi-map behavior.",
+          "Run long-duration pond/population/performance scenarios, inspect bounded logs, and record any unrelated-mod errors separately.",
+          "Keep normal player saves and ModsConfig untouched; do not infer a pass from portable tests or a quicktest load."
+        ],
+        "requirements": {
+          "platform": "win32",
+          "hardware": []
+        }
+      },
+      {
+        "procedureId": "rimtest.package",
+        "title": "Clean player package acceptance",
+        "steps": [
+          "Using the existing reviewed Aquaculture release workflow, verify exact-source package assembly hashes, dependencies, generated manifests and the player ZIP allowlist.",
+          "Ensure the player ZIP excludes developer source, tools, caches, PDBs, bridge harnesses and duplicate dependency assemblies.",
+          "Confirm clean install with required dependencies, without developer bridge tools, and record result for the exact release candidate."
+        ],
+        "requirements": {
+          "platform": "win32",
+          "hardware": []
+        }
+      }
+    ]
+  }
+}

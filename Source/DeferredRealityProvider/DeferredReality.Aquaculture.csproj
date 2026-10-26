@@ -10,6 +10,8 @@
     <AssemblyName>DeferredReality.Aquaculture</AssemblyName>
     <RootNamespace>DeferredReality.Aquaculture</RootNamespace>
     <AquacultureRoot Condition="'$(AquacultureRoot)' == ''">$(MSBuildThisFileDirectory)..\..</AquacultureRoot>
+    <RimWorldRoot Condition="'$(RimWorldRoot)' == '' and '$(RimWorldDir)' != ''">$(RimWorldDir)</RimWorldRoot>
+    <RimWorldRoot Condition="'$(RimWorldRoot)' == '' and '$(RIMWORLD_ROOT)' != ''">$(RIMWORLD_ROOT)</RimWorldRoot>
     <RimWorldRoot Condition="'$(RimWorldRoot)' == ''">$(AquacultureRoot)\..\..</RimWorldRoot>
     <RimWorldManagedPath Condition="'$(RimWorldManagedPath)' == ''">$(RimWorldRoot)\RimWorldWin64_Data\Managed</RimWorldManagedPath>
     <DeferredRealityRoot Condition="'$(DeferredRealityRoot)' == ''">$(AquacultureRoot)\..\DeferredRealityFramework</DeferredRealityRoot>

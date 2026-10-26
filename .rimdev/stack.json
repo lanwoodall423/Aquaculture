@@ -4,5 +4,32 @@
   "devBridgeProject": "aquaculture",
   "catalog": "TestCatalog/rimtest.catalog.json",
   "fallbackSuite": "smoke",
-  "rimBridge": "via-devbridge"
+  "rimBridge": "via-devbridge",
+  "workload": "production",
+  "projectType": "rimworld-content-mod",
+  "packageId": "lan.aquaculture.fishing",
+  "sourceProject": "Source/AquacultureFishing.csproj",
+  "configuration": "Release",
+  "expectedAssembly": "AquacultureFishing.dll",
+  "deploymentTarget": "1.6/Assemblies/AquacultureFishing.dll",
+  "testRecipe": "aquaculture-development-smoke",
+  "runtimePackage": {
+    "sourceRoot": ".",
+    "include": [
+      "About/**",
+      "1.*/**",
+      "LoadFolders.xml",
+      "LICENSE"
+    ],
+    "exclude": [
+      ".rimdev/**",
+      ".projectnexus/**",
+      "Source/**",
+      "DevTools/**",
+      "TestCatalog/**",
+      "bin/**",
+      "obj/**"
+    ]
+  },
+  "runtimeFolder": "AquacultureFishing"
 }

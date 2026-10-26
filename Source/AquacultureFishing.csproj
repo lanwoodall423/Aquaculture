@@ -23,6 +23,7 @@
       overrides authoritative, but make the standard Steam layout usable by
       that owning workflow as well.
     -->
+    <RimWorldDir Condition="'$(RimWorldDir)' == '' and '$(RIMWORLD_ROOT)' != '' and Exists('$(RIMWORLD_ROOT)/RimWorldWin64_Data/Managed/Assembly-CSharp.dll')">$(RIMWORLD_ROOT)</RimWorldDir>
     <RimWorldDir Condition="'$(RimWorldDir)' == '' and Exists('$(MSBuildThisFileDirectory)..\..\..\RimWorldWin64_Data\Managed\Assembly-CSharp.dll')">$(MSBuildThisFileDirectory)..\..\..</RimWorldDir>
     <HarmonyPath Condition="'$(HarmonyPath)' == '' and Exists('$(RimWorldDir)/../../steamapps/workshop/content/294100/2009463077/Current/Assemblies/0Harmony.dll')">$(RimWorldDir)/../../steamapps/workshop/content/294100/2009463077/Current/Assemblies/0Harmony.dll</HarmonyPath>
     <HarmonyPath Condition="'$(HarmonyPath)' == '' and Exists('$(MSBuildThisFileDirectory)..\..\XenotypeGeneChances\Assemblies\0Harmony.dll')">$(MSBuildThisFileDirectory)..\..\XenotypeGeneChances\Assemblies\0Harmony.dll</HarmonyPath>
