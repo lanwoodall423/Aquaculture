@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
@@ -414,6 +415,43 @@ namespace AquacultureFishing.Tests
             IEnumerable<string> loadAfterIds = about.Descendants("loadAfter").Descendants("li").Select(node => node.Value);
             Check(dependencyIds.Contains("lan.insightcanvas"), "About.xml declares Insight Canvas dependency");
             Check(loadAfterIds.Contains("lan.insightcanvas"), "About.xml declares Insight Canvas loadAfter");
+
+            using (JsonDocument stack = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, ".rimdev", "stack.json"))))
+            using (JsonDocument catalog = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "TestCatalog", "rimtest.catalog.json"))))
+            {
+                string recipeId = stack.RootElement.GetProperty("testRecipe").GetString();
+                string owner = stack.RootElement.GetProperty("devBridgeProject").GetString();
+                string recipePath = Path.Combine(root, ".rimdev", "recipes", recipeId + ".json");
+                Check(recipeId == "aquaculture-development-smoke" && owner == "aquaculture" &&
+                    catalog.RootElement.GetProperty("tests").EnumerateArray()
+                        .Any(test => test.GetProperty("recipe").GetString() == recipeId),
+                    "RimTest manifest and catalog reference the Aquaculture smoke recipe");
+                Check(File.Exists(recipePath), "RimTest smoke recipe belongs to the Aquaculture repository");
+                if (File.Exists(recipePath))
+                {
+                    using (JsonDocument recipe = JsonDocument.Parse(File.ReadAllText(recipePath)))
+                    {
+                        JsonElement rootRecipe = recipe.RootElement;
+                        JsonElement budget = rootRecipe.GetProperty("budget");
+                        Check(rootRecipe.GetProperty("schemaVersion").GetString() == "devbridge-test-recipe/v1" &&
+                            rootRecipe.GetProperty("id").GetString() == recipeId &&
+                            rootRecipe.GetProperty("projects").EnumerateArray()
+                                .Select(projectId => projectId.GetString()).SequenceEqual(new[] { owner }),
+                            "project-owned RimTest recipe has the correct schema, ID and single owner");
+                        Check(rootRecipe.GetProperty("inputs").GetProperty("quicktest").GetBoolean() &&
+                            rootRecipe.GetProperty("requiresReady").GetBoolean() &&
+                            rootRecipe.GetProperty("success").GetProperty("quicktestReady").GetBoolean(),
+                            "RimTest recipe requires real quicktest readiness evidence");
+                        Check(budget.GetProperty("timeoutSeconds").GetInt32() is > 0 and <= 300 &&
+                            budget.GetProperty("maxRimWorldLaunches").GetInt32() == 1 &&
+                            budget.GetProperty("maxRecipeAttempts").GetInt32() == 1 &&
+                            budget.GetProperty("maxCoordinatorRefreshes").GetInt32() <= 4 &&
+                            budget.GetProperty("stopOnRepeatedFailureFingerprint").GetBoolean() &&
+                            budget.GetProperty("maxRepeatedFailureCount").GetInt32() == 1,
+                            "RimTest smoke recipe has bounded execution and repeated-failure limits");
+                    }
+                }
+            }
 
             string project = File.ReadAllText(Path.Combine(root, "Source", "AquacultureFishing.csproj"));
             Check(project.Contains("Reference Include=\"InsightCanvas\""), "project references Insight Canvas directly");

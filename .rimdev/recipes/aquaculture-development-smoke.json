@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "devbridge-test-recipe/v1",
+  "id": "aquaculture-development-smoke",
+  "description": "Run a bounded Aquaculture build-and-load quicktest in one owner-managed runtime generation.",
+  "projects": [
+    "aquaculture"
+  ],
+  "inputs": {
+    "quicktest": true
+  },
+  "requiresReady": true,
+  "success": {
+    "quicktestReady": true
+  },
+  "budget": {
+    "timeoutSeconds": 300,
+    "maxRimWorldLaunches": 1,
+    "maxRecipeAttempts": 1,
+    "maxCoordinatorRefreshes": 4,
+    "stopOnRepeatedFailureFingerprint": true,
+    "maxRepeatedFailureCount": 1
+  }
+}
