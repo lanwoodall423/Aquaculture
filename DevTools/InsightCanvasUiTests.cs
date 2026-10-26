@@ -388,9 +388,14 @@ namespace AquacultureFishing.Tests
                 "planner retains authoritative forecast and blueprint persistence");
             Check(journalSource.Contains("CriticalPondFilterVisible") && journalSource.Contains("PondDiagnosisVisible"),
                 "pond filters and exact diagnosis share one entitlement boundary");
-            Check(journalSource.Contains("HasFacetForFish") && journalSource.Contains("HasCompleteFacetForWater") &&
+            string disclosureSource = File.ReadAllText(Path.Combine(root, "Source", "UI", "AquacultureUiDisclosure.cs"));
+            Check(journalSource.Contains("AquacultureUiDisclosure.HasFacetForFish") &&
+                 journalSource.Contains("AquacultureUiDisclosure.HasCompleteFacetForWater") &&
                  journalSource.Contains("ExactDiagnostics") && journalSource.Contains("string summary = entry.ExactDiagnostics") &&
-                 journalSource.Contains("relevant.All"),
+                 disclosureSource.Contains("public static bool HasFacetForFish") &&
+                 disclosureSource.Contains("public static bool HasCompleteFacetForWater") &&
+                 disclosureSource.Contains("relevant.All") &&
+                 disclosureSource.Contains("water.conservation.Keys.All"),
                  "pond and water diagnostics are scoped to the selected Knowledge subjects");
             Check(plannerOwnerSource.Contains("PlannerFactsKnownToColony") &&
                  !plannerOwnerSource.Contains("PruneUnknownPlanEntries") &&
