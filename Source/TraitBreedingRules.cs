@@ -257,6 +257,31 @@ namespace AquacultureFishing
         }
     }
 
+    /// <summary>Engine-independent update and interpolation rules for pond fish schools.</summary>
+    public static class FishSchoolTimingRules
+    {
+        public static bool IsUpdateDue(int now, int lastUpdateTick, int interval)
+        {
+            // Uninitialized school timestamps may be negative. Subtract before comparing
+            // in long so a valid high game tick does not make schools stop updating.
+            return (long)now - lastUpdateTick >= interval;
+        }
+
+        public static int SimulationStepTicks(int now, int lastUpdateTick, int interval)
+        {
+            // Preserve the existing first-step interval for uninitialized schools.
+            if (lastUpdateTick < 0) return interval;
+            long elapsed = (long)now - lastUpdateTick;
+            return (int)Math.Max(1L, Math.Min(30L, elapsed));
+        }
+
+        public static float InterpolationAlpha(int now, int lastUpdateTick, int updateInterval)
+        {
+            float elapsed = (long)now - lastUpdateTick;
+            return Math.Max(0f, Math.Min(1f, elapsed / Math.Max(1, updateInterval)));
+        }
+    }
+
     /// <summary>Pure timing contract for the managed pond ecology simulation.</summary>
     public static class PondEcologyTimingRules
     {

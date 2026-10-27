@@ -425,7 +425,8 @@ namespace AquacultureFishing
         public Vector3 SchoolDrawPosition(CompFishTraits comp, Vector3 fallback)
         {
             if (!comp.schoolInitialized) InitializeSchoolState(comp);
-            float alpha = Mathf.Clamp01((Find.TickManager.TicksGame - comp.schoolLastUpdateTick) / (float)Mathf.Max(1, comp.schoolUpdateInterval));
+            float alpha = FishSchoolTimingRules.InterpolationAlpha(
+                Find.TickManager.TicksGame, comp.schoolLastUpdateTick, comp.schoolUpdateInterval);
             Vector2 position = Vector2.Lerp(comp.schoolPreviousPosition, comp.schoolPosition, Mathf.SmoothStep(0f, 1f, alpha));
             return new Vector3(position.x, fallback.y, position.y);
         }
@@ -434,7 +435,7 @@ namespace AquacultureFishing
         {
             EnsurePondState();
             if (now < nextSchoolTick) return;
-            nextSchoolTick = now + 6;
+            nextSchoolTick = FishAgeTimingRules.ScheduleAfterTicks(now, 6);
             PrunePondWatchers(now);
             CellRect visibleRect = map == Find.CurrentMap ? Find.CameraDriver.CurrentViewRect.ExpandedBy(3) : CellRect.Empty;
 
@@ -446,8 +447,9 @@ namespace AquacultureFishing
                 for (int schoolIndex = 0; schoolIndex < pond.schools.Count; schoolIndex++)
                 {
                     SchoolState school = pond.schools[schoolIndex];
-                    if (school.members.Count == 0 || now - school.lastUpdateTick < interval) continue;
-                    int delta = school.lastUpdateTick < 0 ? interval : Mathf.Clamp(now - school.lastUpdateTick, 1, 30);
+                    if (school.members.Count == 0 ||
+                        !FishSchoolTimingRules.IsUpdateDue(now, school.lastUpdateTick, interval)) continue;
+                    int delta = FishSchoolTimingRules.SimulationStepTicks(now, school.lastUpdateTick, interval);
                     school.lastUpdateTick = now;
                     SimulateSchool(pond, school, now, delta, interval);
                 }
@@ -536,7 +538,8 @@ namespace AquacultureFishing
                     {
                         uint depthHash = (uint)(comp.parent.thingIDNumber * 747796405 ^ now / 600);
                         comp.schoolTargetDepth = 0.08f + (depthHash & 1023u) / 1023f * 0.68f;
-                        comp.nextDepthChangeTick = now + 600 + PositiveMod(comp.parent.thingIDNumber * 31, 900);
+                        comp.nextDepthChangeTick = FishAgeTimingRules.ScheduleAfterTicks(now,
+                            600 + PositiveMod(comp.parent.thingIDNumber * 31, 900));
                     }
                     comp.schoolDepth = Mathf.MoveTowards(comp.schoolDepth, comp.schoolTargetDepth, delta / 1800f);
                 }
@@ -595,7 +598,8 @@ namespace AquacultureFishing
             uint depthHash = (uint)(comp.parent.thingIDNumber * 2654435761u);
             comp.schoolDepth = 0.08f + (depthHash & 1023u) / 1023f * 0.68f;
             comp.schoolTargetDepth = comp.schoolDepth;
-            comp.nextDepthChangeTick = comp.schoolLastUpdateTick + 600 + PositiveMod(comp.parent.thingIDNumber * 31, 900);
+            comp.nextDepthChangeTick = FishAgeTimingRules.ScheduleAfterTicks(comp.schoolLastUpdateTick,
+                600 + PositiveMod(comp.parent.thingIDNumber * 31, 900));
             comp.schoolInitialized = true;
         }
 
@@ -625,7 +629,7 @@ namespace AquacultureFishing
             int index = PositiveMod(seed * 397 ^ now / 300, info.cells.Count);
             IntVec3 cell = info.cells[index];
             runtime.target = new Vector2(cell.x + 0.5f, cell.z + 0.5f);
-            runtime.targetUntilTick = now + 240 + PositiveMod(seed, 420);
+            runtime.targetUntilTick = FishAgeTimingRules.ScheduleAfterTicks(now, 240 + PositiveMod(seed, 420));
         }
 
         private static bool UpdateSchoolRest(SchoolRuntime runtime, SchoolState school, int now)
@@ -634,16 +638,20 @@ namespace AquacultureFishing
             int hash = school.seed;
             if (runtime.nextRestCheckTick == 0)
             {
-                runtime.nextRestCheckTick = now + 600 + PositiveMod(hash, 600);
+                runtime.nextRestCheckTick = FishAgeTimingRules.ScheduleAfterTicks(now,
+                    600 + PositiveMod(hash, 600));
                 return false;
             }
             if (now < runtime.nextRestCheckTick) return false;
             float restFactor = 0f;
             for (int i = 0; i < school.members.Count; i++) restFactor += school.profile.restFrequency * school.members[i].RestFrequencyFactor;
             restFactor /= Mathf.Max(1, school.members.Count);
-            runtime.nextRestCheckTick = now + Mathf.RoundToInt(Mathf.Lerp(900f, 420f, Mathf.Clamp01((restFactor - 0.5f) / 1.5f))) + PositiveMod(hash + now, 300);
+            runtime.nextRestCheckTick = FishAgeTimingRules.ScheduleAfterTicks(now,
+                Mathf.RoundToInt(Mathf.Lerp(900f, 420f, Mathf.Clamp01((restFactor - 0.5f) / 1.5f))) +
+                PositiveMod(hash + now, 300));
             if (!DeterministicChance(hash, now, Mathf.Clamp01(0.18f * restFactor))) return false;
-            runtime.restUntilTick = now + 90 + PositiveMod(hash * 31 + now, 180);
+            runtime.restUntilTick = FishAgeTimingRules.ScheduleAfterTicks(now,
+                90 + PositiveMod(hash * 31 + now, 180));
             return true;
         }
 

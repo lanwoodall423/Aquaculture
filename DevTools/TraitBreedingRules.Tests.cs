@@ -277,6 +277,48 @@ static class TraitBreedingRulesTests
             FishAgeTimingRules.ScheduleAfterTicks(int.MaxValue - 100, 625) == int.MaxValue);
     }
 
+    private static void TestFishSchoolTiming()
+    {
+        Check("normal school update cadence remains unchanged",
+            FishSchoolTimingRules.IsUpdateDue(106, 100, 6) &&
+            !FishSchoolTimingRules.IsUpdateDue(105, 100, 6) &&
+            FishSchoolTimingRules.IsUpdateDue(160, 100, 60) &&
+            !FishSchoolTimingRules.IsUpdateDue(219, 100, 120) &&
+            FishSchoolTimingRules.IsUpdateDue(220, 100, 120));
+        Check("uninitialized school remains eligible for update",
+            FishSchoolTimingRules.IsUpdateDue(0, -99999, 6) &&
+            FishSchoolTimingRules.SimulationStepTicks(0, -99999, 120) == 120);
+        Check("school update does not stall on overflowing default timestamp",
+            FishSchoolTimingRules.IsUpdateDue(int.MaxValue, -99999, 6));
+        Check("future school timestamp cannot trigger update after subtraction wrap",
+            !FishSchoolTimingRules.IsUpdateDue(int.MinValue, 1, 6));
+        Check("normal school simulation step retains capped elapsed ticks",
+            FishSchoolTimingRules.SimulationStepTicks(103, 100, 6) == 3 &&
+            FishSchoolTimingRules.SimulationStepTicks(131, 100, 6) == 30 &&
+            FishSchoolTimingRules.SimulationStepTicks(100, 101, 6) == 1);
+        Check("future school timestamp cannot induce a full 30-tick step through overflow",
+            FishSchoolTimingRules.SimulationStepTicks(int.MinValue, 1, 60) == 1);
+        Check("school interpolation keeps original half-step and clamping",
+            FishSchoolTimingRules.InterpolationAlpha(103, 100, 6) == 0.5f &&
+            FishSchoolTimingRules.InterpolationAlpha(99, 100, 6) == 0f &&
+            FishSchoolTimingRules.InterpolationAlpha(107, 100, 6) == 1f &&
+            FishSchoolTimingRules.InterpolationAlpha(101, 100, 0) == 1f);
+        Check("school interpolation never reverses after long positive elapsed ticks",
+            FishSchoolTimingRules.InterpolationAlpha(int.MaxValue, -1, 6) == 1f);
+        Check("school interpolation never advances on an extreme future saved timestamp",
+            FishSchoolTimingRules.InterpolationAlpha(int.MinValue, int.MaxValue, 6) == 0f);
+        Check("normal school/depth/target/rest due-tick intervals remain exact",
+            FishAgeTimingRules.ScheduleAfterTicks(100, 6) == 106 &&
+            FishAgeTimingRules.ScheduleAfterTicks(100, 600 + 375) == 1075 &&
+            FishAgeTimingRules.ScheduleAfterTicks(100, 240 + 419) == 759 &&
+            FishAgeTimingRules.ScheduleAfterTicks(100, 90 + 179) == 369);
+        Check("school/depth/target/rest due ticks saturate at the integer ceiling",
+            FishAgeTimingRules.ScheduleAfterTicks(int.MaxValue - 1, 6) == int.MaxValue &&
+            FishAgeTimingRules.ScheduleAfterTicks(int.MaxValue - 100, 600 + 375) == int.MaxValue &&
+            FishAgeTimingRules.ScheduleAfterTicks(int.MaxValue - 100, 240 + 419) == int.MaxValue &&
+            FishAgeTimingRules.ScheduleAfterTicks(int.MaxValue - 100, 90 + 179) == int.MaxValue);
+    }
+
     private static void TestRecoveryRules()
     {
         NaturalWaterHabitat[] habitats = (NaturalWaterHabitat[])Enum.GetValues(typeof(NaturalWaterHabitat));
@@ -978,6 +1020,7 @@ static class TraitBreedingRulesTests
         TestStabilityAndMigration();
         TestFishAgeTiming();
         TestPondEcologyTiming();
+        TestFishSchoolTiming();
         TestRecoveryRules();
         TestCommissionRules();
         TestKnowledgeContract();
