@@ -195,7 +195,7 @@ namespace AquacultureFishing
             int generation = Math.Max(0, capability.currentGeneration);
             float stability = NormalizeStability(capability.currentStability);
             float size = NormalizeSizeThreshold(capability.currentSizeFactor);
-            if (capability.generationsReachableBeforeDeadline > 0)
+            if (capability.generationsReachableBeforeDeadline > 0 && generation < int.MaxValue)
             {
                 goals.Add(CreateGoal(capability, AquacultureCommissionImprovement.Generation,
                     stability, generation + 1, size));
@@ -222,7 +222,8 @@ namespace AquacultureFishing
         {
             if (capability == null || goal == null || !capability.hasBreedingPair || deadlineDays < 1
                 || (capability.minimumBreedingWindowDays > 0 && deadlineDays < capability.minimumBreedingWindowDays)) return false;
-            if (goal.minimumGeneration > capability.currentGeneration + capability.generationsReachableBeforeDeadline)
+            if (goal.minimumGeneration >
+                (long)capability.currentGeneration + capability.generationsReachableBeforeDeadline)
                 return false;
             if (goal.minimumStability > NormalizeStability(capability.currentStability)
                 && !capability.canImproveStability) return false;
@@ -264,13 +265,13 @@ namespace AquacultureFishing
         {
             if (float.IsNaN(traitDifficulty) || float.IsInfinity(traitDifficulty)) traitDifficulty = 1f;
             int days = 18 - (int)Math.Round(Clamp(traitDifficulty, 0.75f, 2f) * 2f)
-                - Math.Max(0, generation - 1) / 2;
+                - CompletedGenerationSteps(generation) / 2;
             return Math.Max(7, Math.Min(18, days));
         }
 
         public static float GenerationFactor(int generation)
         {
-            return 1f + Math.Min(8, Math.Max(0, generation - 1)) * 0.10f;
+            return 1f + Math.Min(8, CompletedGenerationSteps(generation)) * 0.10f;
         }
 
         public static float StabilityFactor(float stability)
@@ -331,6 +332,12 @@ namespace AquacultureFishing
                 minimumGeneration = Math.Max(0, generation),
                 minimumSizeFactor = NormalizeSizeThreshold(size)
             };
+        }
+
+        private static int CompletedGenerationSteps(int generation)
+        {
+            // Guard before subtraction: int.MinValue - 1 wraps to int.MaxValue.
+            return generation <= 1 ? 0 : generation - 1;
         }
 
         private static bool Finite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);

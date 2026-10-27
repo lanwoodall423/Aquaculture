@@ -341,6 +341,42 @@ static class TraitBreedingRulesTests
         Check("reward lower bound", lowReward >= AquacultureCommissionGoalRules.MinimumReward);
         Check("reward upper bound", highReward <= AquacultureCommissionGoalRules.MaximumReward);
         Check("reward factors are bounded", highReward >= lowReward);
+        Check("invalid generation cannot earn a reward multiplier",
+            AquacultureCommissionGoalRules.GenerationFactor(int.MinValue) == 1f &&
+            AquacultureCommissionGoalRules.GenerationFactor(-8) == 1f &&
+            AquacultureCommissionGoalRules.GenerationFactor(0) == 1f &&
+            AquacultureCommissionGoalRules.GenerationFactor(1) == 1f);
+        Check("valid generation bonus retains normal and upper limits",
+            Math.Abs(AquacultureCommissionGoalRules.GenerationFactor(2) - 1.1f) < 0.0001f &&
+            Math.Abs(AquacultureCommissionGoalRules.GenerationFactor(int.MaxValue) - 1.8f) < 0.0001f);
+        Check("invalid generation cannot shorten the commission deadline",
+            AquacultureCommissionGoalRules.DeadlineDays(1f, int.MinValue) ==
+                AquacultureCommissionGoalRules.DeadlineDays(1f, 1) &&
+            AquacultureCommissionGoalRules.DeadlineDays(1f, -7) ==
+                AquacultureCommissionGoalRules.DeadlineDays(1f, 0));
+        Check("invalid generation does not inflate commission silver",
+            AquacultureCommissionGoalRules.RewardSilver(int.MinValue, 0.7f, 1f, 1f, 1f, 14) ==
+                AquacultureCommissionGoalRules.RewardSilver(1, 0.7f, 1f, 1f, 1f, 14));
+        AquacultureCommissionCapability maxGenerationCapability = new AquacultureCommissionCapability
+        {
+            breedId = "breed",
+            fishDefName = "fish",
+            definingTraitName = "trait",
+            currentGeneration = int.MaxValue,
+            generationsReachableBeforeDeadline = 3,
+            currentStability = 0.60f,
+            currentSizeFactor = 1f,
+            maximumReasonableSizeFactor = 2f,
+            hasBreedingPair = true
+        };
+        Check("maximum generation cannot wrap into an impossible goal",
+            !AquacultureCommissionGoalRules.BuildGoals(maxGenerationCapability)
+                .Any(goal => goal.improvement == AquacultureCommissionImprovement.Generation));
+        maxGenerationCapability.currentGeneration = int.MaxValue - 1;
+        Check("near-maximum reachable generation avoids integer overflow",
+            AquacultureCommissionGoalRules.IsAchievable(maxGenerationCapability,
+                Goal(AquacultureCommissionImprovement.Generation, stability: 0.60f,
+                    generation: int.MaxValue, size: 1f), 14));
 
         AquacultureCommissionFishIndex<string> index = new AquacultureCommissionFishIndex<string>();
         index.Register("a", "breed");
