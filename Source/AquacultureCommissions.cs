@@ -30,8 +30,7 @@ namespace AquacultureFishing
 
         public int DaysRemaining(int now)
         {
-            if (deadlineTick < 0) return 0;
-            return Mathf.Max(0, Mathf.CeilToInt((deadlineTick - now) / 60000f));
+            return AquacultureCommissionGoalRules.RemainingDays(deadlineTick, now);
         }
 
         public bool IsExpired(int now) => deadlineTick >= 0 && now >= deadlineTick;
@@ -180,7 +179,8 @@ namespace AquacultureFishing
         {
             int now = Find.TickManager?.TicksGame ?? 0;
             if (now < nextEligibilityCheckTick) return;
-            nextEligibilityCheckTick = now + AquacultureCommissionRules.EligibilityCheckIntervalTicks;
+            nextEligibilityCheckTick = AquacultureCommissionGoalRules.ScheduleTick(
+                now, AquacultureCommissionRules.EligibilityCheckIntervalTicks);
 
             if (activeCommission != null)
             {
@@ -249,7 +249,7 @@ namespace AquacultureFishing
                 minimumGeneration = selectedGoal.minimumGeneration,
                 minimumSizeFactor = selectedGoal.minimumSizeFactor,
                 offeredTick = now,
-                deadlineTick = now + deadlineDays * 60000,
+                deadlineTick = AquacultureCommissionGoalRules.ScheduleTick(now, (long)deadlineDays * 60000L),
                 improvementKind = selectedGoal.improvement.ToString(),
                 rewardSilver = AquacultureCommissionRules.RewardSilver(
                     selectedGoal.minimumGeneration, selectedGoal.minimumStability, difficulty,
@@ -358,7 +358,7 @@ namespace AquacultureFishing
             string breedName = breed?.name ?? "AquacultureFishing.CommissionUnknown".Translate().ToString();
             activeCommission = null;
             ClearEligibleSpecimens();
-            nextOfferTick = now + AquacultureCommissionRules.OfferCooldownTicks;
+            nextOfferTick = AquacultureCommissionGoalRules.ScheduleTick(now, AquacultureCommissionRules.OfferCooldownTicks);
             Messages.Message("AquacultureFishing.CommissionCompleted".Translate(breedName, rewardAmount),
                 MessageTypeDefOf.PositiveEvent, false);
             return true;
@@ -402,7 +402,8 @@ namespace AquacultureFishing
         public void NotifyBreedRegistered(FishBreedRecord breed)
         {
             int now = Find.TickManager?.TicksGame ?? 0;
-            nextOfferTick = Math.Max(nextOfferTick, now + AquacultureCommissionRules.OfferCooldownTicks);
+            nextOfferTick = Math.Max(nextOfferTick,
+                AquacultureCommissionGoalRules.ScheduleTick(now, AquacultureCommissionRules.OfferCooldownTicks));
             MarkEligibilityDirty();
         }
 
@@ -554,7 +555,7 @@ namespace AquacultureFishing
                 int baseTick = activeCommission.offeredTick >= 0
                     ? activeCommission.offeredTick : Find.TickManager?.TicksGame ?? 0;
                 activeCommission.offeredTick = baseTick;
-                activeCommission.deadlineTick = baseTick + 7 * 60000;
+                activeCommission.deadlineTick = AquacultureCommissionGoalRules.ScheduleTick(baseTick, 7L * 60000L);
             }
             bool referencesValid = breed != null && activeCommission.FishDef != null && trait != null
                 && breed.fishDefName == activeCommission.fishDefName
@@ -597,7 +598,7 @@ namespace AquacultureFishing
             RecordFailure(expired.Breed, now);
             activeCommission = null;
             ClearEligibleSpecimens();
-            nextOfferTick = now + AquacultureCommissionRules.OfferCooldownTicks;
+            nextOfferTick = AquacultureCommissionGoalRules.ScheduleTick(now, AquacultureCommissionRules.OfferCooldownTicks);
             Messages.Message("AquacultureFishing.CommissionExpired".Translate(
                 expired.Breed?.name ?? "AquacultureFishing.CommissionUnknown".Translate()),
                 MessageTypeDefOf.CautionInput, false);

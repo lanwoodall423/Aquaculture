@@ -334,6 +334,23 @@ namespace AquacultureFishing
             };
         }
 
+        /// <summary>Schedules a commission tick without wrapping the saved int tick range.</summary>
+        public static int ScheduleTick(int startTick, long delayTicks)
+        {
+            if (delayTicks <= 0L) return startTick;
+            // Guard before adding: long.MaxValue delays must also saturate safely.
+            long available = (long)int.MaxValue - startTick;
+            return delayTicks >= available ? int.MaxValue : (int)((long)startTick + delayTicks);
+        }
+
+        /// <summary>Returns nonnegative, whole remaining days without overflowing tick subtraction.</summary>
+        public static int RemainingDays(int deadlineTick, int now)
+        {
+            if (deadlineTick < 0 || now >= deadlineTick) return 0;
+            long remainingTicks = (long)deadlineTick - now;
+            return (int)((remainingTicks + 59999L) / 60000L);
+        }
+
         private static int CompletedGenerationSteps(int generation)
         {
             // Guard before subtraction: int.MinValue - 1 wraps to int.MaxValue.

@@ -427,6 +427,30 @@ static class TraitBreedingRulesTests
         };
         Check("invalid legacy commission rejected", !AquacultureCommissionGoalRules.TryNormalizeSavedState(invalidLegacy, true));
         Check("missing references rejected", !AquacultureCommissionGoalRules.TryNormalizeSavedState(legacy, false));
+
+        Check("ordinary commission tick offsets retain their exact schedule",
+            AquacultureCommissionGoalRules.ScheduleTick(100, 6000L) == 6100 &&
+            AquacultureCommissionGoalRules.ScheduleTick(20, 18L * 60000L) == 1080020);
+        Check("commission due tick saturates rather than wrapping near the int ceiling",
+            AquacultureCommissionGoalRules.ScheduleTick(int.MaxValue - 10, 6000L) == int.MaxValue &&
+            AquacultureCommissionGoalRules.ScheduleTick(int.MaxValue - 1, 30L * 60000L) == int.MaxValue);
+        Check("long commission delays cannot wrap into earlier ticks",
+            AquacultureCommissionGoalRules.ScheduleTick(0, long.MaxValue) == int.MaxValue);
+        Check("invalid negative delay cannot schedule commission events in the past",
+            AquacultureCommissionGoalRules.ScheduleTick(100, -500L) == 100);
+        Check("negative-base tick addition remains exact within int range",
+            AquacultureCommissionGoalRules.ScheduleTick(int.MinValue, 1L) == int.MinValue + 1);
+        Check("normal commission days remaining round up at day boundaries",
+            AquacultureCommissionGoalRules.RemainingDays(60000, 0) == 1 &&
+            AquacultureCommissionGoalRules.RemainingDays(60001, 0) == 2 &&
+            AquacultureCommissionGoalRules.RemainingDays(60000, 60000) == 0 &&
+            AquacultureCommissionGoalRules.RemainingDays(59999, 60000) == 0 &&
+            AquacultureCommissionGoalRules.RemainingDays(59999, 0) == 1);
+        Check("negative deadline sentinel still means no active commission",
+            AquacultureCommissionGoalRules.RemainingDays(-1, int.MinValue) == 0);
+        Check("commission remaining days use wide arithmetic across opposite int limits",
+            AquacultureCommissionGoalRules.RemainingDays(int.MaxValue, int.MinValue) == 71583 &&
+            AquacultureCommissionGoalRules.RemainingDays(0, int.MinValue) == 35792);
     }
 
     private static void TestFrameworkIntegrationRules()
