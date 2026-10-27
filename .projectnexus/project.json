@@ -63,6 +63,16 @@
     ],
     "transforms": []
   },
+  "developmentRelations": {
+    "provides": [],
+    "consumes": [
+      {
+        "providerProjectId": "rimliaison",
+        "capabilityId": "rimworld.mod-development",
+        "contractVersion": 1
+      }
+    ]
+  },
   "validationPack": {
     "schemaVersion": 1,
     "releaseTargets": [
