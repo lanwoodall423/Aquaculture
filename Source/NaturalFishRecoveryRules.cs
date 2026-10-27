@@ -61,6 +61,9 @@ namespace AquacultureFishing
 
         public static bool NeedsRegionalRecovery(float population, float breedingFloor)
         {
+            // Corrupt saved populations or breeding thresholds must not authorize migration.
+            if (float.IsNaN(population) || float.IsInfinity(population) ||
+                float.IsNaN(breedingFloor) || float.IsInfinity(breedingFloor)) return false;
             return population <= System.Math.Max(0f, breedingFloor);
         }
     }

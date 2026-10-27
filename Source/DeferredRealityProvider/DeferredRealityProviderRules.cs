@@ -107,7 +107,8 @@ namespace DeferredReality.Aquaculture
         {
             return !string.IsNullOrEmpty(sourceSpecies) && string.Equals(sourceSpecies, destinationSpecies, StringComparison.Ordinal) &&
                 AreCompatibleHabitats(sourceHabitat, destinationHabitat) && IsFinitePositive(sourcePopulation) &&
-                IsFinite(destinationPopulation) && destinationPopulation <= Math.Max(0f, breedingFloor);
+                IsFinite(destinationPopulation) && IsFinite(breedingFloor) &&
+                destinationPopulation <= Math.Max(0f, breedingFloor);
         }
 
         public static float NormalizeNonNegative(float value, float fallback = 0f, float maximum = float.MaxValue)

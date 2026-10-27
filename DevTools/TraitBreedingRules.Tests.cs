@@ -280,6 +280,20 @@ static class TraitBreedingRulesTests
         Check("floor is recoverable", NaturalFishMigrationRules.NeedsRegionalRecovery(2f, 2f));
         Check("below floor is recoverable", NaturalFishMigrationRules.NeedsRegionalRecovery(1.99f, 2f));
         Check("above floor is not recoverable", !NaturalFishMigrationRules.NeedsRegionalRecovery(2.01f, 2f));
+        Check("non-finite destination populations cannot authorize local recovery",
+            !NaturalFishMigrationRules.NeedsRegionalRecovery(float.NaN, 2f) &&
+            !NaturalFishMigrationRules.NeedsRegionalRecovery(float.PositiveInfinity, 2f) &&
+            !NaturalFishMigrationRules.NeedsRegionalRecovery(float.NegativeInfinity, 2f));
+        Check("non-finite breeding floors cannot authorize local recovery",
+            !NaturalFishMigrationRules.NeedsRegionalRecovery(0f, float.NaN) &&
+            !NaturalFishMigrationRules.NeedsRegionalRecovery(0f, float.PositiveInfinity) &&
+            !NaturalFishMigrationRules.NeedsRegionalRecovery(0f, float.NegativeInfinity));
+        Check("finite local population thresholds preserve existing behavior",
+            NaturalFishMigrationRules.NeedsRegionalRecovery(2f, 2f) &&
+            !NaturalFishMigrationRules.NeedsRegionalRecovery(2.01f, 2f) &&
+            NaturalFishMigrationRules.NeedsRegionalRecovery(0f, -5f) &&
+            !NaturalFishMigrationRules.NeedsRegionalRecovery(0.01f, -5f) &&
+            NaturalFishMigrationRules.NeedsRegionalRecovery(-1f, 2f));
     }
 
     private static void TestKnowledgeContract()
@@ -337,6 +351,21 @@ static class TraitBreedingRulesTests
             "fish", "fish", "River", "River", 1f, 0f, 2f));
         Check("zero deferred source cannot recover", !DeferredRealityProviderRules.CanRecover(
             "fish", "fish", "River", "River", 0f, 0f, 2f));
+        Check("non-finite breeding floors cannot authorize deferred recovery",
+            !DeferredRealityProviderRules.CanRecover("fish", "fish", "River", "River", 1f, 0f, float.NaN) &&
+            !DeferredRealityProviderRules.CanRecover("fish", "fish", "River", "River", 1f, 0f, float.PositiveInfinity) &&
+            !DeferredRealityProviderRules.CanRecover("fish", "fish", "River", "River", 1f, 0f, float.NegativeInfinity));
+        Check("infinite deferred floor cannot reclassify a full destination as recoverable",
+            !DeferredRealityProviderRules.CanRecover("fish", "fish", "River", "River",
+                1f, float.MaxValue, float.PositiveInfinity));
+        Check("deferred finite negative floor retains clamping to zero",
+            DeferredRealityProviderRules.CanRecover("fish", "fish", "River", "River", 1f, 0f, -5f) &&
+            !DeferredRealityProviderRules.CanRecover("fish", "fish", "River", "River", 1f, 0.01f, -5f));
+        Check("deferred recovery still requires valid species, habitat and populations",
+            !DeferredRealityProviderRules.CanRecover("fish", "other", "River", "River", 1f, 0f, 2f) &&
+            !DeferredRealityProviderRules.CanRecover("fish", "fish", "River", "Coastal", 1f, 0f, 2f) &&
+            !DeferredRealityProviderRules.CanRecover("fish", "fish", "River", "River", float.PositiveInfinity, 0f, 2f) &&
+            !DeferredRealityProviderRules.CanRecover("fish", "fish", "River", "River", 1f, float.NegativeInfinity, 2f));
         Check("invalid deferred scalar normalizes", DeferredRealityProviderRules.NormalizeNonNegative(float.NaN) == 0f &&
             DeferredRealityProviderRules.NormalizeNonNegative(4f, 0f, 2f) == 2f);
         Check("invalid deferred capacity limits fail closed",
