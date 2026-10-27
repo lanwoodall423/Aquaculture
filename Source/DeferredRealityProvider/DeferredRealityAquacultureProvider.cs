@@ -448,8 +448,8 @@ namespace DeferredReality.Aquaculture
             float next = DeferredRealityProviderRules.AdvancePopulation(record.amount, record.carryingCapacity, elapsed,
                 record.habitatSuitability);
             float variation = execution.random == null ? 1f : execution.random.NextFloat(0.995f, 1.005f);
-            next = Mathf.Clamp(DeferredRealityProviderRules.NormalizeNonNegative(next * variation), 0f,
-                Math.Max(0f, record.carryingCapacity));
+            next = DeferredRealityProviderRules.ApplyPopulationVariation(next, variation,
+                record.carryingCapacity);
             float delta = next - record.amount;
             string operationId = DeferredRealityProviderRules.OperationId("demography", process.regionId,
                 parts.waterId, parts.fishDefName, process.processId + ":" + execution.executionCount.ToString(CultureInfo.InvariantCulture));

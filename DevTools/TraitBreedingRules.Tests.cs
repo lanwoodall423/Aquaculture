@@ -463,6 +463,32 @@ static class TraitBreedingRulesTests
             DeferredRealityProviderRules.AdvancePopulation(2f, 3f, float.NaN, 1f) == 2f &&
             DeferredRealityProviderRules.AdvancePopulation(2f, 3f, float.NegativeInfinity, 1f) == 2f &&
             DeferredRealityProviderRules.AdvancePopulation(2f, 0f, 60000f, 1f) == 0f);
+        Check("ordinary demographic random variation remains unchanged",
+            Math.Abs(DeferredRealityProviderRules.ApplyPopulationVariation(5f, 1.005f, 8f) - 5.025f) < 0.00001f &&
+            Math.Abs(DeferredRealityProviderRules.ApplyPopulationVariation(5f, 0.995f, 8f) - 4.975f) < 0.00001f);
+        Check("finite carrying capacity still caps demographic variation",
+            DeferredRealityProviderRules.ApplyPopulationVariation(5f, 1.005f, 4f) == 4f &&
+            DeferredRealityProviderRules.ApplyPopulationVariation(float.MaxValue, 1f,
+                float.MaxValue) == float.MaxValue);
+        Check("high finite projected population cannot collapse from 0.5 percent growth",
+            DeferredRealityProviderRules.ApplyPopulationVariation(
+                float.MaxValue, 1.005f, float.MaxValue) == float.MaxValue);
+        Check("high finite projected population clamps to a lower valid capacity",
+            DeferredRealityProviderRules.ApplyPopulationVariation(
+                float.MaxValue, 1.005f, halfMaximum) == halfMaximum);
+        Check("other finite variation overflow still caps without resetting the population",
+            DeferredRealityProviderRules.ApplyPopulationVariation(
+                halfMaximum, 3f, float.MaxValue) == float.MaxValue);
+        Check("ordinary zero or negative demographic variation stays nonnegative",
+            DeferredRealityProviderRules.ApplyPopulationVariation(5f, 0f, 8f) == 0f &&
+            DeferredRealityProviderRules.ApplyPopulationVariation(5f, -1f, 8f) == 0f &&
+            DeferredRealityProviderRules.ApplyPopulationVariation(0f, 1.005f, 8f) == 0f);
+        Check("invalid random variation or projected population still fails closed",
+            DeferredRealityProviderRules.ApplyPopulationVariation(5f, float.NaN, 8f) == 0f &&
+            DeferredRealityProviderRules.ApplyPopulationVariation(5f, float.PositiveInfinity, 8f) == 0f &&
+            DeferredRealityProviderRules.ApplyPopulationVariation(float.NaN, 1.005f, 8f) == 0f &&
+            DeferredRealityProviderRules.ApplyPopulationVariation(float.NegativeInfinity, 1.005f, 8f) == 0f &&
+            DeferredRealityProviderRules.ApplyPopulationVariation(5f, 1.005f, 0f) == 0f);
         Check("deferred record bound is enforced", DeferredRealityProviderRules.IsWithinRecordLimit(
             DeferredRealityProviderRules.MaximumDynamicRecords) && !DeferredRealityProviderRules.IsWithinRecordLimit(
                 DeferredRealityProviderRules.MaximumDynamicRecords + 1));

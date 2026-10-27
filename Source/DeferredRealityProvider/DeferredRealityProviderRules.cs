@@ -136,6 +136,18 @@ namespace DeferredReality.Aquaculture
             return (float)Math.Max(0d, Math.Min((double)capacity, next));
         }
 
+        /// <summary>Applies provider random variation before capacity clamping.</summary>
+        public static float ApplyPopulationVariation(float projected, float variation, float capacity)
+        {
+            if (!IsFinite(projected) || !IsFinite(variation) || !IsFinite(capacity) ||
+                projected <= 0f || variation <= 0f || capacity <= 0f) return 0f;
+            // A perfectly valid float population can overflow to +Infinity under
+            // the small positive variation, then normalize to zero. Bound the
+            // double product before converting back to the saved float amount.
+            double varied = (double)projected * variation;
+            return (float)Math.Min((double)capacity, varied);
+        }
+
         public static bool IsFinite(float value)
         {
             return !float.IsNaN(value) && !float.IsInfinity(value);
