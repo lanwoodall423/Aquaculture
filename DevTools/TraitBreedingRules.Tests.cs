@@ -133,6 +133,27 @@ static class TraitBreedingRulesTests
             new[] { riverSource }, NaturalWaterHabitat.River, "fish"));
         Check("zero source cannot recover", !NaturalFishMigrationRules.HasCompatibleRecordedSource(
             new[] { zeroRiver }, NaturalWaterHabitat.River, "fish"));
+        Check("only finite positive regional sources contribute migration pressure",
+            NaturalFishMigrationRules.IsValidRecordedSourcePopulation(float.Epsilon) &&
+            NaturalFishMigrationRules.IsValidRecordedSourcePopulation(float.MaxValue) &&
+            !NaturalFishMigrationRules.IsValidRecordedSourcePopulation(0f) &&
+            !NaturalFishMigrationRules.IsValidRecordedSourcePopulation(-1f) &&
+            !NaturalFishMigrationRules.IsValidRecordedSourcePopulation(float.NaN) &&
+            !NaturalFishMigrationRules.IsValidRecordedSourcePopulation(float.PositiveInfinity) &&
+            !NaturalFishMigrationRules.IsValidRecordedSourcePopulation(float.NegativeInfinity));
+        var invalidRegionalSources = new[]
+        {
+            new NaturalFishMigrationSource(NaturalWaterHabitat.River, "fish", float.NaN),
+            new NaturalFishMigrationSource(NaturalWaterHabitat.River, "fish", float.PositiveInfinity),
+            new NaturalFishMigrationSource(NaturalWaterHabitat.River, "fish", float.NegativeInfinity),
+            new NaturalFishMigrationSource(NaturalWaterHabitat.River, "fish", -2f)
+        };
+        Check("corrupt regional source counts cannot authorize migration",
+            !NaturalFishMigrationRules.HasCompatibleRecordedSource(
+                invalidRegionalSources, NaturalWaterHabitat.River, "fish"));
+        Check("valid source still authorizes migration alongside corrupt records",
+            NaturalFishMigrationRules.HasCompatibleRecordedSource(
+                invalidRegionalSources.Concat(new[] { riverSource }), NaturalWaterHabitat.River, "fish"));
         Check("water categories do not cross", !NaturalFishMigrationRules.HasCompatibleRecordedSource(
             new[] { new NaturalFishMigrationSource(NaturalWaterHabitat.Coastal, "fish", 1f) },
             NaturalWaterHabitat.River, "fish"));

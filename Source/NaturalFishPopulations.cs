@@ -993,7 +993,7 @@ namespace AquacultureFishing
             if (capacity <= 0f) return 0f;
             return Mathf.Clamp01(regional.Sum(other => other.species
                 .Where(item => item.FishDef == fishDef &&
-                    item.population > NaturalFishMigrationRules.MinimumRecordedSourcePopulation)
+                    NaturalFishMigrationRules.IsValidRecordedSourcePopulation(item.population))
                 .Sum(item => item.population)) / capacity);
         }
 

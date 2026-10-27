@@ -43,13 +43,20 @@ namespace AquacultureFishing
             return IsOpen(first) && first == second;
         }
 
+        public static bool IsValidRecordedSourcePopulation(float population)
+        {
+            // Corrupt infinite source counts must never authorize migration pressure.
+            return !float.IsNaN(population) && !float.IsInfinity(population) &&
+                population > MinimumRecordedSourcePopulation;
+        }
+
         public static bool HasCompatibleRecordedSource(IEnumerable<NaturalFishMigrationSource> sources,
             NaturalWaterHabitat destination, string fishDefName)
         {
             if (!IsOpen(destination) || string.IsNullOrEmpty(fishDefName)) return false;
             return (sources ?? Enumerable.Empty<NaturalFishMigrationSource>()).Any(source =>
                 AreCompatible(destination, source.habitat) && source.fishDefName == fishDefName &&
-                source.population > MinimumRecordedSourcePopulation);
+                IsValidRecordedSourcePopulation(source.population));
         }
 
         public static bool NeedsRegionalRecovery(float population, float breedingFloor)
