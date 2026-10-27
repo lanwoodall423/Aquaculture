@@ -357,6 +357,41 @@ static class TraitBreedingRulesTests
             Supports, capability => capability == "claims" ? 2 : 3));
         Check("knowledge V3 accepts complete capability contract", AquacultureKnowledgeContract.SupportsV3(3, Supports,
             CapabilityVersion));
+
+        // The published array is retained for binary compatibility, but callers must
+        // not be able to rewrite what the internal V3 compatibility gate requires.
+        string[] publicChecklist = AquacultureKnowledgeContract.RequiredV3Capabilities;
+        string[] originalChecklist = (string[])publicChecklist.Clone();
+        try
+        {
+            publicChecklist[0] = "optional-replacement";
+            Check("mutating published capability list cannot bypass mandatory domains",
+                !AquacultureKnowledgeContract.SupportsV3(3,
+                    (api, capability) => capability != "domains", capability => 3));
+            publicChecklist[15] = "optional-replacement";
+            Check("mutating published capability list cannot bypass contextual knowledge",
+                !AquacultureKnowledgeContract.SupportsV3(3,
+                    (api, capability) => capability != "contextual-knowledge", capability => 3));
+            Check("altered public checklist cannot suppress a required capability version",
+                !AquacultureKnowledgeContract.SupportsV3(3,
+                    (api, capability) => true, capability => capability == "domains" ? 2 : 3));
+
+            Array.Clear(publicChecklist, 0, publicChecklist.Length);
+            Check("clearing published checklist cannot bypass another mandatory capability",
+                !AquacultureKnowledgeContract.SupportsV3(3,
+                    (api, capability) => capability != "claims", capability => 3));
+            Check("complete V3 still works after a caller clears the published checklist",
+                AquacultureKnowledgeContract.SupportsV3(3,
+                    (api, capability) => capability != null, capability => 3));
+        }
+        finally
+        {
+            // Do not contaminate the rest of the independently executable suite.
+            Array.Copy(originalChecklist, publicChecklist, originalChecklist.Length);
+        }
+        Check("published V3 checklist retains its original field entries",
+            publicChecklist.SequenceEqual(originalChecklist));
+
         string eventId = AquacultureKnowledgeContract.StableEventId("catch", "pawn:4", 100, "map:1", "fish");
         Check("knowledge event identity is deterministic", eventId == AquacultureKnowledgeContract.StableEventId(
             "catch", "pawn:4", 100, "map:1", "fish"));

@@ -11,7 +11,9 @@ namespace AquacultureFishing
         public const int MaximumDynamicSubjects = 2048;
         public const string MinimumSemanticRelease = "3.0.0-beta.1";
 
-        public static readonly string[] RequiredV3Capabilities =
+        // Keep a private canonical list for validation: readonly does not make a public
+        // array's elements immutable, and external adapters may accidentally modify it.
+        private static readonly string[] requiredV3Capabilities =
         {
             "domains", "colony-knowledge", "pawn-knowledge", "expertise", "domain-ui",
             "evidence-transactions", "facets", "confidence", "discovery-stages", "relationships",
@@ -20,13 +22,18 @@ namespace AquacultureFishing
             "subject-lifecycle", "accrual-policies", "claim-staleness", "transmission"
         };
 
+        // Preserve the existing public field signature for compatibility, but never
+        // use its mutable array when deciding whether Knowledge V3 is supported.
+        public static readonly string[] RequiredV3Capabilities =
+            (string[])requiredV3Capabilities.Clone();
+
         public static bool SupportsV3(int apiVersion, Func<int, string, bool> supports,
             Func<string, int> capabilityVersion)
         {
             if (supports == null || capabilityVersion == null || apiVersion < MinimumApiVersion) return false;
-            for (int i = 0; i < RequiredV3Capabilities.Length; i++)
+            for (int i = 0; i < requiredV3Capabilities.Length; i++)
             {
-                string capability = RequiredV3Capabilities[i];
+                string capability = requiredV3Capabilities[i];
                 if (!supports(MinimumApiVersion, capability) || capabilityVersion(capability) < MinimumCapabilityVersion)
                     return false;
             }
