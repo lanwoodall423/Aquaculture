@@ -316,7 +316,7 @@ namespace AquacultureFishing
             {
                 if (comp?.parent?.Spawned != true || !comp.IsSwimmingInPond) continue;
                 if (now >= comp.nextAgeCheckTick) comp.RefreshAgeTrait();
-                if (comp.lifespanTicks > 0 && now - comp.birthTick >= comp.lifespanTicks) comp.MarkDead();
+                if (FishAgeTimingRules.HasExpired(now, comp.birthTick, comp.lifespanTicks)) comp.MarkDead();
             }
             EnsurePondState();
             RefreshTimedPondTraitEffects();

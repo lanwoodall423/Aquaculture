@@ -198,4 +198,40 @@ namespace AquacultureFishing
             return chance >= 1f || roll < chance;
         }
     }
+
+    /// <summary>Engine-independent age-trait and lifespan timing rules, using wide tick arithmetic.</summary>
+    public static class FishAgeTimingRules
+    {
+        private static long ElapsedTicks(int now, int birthTick)
+        {
+            // RimWorld stores ticks as ints. The difference can exceed int.MaxValue.
+            return (long)now - birthTick;
+        }
+
+        public static float FractionElapsed(int now, int birthTick, int lifespanTicks)
+        {
+            if (lifespanTicks <= 0) return 0f;
+            double fraction = ElapsedTicks(now, birthTick) / (double)lifespanTicks;
+            return (float)Math.Max(0d, Math.Min(1d, fraction));
+        }
+
+        public static bool HasExpired(int now, int birthTick, int lifespanTicks)
+        {
+            return lifespanTicks > 0 && ElapsedTicks(now, birthTick) >= lifespanTicks;
+        }
+
+        public static int RemainingTicks(int now, int birthTick, int lifespanTicks)
+        {
+            if (lifespanTicks <= 0) return 0;
+            long elapsed = Math.Max(0L, ElapsedTicks(now, birthTick));
+            return (int)Math.Max(0L, (long)lifespanTicks - elapsed);
+        }
+
+        public static int NextCheckTick(int birthTick, int roundedThresholdTicks)
+        {
+            // Keep the caller's Unity threshold rounding; only guard tick addition.
+            long due = (long)birthTick + Math.Max(0, roundedThresholdTicks) + 1L;
+            return due >= int.MaxValue ? int.MaxValue : (int)due;
+        }
+    }
 }

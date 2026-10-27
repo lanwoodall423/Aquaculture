@@ -110,6 +110,47 @@ static class TraitBreedingRulesTests
         Check("legacy births retain established floor", TraitBreedingRules.LegacyStability(3, 2) >= 0.79f);
     }
 
+    private static void TestFishAgeTiming()
+    {
+        Check("ordinary fish aging fraction is preserved",
+            FishAgeTimingRules.FractionElapsed(60000, 0, 120000) == 0.5f &&
+            FishAgeTimingRules.FractionElapsed(120000, 0, 120000) == 1f &&
+            FishAgeTimingRules.FractionElapsed(0, 60000, 120000) == 0f);
+        Check("ordinary expiry uses exact lifetime boundary",
+            !FishAgeTimingRules.HasExpired(119999, 0, 120000) &&
+            FishAgeTimingRules.HasExpired(120000, 0, 120000));
+        Check("ordinary remaining lifespan and next check are unchanged",
+            FishAgeTimingRules.RemainingTicks(90000, 0, 120000) == 30000 &&
+            FishAgeTimingRules.RemainingTicks(120000, 0, 120000) == 0 &&
+            FishAgeTimingRules.NextCheckTick(100, 250) == 351);
+        Check("nonpositive lifespan never expires or creates an age fraction",
+            FishAgeTimingRules.FractionElapsed(int.MaxValue, 0, 0) == 0f &&
+            FishAgeTimingRules.FractionElapsed(int.MaxValue, 0, -1) == 0f &&
+            !FishAgeTimingRules.HasExpired(int.MaxValue, 0, 0) &&
+            !FishAgeTimingRules.HasExpired(int.MaxValue, 0, -1) &&
+            FishAgeTimingRules.RemainingTicks(int.MaxValue, 0, -1) == 0);
+
+        Check("very old fish reaches elder age despite elapsed tick overflow",
+            FishAgeTimingRules.FractionElapsed(int.MaxValue, int.MinValue, 120000) == 1f);
+        Check("birth in the future cannot appear aged after subtraction overflow",
+            FishAgeTimingRules.FractionElapsed(int.MinValue, int.MaxValue, 100) == 0f);
+        Check("very old fish expires despite elapsed tick overflow",
+            FishAgeTimingRules.HasExpired(int.MaxValue, int.MinValue, 120000));
+        Check("future birth never expires early despite subtraction overflow",
+            !FishAgeTimingRules.HasExpired(int.MinValue, int.MaxValue, 1));
+        Check("expired fish has no remaining lifespan after tick overflow",
+            FishAgeTimingRules.RemainingTicks(int.MaxValue, int.MinValue, 120000) == 0);
+        Check("future birth never displays more than configured lifespan",
+            FishAgeTimingRules.RemainingTicks(10, 11, 120000) == 120000 &&
+            FishAgeTimingRules.RemainingTicks(int.MinValue, int.MaxValue, 120000) == 120000);
+        Check("future age check saturates rather than wrapping negative",
+            FishAgeTimingRules.NextCheckTick(int.MaxValue - 2, 5) == int.MaxValue);
+        Check("negative threshold offsets cannot schedule before birth",
+            FishAgeTimingRules.NextCheckTick(100, -5) == 101);
+        Check("lower tick boundary retains valid checks",
+            FishAgeTimingRules.NextCheckTick(int.MinValue, 0) == int.MinValue + 1);
+    }
+
     private static void TestRecoveryRules()
     {
         NaturalWaterHabitat[] habitats = (NaturalWaterHabitat[])Enum.GetValues(typeof(NaturalWaterHabitat));
@@ -529,6 +570,7 @@ static class TraitBreedingRulesTests
         TestParentalUnionAndCap();
         TestMutationsAndOutliers();
         TestStabilityAndMigration();
+        TestFishAgeTiming();
         TestRecoveryRules();
         TestCommissionRules();
         TestKnowledgeContract();
