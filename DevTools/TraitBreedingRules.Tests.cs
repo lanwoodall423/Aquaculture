@@ -743,6 +743,78 @@ static class TraitBreedingRulesTests
             AquacultureCommissionGoalRules.RemainingDays(0, int.MinValue) == 35792);
     }
 
+    private static void TestExactlyOnceLedgerOwnership()
+    {
+        var clearLedger = new FrameworkIntegrationRules.ExactlyOnceLedger();
+        int effects = 0;
+        clearLedger.Apply("first", () => { effects++; return true; });
+        clearLedger.Apply("second", () => { effects++; return true; });
+        IReadOnlyCollection<string> exposed = clearLedger.Committed;
+        bool clearedExternally = false;
+        if (exposed is ICollection<string> clearable)
+        {
+            try { clearable.Clear(); clearedExternally = true; }
+            catch (NotSupportedException) { }
+        }
+        Check("committed operation query cannot erase the live exactly-once ledger",
+            !clearedExternally && clearLedger.Count == 2 &&
+            clearLedger.Apply("first", () => { effects++; return true; }) && effects == 2);
+
+        var injectLedger = new FrameworkIntegrationRules.ExactlyOnceLedger();
+        injectLedger.Apply("approved", () => true);
+        bool addedExternally = false;
+        bool removedExternally = false;
+        if (injectLedger.Committed is ICollection<string> writable)
+        {
+            try { writable.Add("injected"); addedExternally = true; }
+            catch (NotSupportedException) { }
+            try { removedExternally = writable.Remove("approved"); }
+            catch (NotSupportedException) { }
+        }
+        Check("committed operation query cannot inject or remove uncommitted ids",
+            !addedExternally && !removedExternally && injectLedger.Count == 1 &&
+            injectLedger.Committed.Contains("approved") && !injectLedger.Committed.Contains("injected"));
+
+        var snapshotLedger = new FrameworkIntegrationRules.ExactlyOnceLedger();
+        snapshotLedger.Apply("early", () => true);
+        IReadOnlyCollection<string> earlier = snapshotLedger.Committed;
+        snapshotLedger.Apply("later", () => true);
+        Check("captured commit snapshot is detached from later successful operations",
+            earlier.Count == 1 && earlier.Contains("early") && !earlier.Contains("later") &&
+            snapshotLedger.Count == 2);
+        snapshotLedger.Restore(null);
+        Check("captured commit snapshot survives reset while ledger clears",
+            earlier.Count == 1 && earlier.Contains("early") && snapshotLedger.Count == 0);
+
+        var selfRestore = new FrameworkIntegrationRules.ExactlyOnceLedger();
+        selfRestore.Apply("event-a", () => true);
+        selfRestore.Apply("event-b", () => true);
+        selfRestore.Restore(selfRestore.Committed);
+        int replayed = 0;
+        Check("restoring a ledger from its own committed ids preserves markers",
+            selfRestore.Count == 2 && selfRestore.Committed.Contains("event-a") &&
+            selfRestore.Committed.Contains("event-b") &&
+            selfRestore.Apply("event-a", () => { replayed++; return true; }) && replayed == 0);
+
+        var lazyRestore = new FrameworkIntegrationRules.ExactlyOnceLedger();
+        lazyRestore.Apply("keep:a", () => true);
+        lazyRestore.Apply("keep:b", () => true);
+        lazyRestore.Apply("drop:c", () => true);
+        IEnumerable<string> deferredIds = lazyRestore.Committed.Where(id => id.StartsWith("keep:", StringComparison.Ordinal));
+        lazyRestore.Restore(deferredIds);
+        Check("restoring from a lazy projection of own markers preserves filtered ids",
+            lazyRestore.Count == 2 && lazyRestore.Committed.Contains("keep:a") &&
+            lazyRestore.Committed.Contains("keep:b") && !lazyRestore.Committed.Contains("drop:c"));
+
+        var deduplicated = new FrameworkIntegrationRules.ExactlyOnceLedger()
+            .Restore(new string[] { "A", null, "", "A", "B" });
+        int retryEffects = 0;
+        Check("restore retains ordinal deduplication and skips invalid operation ids",
+            deduplicated.Count == 2 &&
+            deduplicated.Apply("A", () => { retryEffects++; return true; }) && retryEffects == 0 &&
+            deduplicated.Apply("a", () => { retryEffects++; return true; }) && retryEffects == 1);
+    }
+
     private static void TestFrameworkIntegrationRules()
     {
         string first = FrameworkIntegrationRules.CorrelationId("catch", "pawn:1", 40, "map:a", "10,10", "Fish_Cod");
@@ -849,6 +921,7 @@ static class TraitBreedingRulesTests
         TestCommissionRules();
         TestKnowledgeContract();
         TestDeferredRealityProviderRules();
+        TestExactlyOnceLedgerOwnership();
         TestFrameworkIntegrationRules();
         Console.WriteLine(failures == 0 ? "TraitBreedingRules: all executable tests passed." : "TraitBreedingRules: " + failures + " failure(s).");
         return failures == 0 ? 0 : 1;

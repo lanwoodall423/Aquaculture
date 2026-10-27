@@ -13,7 +13,9 @@ namespace AquacultureFishing
             private readonly HashSet<string> committed = new HashSet<string>(StringComparer.Ordinal);
 
             public int Count => committed.Count;
-            public IReadOnlyCollection<string> Committed => committed;
+            // Never leak the mutable HashSet through an IReadOnlyCollection interface.
+            // Callers receive a detached snapshot that also survives later operations.
+            public IReadOnlyCollection<string> Committed => new List<string>(committed).AsReadOnly();
 
             public bool Apply(string operationId, Func<bool> mutation)
             {
@@ -26,12 +28,12 @@ namespace AquacultureFishing
 
             public ExactlyOnceLedger Restore(IEnumerable<string> persistedIds)
             {
+                // Materialize before clearing: the source may be this ledger's own
+                // snapshot or an iterable alias of its existing committed markers.
+                string[] restored = persistedIds?.Where(value => !string.IsNullOrEmpty(value))
+                    .ToArray() ?? Array.Empty<string>();
                 committed.Clear();
-                if (persistedIds != null)
-                {
-                    foreach (string id in persistedIds.Where(value => !string.IsNullOrEmpty(value)))
-                        committed.Add(id);
-                }
+                foreach (string id in restored) committed.Add(id);
                 return this;
             }
         }
