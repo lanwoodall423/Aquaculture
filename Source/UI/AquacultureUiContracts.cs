@@ -129,24 +129,37 @@ namespace AquacultureFishing
     {
         public static AquacultureUiNavigationMode NavigationMode(float width, float breakpoint = 720f)
         {
-            return width < Math.Max(360f, breakpoint)
+            if (!IsFinite(width)) return AquacultureUiNavigationMode.Compact;
+            float threshold = Math.Max(360f, IsFinite(breakpoint) ? breakpoint : 720f);
+            return width < threshold
                 ? AquacultureUiNavigationMode.Compact
                 : AquacultureUiNavigationMode.Rail;
         }
 
         public static AquacultureUiMasterDetailMode MasterDetailMode(float width, float breakpoint = 960f)
         {
-            return width < Math.Max(360f, breakpoint)
+            if (!IsFinite(width)) return AquacultureUiMasterDetailMode.Stacked;
+            float threshold = Math.Max(360f, IsFinite(breakpoint) ? breakpoint : 960f);
+            return width < threshold
                 ? AquacultureUiMasterDetailMode.Stacked
                 : AquacultureUiMasterDetailMode.SideBySide;
         }
 
         public static int CompactColumns(float width, float itemWidth = 96f, float gap = 5f, int itemCount = 6)
         {
-            if (itemCount <= 0) return 1;
-            float denominator = Math.Max(1f, itemWidth + gap);
-            int columns = (int)Math.Floor((Math.Max(0f, width) + gap) / denominator);
-            return Math.Max(1, Math.Min(itemCount, columns));
+            if (itemCount <= 0 || !IsFinite(width)) return 1;
+            double safeWidth = Math.Max(0d, (double)width);
+            double safeItemWidth = IsFinite(itemWidth) && itemWidth > 0f ? itemWidth : 96d;
+            double safeGap = IsFinite(gap) && gap >= 0f ? gap : 5d;
+            double denominator = Math.Max(1d, safeItemWidth + safeGap);
+            double columns = Math.Floor((safeWidth + safeGap) / denominator);
+            // Bound in double precision before converting to int, including float.MaxValue widths.
+            return (int)Math.Max(1d, Math.Min((double)itemCount, columns));
+        }
+
+        private static bool IsFinite(float value)
+        {
+            return !float.IsNaN(value) && !float.IsInfinity(value);
         }
     }
 
@@ -163,13 +176,14 @@ namespace AquacultureFishing
 
             float safeRowHeight = IsFinite(rowHeight) ? Math.Max(0f, rowHeight) : 0f;
             float safeMinimum = IsFinite(minimumHeight) ? Math.Max(0f, minimumHeight) : 0f;
+            // Invalid caps must not leak an unbounded or infinite viewport into Insight Canvas.
+            const float fallbackMaximum = 480f;
             float safeMaximum = IsFinite(maximumHeight) && maximumHeight > 0f
-                ? maximumHeight : float.PositiveInfinity;
+                ? maximumHeight : fallbackMaximum;
             safeMinimum = Math.Min(safeMinimum, safeMaximum);
 
-            float desired = itemCount * safeRowHeight;
-            if (float.IsInfinity(desired) || float.IsNaN(desired)) desired = safeMaximum;
-            return Math.Min(safeMaximum, Math.Max(safeMinimum, desired));
+            double desired = (double)itemCount * safeRowHeight;
+            return (float)Math.Min(safeMaximum, Math.Max(safeMinimum, desired));
         }
 
         private static bool IsFinite(float value)

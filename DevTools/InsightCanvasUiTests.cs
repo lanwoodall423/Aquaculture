@@ -67,8 +67,26 @@ namespace AquacultureFishing.Tests
                 "wide navigation uses a rail");
             Check(AquacultureUiResponsiveLayout.NavigationMode(480f) == AquacultureUiNavigationMode.Compact,
                 "narrow navigation uses compact mode");
-            Check(AquacultureUiResponsiveLayout.CompactColumns(480f) >= 1,
-                "compact navigation always has a usable column");
+            Check(AquacultureUiResponsiveLayout.CompactColumns(480f) == 4,
+                "finite compact navigation retains its column count");
+            foreach (float invalid in new[] { float.NaN, float.PositiveInfinity, float.NegativeInfinity })
+            {
+                Check(AquacultureUiResponsiveLayout.NavigationMode(invalid) == AquacultureUiNavigationMode.Compact &&
+                    AquacultureUiResponsiveLayout.MasterDetailMode(invalid) == AquacultureUiMasterDetailMode.Stacked,
+                    "invalid viewport widths retain a safe narrow layout");
+                Check(AquacultureUiResponsiveLayout.CompactColumns(invalid) == 1,
+                    "invalid compact viewport widths use one column");
+                Check(AquacultureUiResponsiveLayout.NavigationMode(800f, invalid) == AquacultureUiNavigationMode.Rail &&
+                    AquacultureUiResponsiveLayout.MasterDetailMode(800f, invalid) == AquacultureUiMasterDetailMode.Stacked,
+                    "invalid breakpoints recover their documented defaults");
+            }
+            Check(AquacultureUiResponsiveLayout.CompactColumns(float.MaxValue, 1f, 0f, int.MaxValue) ==
+                int.MaxValue, "huge finite widths are bounded before int conversion");
+            Check(AquacultureUiResponsiveLayout.CompactColumns(480f, float.NaN, float.PositiveInfinity) == 4 &&
+                AquacultureUiResponsiveLayout.CompactColumns(480f, float.NegativeInfinity, -10f) == 4,
+                "invalid column metrics use finite positive defaults");
+            Check(AquacultureUiResponsiveLayout.CompactColumns(480f, 96f, 5f, 0) == 1,
+                "empty compact navigation keeps one usable column");
         }
 
         private static void TestContentAwareListSizing()
@@ -91,6 +109,21 @@ namespace AquacultureFishing.Tests
                 "compact and wide density row metrics remain deterministic");
             Check(AquacultureUiListSizing.HeightForCount(0, 48f, 32f, 240f) == 0f,
                 "hidden or empty groups do not reserve list viewport height");
+            Check(AquacultureUiListSizing.HeightForCount(int.MaxValue, float.MaxValue, 0f, 240f) == 240f,
+                "overflow-scale finite content remains capped");
+            foreach (float invalid in new[] { float.NaN, float.PositiveInfinity, float.NegativeInfinity })
+            {
+                Check(AquacultureUiListSizing.HeightForCount(2, 48f, 0f, invalid) == 96f,
+                    "invalid maximum heights use a finite fallback without clipping short lists");
+                Check(AquacultureUiListSizing.HeightForCount(2, invalid, 12f, 100f) == 12f,
+                    "invalid row heights cannot create non-finite viewports");
+                Check(AquacultureUiListSizing.HeightForCount(2, 48f, invalid, 100f) == 96f,
+                    "invalid minimum heights do not alter otherwise valid content");
+            }
+            Check(AquacultureUiListSizing.HeightForCount(int.MaxValue, float.MaxValue, 0f, float.NaN) == 480f &&
+                AquacultureUiListSizing.HeightForCount(2, 48f, 999f, float.NaN) == 480f &&
+                AquacultureUiListSizing.HeightForCount(0, 48f, 0f, float.NaN) == 0f,
+                "invalid caps enforce a finite upper bound and empty-list collapse");
         }
 
         private static void TestProgressiveDisclosure()
