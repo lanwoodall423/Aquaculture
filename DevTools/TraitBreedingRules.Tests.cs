@@ -220,6 +220,32 @@ static class TraitBreedingRulesTests
             DeferredRealityProviderRules.AdvancePopulation(2f, float.NaN, 60000f, 1f) == 0f &&
             DeferredRealityProviderRules.AdvancePopulation(2f, float.PositiveInfinity, 60000f, 1f) == 0f);
         Check("deferred advancement is bounded", DeferredRealityProviderRules.AdvancePopulation(2f, 3f, 60000f, 1f) <= 3f);
+        float thirtyDays = 30f * 60000f;
+        float halfMaximum = float.MaxValue / 2f;
+        float highProjection = DeferredRealityProviderRules.AdvancePopulation(
+            halfMaximum, float.MaxValue, thirtyDays, 1f);
+        Check("large finite population survives intermediate growth overflow",
+            !float.IsNaN(highProjection) && !float.IsInfinity(highProjection) &&
+            Math.Abs((double)highProjection / halfMaximum - 1.75d) < 0.0001d);
+        Check("maximum finite population growth clamps to carrying capacity",
+            DeferredRealityProviderRules.AdvancePopulation(
+                float.MaxValue, float.MaxValue, thirtyDays, 1f) == float.MaxValue);
+        Check("extreme finite elapsed time retains positive bounded growth",
+            DeferredRealityProviderRules.AdvancePopulation(
+                halfMaximum, float.MaxValue, float.MaxValue, 1f) == float.MaxValue);
+        Check("large finite population with zero suitability retains mortality",
+            Math.Abs((double)DeferredRealityProviderRules.AdvancePopulation(
+                halfMaximum, float.MaxValue, thirtyDays, 0f) / halfMaximum - 0.70d) < 0.0001d);
+        Check("ordinary growth, low-population decline and capacity remain stable",
+            Math.Abs(DeferredRealityProviderRules.AdvancePopulation(2f, 3f, 60000f, 1f) - 2.05f) < 0.00001f &&
+            Math.Abs(DeferredRealityProviderRules.AdvancePopulation(1f, 3f, 60000f, 1f) - 0.99f) < 0.00001f &&
+            DeferredRealityProviderRules.AdvancePopulation(4f, 3f, 0f, 1f) == 3f);
+        Check("invalid advancement inputs retain safe normalization",
+            DeferredRealityProviderRules.AdvancePopulation(float.NaN, 3f, 60000f, 1f) == 0f &&
+            DeferredRealityProviderRules.AdvancePopulation(-5f, 3f, 60000f, 1f) == 0f &&
+            DeferredRealityProviderRules.AdvancePopulation(2f, 3f, float.NaN, 1f) == 2f &&
+            DeferredRealityProviderRules.AdvancePopulation(2f, 3f, float.NegativeInfinity, 1f) == 2f &&
+            DeferredRealityProviderRules.AdvancePopulation(2f, 0f, 60000f, 1f) == 0f);
         Check("deferred record bound is enforced", DeferredRealityProviderRules.IsWithinRecordLimit(
             DeferredRealityProviderRules.MaximumDynamicRecords) && !DeferredRealityProviderRules.IsWithinRecordLimit(
                 DeferredRealityProviderRules.MaximumDynamicRecords + 1));

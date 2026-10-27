@@ -125,9 +125,14 @@ namespace DeferredReality.Aquaculture
             elapsedTicks = NormalizeNonNegative(elapsedTicks);
             suitability = Math.Max(0f, Math.Min(1f, NormalizeNonNegative(suitability, 1f)));
             if (capacity <= 0f) return 0f;
-            float days = elapsedTicks / 60000f;
-            float next = amount + (amount >= 2f ? amount * 0.035f * days * suitability : 0f) - amount * 0.01f * days;
-            return Math.Max(0f, Math.Min(capacity, NormalizeNonNegative(next)));
+            // All inputs are now finite floats. Use double for the intermediate products:
+            // float arithmetic can overflow on valid large populations before the
+            // growth and mortality terms are combined, falsely collapsing them to zero.
+            double days = elapsedTicks / 60000d;
+            double growth = amount >= 2f ? (double)amount * 0.035d * days * suitability : 0d;
+            double mortality = (double)amount * 0.01d * days;
+            double next = amount + growth - mortality;
+            return (float)Math.Max(0d, Math.Min((double)capacity, next));
         }
 
         public static bool IsFinite(float value)
