@@ -24,7 +24,8 @@ namespace AquacultureFishing
         public override string GetInspectString()
         {
             string text = base.GetInspectString();
-            int remaining = Mathf.Max(0, hatchTick - (Find.TickManager?.TicksGame ?? 0));
+            int remaining = FishAgeTimingRules.RemainingUntilTick(
+                Find.TickManager?.TicksGame ?? 0, hatchTick);
             string hatchLine = "Hatches in: " + remaining.ToStringTicksToPeriod();
             return text.NullOrEmpty() ? hatchLine : text + "\n" + hatchLine;
         }

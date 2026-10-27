@@ -229,6 +229,16 @@ namespace AquacultureFishing
             return (int)Math.Max(0L, (long)lifespanTicks - elapsed);
         }
 
+        /// <summary>Number of ticks until an egg deadline, suitable for the inspect label.</summary>
+        public static int RemainingUntilTick(int now, int dueTick)
+        {
+            // The difference of two valid game ticks may exceed the signed int range.
+            // Clamp only after subtracting in long so future eggs never display zero
+            // and expired eggs never display a spurious positive countdown.
+            long remaining = (long)dueTick - now;
+            return (int)Math.Max(0L, Math.Min((long)int.MaxValue, remaining));
+        }
+
         public static int NextCheckTick(int birthTick, int roundedThresholdTicks)
         {
             // Keep the caller's Unity threshold rounding; only guard tick addition.

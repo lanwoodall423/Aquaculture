@@ -225,6 +225,30 @@ static class TraitBreedingRulesTests
         Check("negative base tick scheduling stays exact within range",
             FishAgeTimingRules.ScheduleAfterTicks(int.MinValue, int.MaxValue) == -1 &&
             FishAgeTimingRules.ScheduleAfterTicks(int.MinValue, 1) == int.MinValue + 1);
+
+        Check("ordinary three-day hatch countdown keeps its exact display ticks",
+            FishAgeTimingRules.RemainingUntilTick(100, 180100) == 180000 &&
+            FishAgeTimingRules.RemainingUntilTick(100, 350) == 250);
+        Check("hatch countdown reaches zero at the deadline and stays there",
+            FishAgeTimingRules.RemainingUntilTick(349, 350) == 1 &&
+            FishAgeTimingRules.RemainingUntilTick(350, 350) == 0 &&
+            FishAgeTimingRules.RemainingUntilTick(351, 350) == 0);
+        Check("small negative saved game ticks preserve normal countdown",
+            FishAgeTimingRules.RemainingUntilTick(-500, 500) == 1000 &&
+            FishAgeTimingRules.RemainingUntilTick(-1, 0) == 1);
+        Check("valid future hatch deadline cannot wrap to a false zero",
+            FishAgeTimingRules.RemainingUntilTick(int.MinValue, int.MaxValue) == int.MaxValue);
+        Check("future deadline beyond int remaining range clamps instead of underflow",
+            FishAgeTimingRules.RemainingUntilTick(int.MinValue, 0) == int.MaxValue);
+        Check("expired hatch deadline cannot wrap into a positive countdown",
+            FishAgeTimingRules.RemainingUntilTick(int.MaxValue, int.MinValue) == 0 &&
+            FishAgeTimingRules.RemainingUntilTick(int.MaxValue - 1, int.MinValue) == 0);
+        Check("exact maximum representable future countdown is preserved",
+            FishAgeTimingRules.RemainingUntilTick(0, int.MaxValue) == int.MaxValue &&
+            FishAgeTimingRules.RemainingUntilTick(int.MinValue + 1, 0) == int.MaxValue);
+        Check("negative extreme deadlines preserve one-tick boundaries",
+            FishAgeTimingRules.RemainingUntilTick(int.MinValue, int.MinValue + 1) == 1 &&
+            FishAgeTimingRules.RemainingUntilTick(int.MinValue + 2, int.MinValue + 1) == 0);
     }
 
     private static void TestPondEcologyTiming()
