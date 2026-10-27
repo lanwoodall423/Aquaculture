@@ -425,8 +425,32 @@ static class TraitBreedingRulesTests
         Check("only one simulation advances", FrameworkIntegrationRules.AdvanceExactlyOnce(state, "process:1", false,
             true) && state.activeAdvances == 0 && state.latentAdvances == 1
             && !FrameworkIntegrationRules.AdvanceExactlyOnce(state, "process:2", true, true));
+        Check("duplicate latent operation never counts a second advance",
+            FrameworkIntegrationRules.AdvanceExactlyOnce(state, "process:1", false, true) &&
+            state.activeAdvances == 0 && state.latentAdvances == 1);
+        Check("replayed operation cannot switch from latent to active",
+            FrameworkIntegrationRules.AdvanceExactlyOnce(state, "process:1", true, false) &&
+            state.activeAdvances == 0 && state.latentAdvances == 1);
+        Check("empty operation identity cannot advance either simulation",
+            !FrameworkIntegrationRules.AdvanceExactlyOnce(state, "", true, false) &&
+            state.activeAdvances == 0 && state.latentAdvances == 1);
+        Check("failed operation does not advance or commit",
+            !FrameworkIntegrationRules.AdvanceExactlyOnce(state, "process:retry", true, false, succeeds: false) &&
+            state.activeAdvances == 0 && state.latentAdvances == 1);
+        Check("invalid active/latent combination never counts",
+            !FrameworkIntegrationRules.AdvanceExactlyOnce(state, "process:invalid", false, false) &&
+            !FrameworkIntegrationRules.AdvanceExactlyOnce(state, "process:invalid", true, true) &&
+            state.activeAdvances == 0 && state.latentAdvances == 1);
+        Check("distinct active operation advances once",
+            FrameworkIntegrationRules.AdvanceExactlyOnce(state, "process:retry", true, false) &&
+            FrameworkIntegrationRules.AdvanceExactlyOnce(state, "process:retry", true, false) &&
+            state.activeAdvances == 1 && state.latentAdvances == 1);
 
         FrameworkIntegrationRules.IntegrationState restored = state.Clone();
+        Check("save/load keeps both simulation advances idempotent",
+            FrameworkIntegrationRules.AdvanceExactlyOnce(restored, "process:1", false, true) &&
+            FrameworkIntegrationRules.AdvanceExactlyOnce(restored, "process:retry", true, false) &&
+            restored.activeAdvances == state.activeAdvances && restored.latentAdvances == state.latentAdvances);
         Check("save/load preserves completed operation", restored.populationOperations.Apply("consume:1", () =>
         {
             restored.population -= 1f;

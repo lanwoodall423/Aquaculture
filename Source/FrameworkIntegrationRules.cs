@@ -136,9 +136,13 @@ namespace AquacultureFishing
             bool latent, bool succeeds = true)
         {
             if (state == null || active == latent || !succeeds) return false;
-            if (active) state.activeAdvances++;
-            else state.latentAdvances++;
-            return state.populationOperations.Apply(operationId, () => true);
+            return state.populationOperations.Apply(operationId, () =>
+            {
+                // Only the first committed operation advances the active/latent model.
+                if (active) state.activeAdvances++;
+                else state.latentAdvances++;
+                return true;
+            });
         }
 
         public static void RemoveMapPreservingLatent(IntegrationState state)
