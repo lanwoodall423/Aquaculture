@@ -235,5 +235,15 @@ namespace AquacultureFishing
             long due = (long)birthTick + Math.Max(0, roundedThresholdTicks) + 1L;
             return due >= int.MaxValue ? int.MaxValue : (int)due;
         }
+
+        /// <summary>Schedules egg and breeding checks without 32-bit tick wraparound.</summary>
+        public static int ScheduleAfterTicks(int now, int delayTicks)
+        {
+            // Preserve ordinary tick intervals while preventing malformed negative delays
+            // or near-int.MaxValue game clocks from scheduling an event in the past.
+            if (delayTicks <= 0) return now;
+            long due = (long)now + delayTicks;
+            return due >= int.MaxValue ? int.MaxValue : (int)due;
+        }
     }
 }

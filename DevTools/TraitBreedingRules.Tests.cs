@@ -205,6 +205,26 @@ static class TraitBreedingRulesTests
             FishAgeTimingRules.NextCheckTick(100, -5) == 101);
         Check("lower tick boundary retains valid checks",
             FishAgeTimingRules.NextCheckTick(int.MinValue, 0) == int.MinValue + 1);
+
+        Check("ordinary egg hatch and breeding rescan intervals remain exact",
+            FishAgeTimingRules.ScheduleAfterTicks(100, 3 * 60000) == 180100 &&
+            FishAgeTimingRules.ScheduleAfterTicks(100, 250) == 350 &&
+            FishAgeTimingRules.ScheduleAfterTicks(100, 900000) == 900100);
+        Check("zero tick delay keeps the present due time",
+            FishAgeTimingRules.ScheduleAfterTicks(100, 0) == 100);
+        Check("negative corrupted delay cannot schedule an egg before its creation",
+            FishAgeTimingRules.ScheduleAfterTicks(100, -500) == 100);
+        Check("breeding cooldown does not wrap negative near the tick ceiling",
+            FishAgeTimingRules.ScheduleAfterTicks(int.MaxValue - 100, 250) == int.MaxValue);
+        Check("egg hatch time does not wrap negative near the tick ceiling",
+            FishAgeTimingRules.ScheduleAfterTicks(int.MaxValue - 60, 3 * 60000) == int.MaxValue);
+        Check("extreme but valid cooldown saturates without overflow",
+            FishAgeTimingRules.ScheduleAfterTicks(int.MaxValue - 1, int.MaxValue) == int.MaxValue);
+        Check("representable due time near the ceiling remains exact",
+            FishAgeTimingRules.ScheduleAfterTicks(int.MaxValue - 300, 250) == int.MaxValue - 50);
+        Check("negative base tick scheduling stays exact within range",
+            FishAgeTimingRules.ScheduleAfterTicks(int.MinValue, int.MaxValue) == -1 &&
+            FishAgeTimingRules.ScheduleAfterTicks(int.MinValue, 1) == int.MinValue + 1);
     }
 
     private static void TestRecoveryRules()

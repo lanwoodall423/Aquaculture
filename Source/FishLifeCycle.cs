@@ -355,8 +355,10 @@ namespace AquacultureFishing
                         }
                         if (male == null) continue;
                         float habitatFactor = (female.HabitatBreedingFactor + male.HabitatBreedingFactor) * 0.5f;
-                        female.nextBreedTick = now + Mathf.Max(250, Mathf.RoundToInt(interval * intervalFactor * female.BreedingCooldownFactor * habitatFactor));
-                        male.nextBreedTick = now + Mathf.Max(250, Mathf.RoundToInt(interval * intervalFactor * male.BreedingCooldownFactor * habitatFactor));
+                        female.nextBreedTick = FishAgeTimingRules.ScheduleAfterTicks(now,
+                            Mathf.Max(250, Mathf.RoundToInt(interval * intervalFactor * female.BreedingCooldownFactor * habitatFactor)));
+                        male.nextBreedTick = FishAgeTimingRules.ScheduleAfterTicks(now,
+                            Mathf.Max(250, Mathf.RoundToInt(interval * intervalFactor * male.BreedingCooldownFactor * habitatFactor)));
                         int minimumOffspring = (AquacultureMod.Settings?.minimumOffspring ?? 1) + (breedingMode == PondBreedingMode.Intensive ? 1 : 0);
                         int maximumOffspring = Mathf.Max(minimumOffspring, (AquacultureMod.Settings?.maximumOffspring ?? 3)
                             + (breedingMode == PondBreedingMode.Intensive ? 2 : breedingMode == PondBreedingMode.Encouraged ? 1 : 0));
@@ -369,8 +371,10 @@ namespace AquacultureFishing
                         if (interventionFeed > 0f && pond.ecology.preparedFeed < interventionFeed)
                         {
                             intervalFactor = 1f;
-                            female.nextBreedTick = now + Mathf.Max(250, Mathf.RoundToInt(interval * female.BreedingCooldownFactor * habitatFactor));
-                            male.nextBreedTick = now + Mathf.Max(250, Mathf.RoundToInt(interval * male.BreedingCooldownFactor * habitatFactor));
+                            female.nextBreedTick = FishAgeTimingRules.ScheduleAfterTicks(now,
+                                Mathf.Max(250, Mathf.RoundToInt(interval * female.BreedingCooldownFactor * habitatFactor)));
+                            male.nextBreedTick = FishAgeTimingRules.ScheduleAfterTicks(now,
+                                Mathf.Max(250, Mathf.RoundToInt(interval * male.BreedingCooldownFactor * habitatFactor)));
                             minimumOffspring = AquacultureMod.Settings?.minimumOffspring ?? 1;
                             maximumOffspring = Mathf.Max(minimumOffspring, AquacultureMod.Settings?.maximumOffspring ?? 3);
                             minimumOffspring = Mathf.Max(1, Mathf.RoundToInt(minimumOffspring * Mathf.Lerp(1f, speciesOffspring, 0.5f)));
@@ -397,7 +401,7 @@ namespace AquacultureFishing
                     }
                     school.nextBreedingCheckTick = femaleDue == int.MaxValue || maleDue == int.MaxValue
                         ? int.MaxValue
-                        : Math.Max(now + 250, Math.Max(femaleDue, maleDue));
+                        : Math.Max(FishAgeTimingRules.ScheduleAfterTicks(now, 250), Math.Max(femaleDue, maleDue));
                 }
             }
         }
@@ -447,7 +451,8 @@ namespace AquacultureFishing
             egg.qualifyingBreedGeneration = qualifyingBreedGeneration;
             egg.parentOneThingId = first.parent.thingIDNumber;
             egg.parentTwoThingId = second.parent.thingIDNumber;
-            egg.hatchTick = now + Mathf.RoundToInt((AquacultureMod.Settings?.eggHatchDays ?? 3f) * 60000f);
+            egg.hatchTick = FishAgeTimingRules.ScheduleAfterTicks(now,
+                Mathf.RoundToInt((AquacultureMod.Settings?.eggHatchDays ?? 3f) * 60000f));
             if (nextEggCheckTick == 0 || egg.hatchTick < nextEggCheckTick) nextEggCheckTick = egg.hatchTick;
             AquacultureEventRouter.FishBred(first, second);
             GenSpawn.Spawn(egg, cell, map);
@@ -551,7 +556,8 @@ namespace AquacultureFishing
                 if (!(eggs[i] is FishEggThing egg)) continue;
                 if (map.designationManager.DesignationOn(egg, AquacultureJobDefOf.AF_RemovePondEggDesignation) != null)
                 {
-                    nextEggCheckTick = Math.Min(nextEggCheckTick, now + 250);
+                    nextEggCheckTick = Math.Min(nextEggCheckTick,
+                        FishAgeTimingRules.ScheduleAfterTicks(now, 250));
                     continue;
                 }
                 if (now >= egg.hatchTick) egg.Hatch();
