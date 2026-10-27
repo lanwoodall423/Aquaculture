@@ -408,6 +408,53 @@ static class TraitBreedingRulesTests
         index.Clear();
         Check("index invalidates load", index.Count == 0 && index.ForBreed("other").Count == 0);
 
+        var isolatedIndex = new AquacultureCommissionFishIndex<string>();
+        isolatedIndex.Register("first", "breed");
+        isolatedIndex.Register("second", "breed");
+        IReadOnlyCollection<string> exposed = isolatedIndex.ForBreed("breed");
+        bool clearedExternally = false;
+        if (exposed is ICollection<string> externallyMutable)
+        {
+            try
+            {
+                externallyMutable.Clear();
+                clearedExternally = true;
+            }
+            catch (NotSupportedException) { }
+        }
+        Check("breed query cannot clear the live index through a collection cast",
+            !clearedExternally && isolatedIndex.Count == 2 &&
+            isolatedIndex.ForBreed("breed").Count == 2 &&
+            isolatedIndex.ForBreed("breed").Contains("first"));
+        bool addedExternally = false;
+        if (isolatedIndex.ForBreed("breed") is ICollection<string> addable)
+        {
+            try
+            {
+                addable.Add("injected");
+                addedExternally = true;
+            }
+            catch (NotSupportedException) { }
+        }
+        Check("breed query cannot inject unregistered specimens",
+            !addedExternally && isolatedIndex.Count == 2 &&
+            !isolatedIndex.ForBreed("breed").Contains("injected"));
+
+        var snapshotIndex = new AquacultureCommissionFishIndex<string>();
+        snapshotIndex.Register("early", "breed");
+        IReadOnlyCollection<string> earlier = snapshotIndex.ForBreed("breed");
+        snapshotIndex.Register("later", "breed");
+        snapshotIndex.Register("early", "other");
+        Check("breed query is a detached snapshot across additions and reassignment",
+            earlier.Count == 1 && earlier.Contains("early") && !earlier.Contains("later") &&
+            snapshotIndex.Count == 2 && snapshotIndex.ForBreed("breed").SequenceEqual(new[] { "later" }) &&
+            snapshotIndex.ForBreed("other").Contains("early"));
+        snapshotIndex.Unregister("later");
+        snapshotIndex.Clear();
+        Check("captured breed snapshots survive index removals and reset",
+            earlier.Count == 1 && earlier.Contains("early") && snapshotIndex.Count == 0 &&
+            snapshotIndex.ForBreed("breed").Count == 0);
+
         Check("delivery requires every step", !AquacultureCommissionDeliveryRules.Completes(true, true, true, false));
         Check("delivery consumes only valid specimen", AquacultureCommissionDeliveryRules.Completes(true, true, true, true));
         Check("invalid delivery cannot complete", !AquacultureCommissionDeliveryRules.Completes(true, false, true, true));

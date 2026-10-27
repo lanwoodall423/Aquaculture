@@ -113,8 +113,10 @@ namespace AquacultureFishing
 
         public IReadOnlyCollection<T> ForBreed(string breedId)
         {
+            // Do not expose the mutable set owned by the index, even behind a read-only
+            // interface. A detached read-only snapshot also survives later reassignments.
             return !string.IsNullOrEmpty(breedId) && fishByBreed.TryGetValue(breedId, out HashSet<T> group)
-                ? group : Array.Empty<T>();
+                ? new List<T>(group).AsReadOnly() : Array.Empty<T>();
         }
 
         public void Clear()
