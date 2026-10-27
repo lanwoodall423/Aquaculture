@@ -112,7 +112,9 @@ namespace DeferredReality.Aquaculture
 
         public static float NormalizeNonNegative(float value, float fallback = 0f, float maximum = float.MaxValue)
         {
-            if (float.IsNaN(value) || float.IsInfinity(value)) value = fallback;
+            // A corrupted carrying capacity must not propagate NaN or an unbounded population.
+            if (!IsFinite(maximum) || maximum <= 0f) return 0f;
+            if (!IsFinite(value)) value = IsFinite(fallback) ? fallback : 0f;
             return Math.Max(0f, Math.Min(maximum, value));
         }
 

@@ -201,6 +201,24 @@ static class TraitBreedingRulesTests
             "fish", "fish", "River", "River", 0f, 0f, 2f));
         Check("invalid deferred scalar normalizes", DeferredRealityProviderRules.NormalizeNonNegative(float.NaN) == 0f &&
             DeferredRealityProviderRules.NormalizeNonNegative(4f, 0f, 2f) == 2f);
+        Check("invalid deferred capacity limits fail closed",
+            DeferredRealityProviderRules.NormalizeNonNegative(4f, 0f, float.NaN) == 0f &&
+            DeferredRealityProviderRules.NormalizeNonNegative(4f, 0f, float.PositiveInfinity) == 0f &&
+            DeferredRealityProviderRules.NormalizeNonNegative(4f, 0f, float.NegativeInfinity) == 0f &&
+            DeferredRealityProviderRules.NormalizeNonNegative(4f, 0f, -1f) == 0f &&
+            DeferredRealityProviderRules.NormalizeNonNegative(4f, 0f, 0f) == 0f);
+        Check("invalid deferred fallback cannot produce a non-finite population",
+            DeferredRealityProviderRules.NormalizeNonNegative(float.NaN, float.NaN) == 0f &&
+            DeferredRealityProviderRules.NormalizeNonNegative(float.PositiveInfinity, float.PositiveInfinity) == 0f &&
+            DeferredRealityProviderRules.NormalizeNonNegative(float.NegativeInfinity, float.NegativeInfinity, 2f) == 0f);
+        Check("valid deferred fallback and capacity preserve finite clamping",
+            DeferredRealityProviderRules.NormalizeNonNegative(float.NaN, 1.5f, 2f) == 1.5f &&
+            DeferredRealityProviderRules.NormalizeNonNegative(float.NaN, 3f, 2f) == 2f &&
+            DeferredRealityProviderRules.NormalizeNonNegative(-2f, 1.5f, 2f) == 0f &&
+            DeferredRealityProviderRules.NormalizeNonNegative(1.25f, 0f, 2f) == 1.25f);
+        Check("invalid deferred population capacity prevents growth",
+            DeferredRealityProviderRules.AdvancePopulation(2f, float.NaN, 60000f, 1f) == 0f &&
+            DeferredRealityProviderRules.AdvancePopulation(2f, float.PositiveInfinity, 60000f, 1f) == 0f);
         Check("deferred advancement is bounded", DeferredRealityProviderRules.AdvancePopulation(2f, 3f, 60000f, 1f) <= 3f);
         Check("deferred record bound is enforced", DeferredRealityProviderRules.IsWithinRecordLimit(
             DeferredRealityProviderRules.MaximumDynamicRecords) && !DeferredRealityProviderRules.IsWithinRecordLimit(
