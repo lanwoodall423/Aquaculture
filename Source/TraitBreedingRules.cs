@@ -141,7 +141,7 @@ namespace AquacultureFishing
 
         public static float GenerationContribution(int highestGeneration)
         {
-            return Clamp(Math.Max(0, highestGeneration - 1) * GenerationContributionPerGeneration,
+            return Clamp(CompletedGenerationSteps(highestGeneration) * GenerationContributionPerGeneration,
                 0f, MaximumGenerationContribution);
         }
 
@@ -155,12 +155,18 @@ namespace AquacultureFishing
         public static float LegacyStability(int matchingBirths, int highestGeneration)
         {
             return Clamp(0.70f + Math.Max(0, matchingBirths) * 0.03f +
-                Math.Max(0, highestGeneration - 1) * 0.02f, 0.70f, 0.98f);
+                CompletedGenerationSteps(highestGeneration) * 0.02f, 0.70f, 0.98f);
         }
 
         public static int QualifyingBirthsFromLegacy(int legacyBirths, int matchingBirths)
         {
             return Math.Max(0, Math.Max(legacyBirths, matchingBirths));
+        }
+
+        private static int CompletedGenerationSteps(int highestGeneration)
+        {
+            // Guard before subtraction: int.MinValue - 1 would wrap in unchecked arithmetic.
+            return highestGeneration <= 1 ? 0 : highestGeneration - 1;
         }
 
         private static string GroupKey(Candidate candidate)

@@ -84,6 +84,24 @@ static class TraitBreedingRulesTests
         Check("non-qualifying births count in denominator", TraitBreedingRules.SuccessRate(1, 4) == 0.25f);
         Check("no births have no success rate", TraitBreedingRules.SuccessRate(0, 0) == 0f);
         Check("generation contribution is restrained", TraitBreedingRules.GenerationContribution(20) == 0.1f);
+        Check("minimum integer generation cannot overflow into a bonus",
+            TraitBreedingRules.GenerationContribution(int.MinValue) == 0f);
+        Check("negative, zero and first generation have no bonus",
+            TraitBreedingRules.GenerationContribution(-5) == 0f &&
+            TraitBreedingRules.GenerationContribution(0) == 0f &&
+            TraitBreedingRules.GenerationContribution(1) == 0f);
+        Check("second generation retains one improvement step",
+            TraitBreedingRules.GenerationContribution(2) == TraitBreedingRules.GenerationContributionPerGeneration);
+        Check("maximum integer generation remains capped",
+            TraitBreedingRules.GenerationContribution(int.MaxValue) == TraitBreedingRules.MaximumGenerationContribution);
+        Check("invalid generation does not inflate resulting stability",
+            TraitBreedingRules.ResultingStability(0, 0, int.MinValue) == TraitBreedingRules.BaseStability);
+        Check("invalid generation does not inflate legacy stability",
+            TraitBreedingRules.LegacyStability(0, int.MinValue) == 0.70f);
+        Check("legacy second generation still contributes one step",
+            Math.Abs(TraitBreedingRules.LegacyStability(0, 2) - 0.72f) < 0.0001f);
+        Check("legacy maximum generation remains capped",
+            TraitBreedingRules.LegacyStability(0, int.MaxValue) == 0.98f);
         Check("stability does not compound one success", TraitBreedingRules.ResultingStability(1, 1, 1) == 0.9f);
         Check("stable evidence example", Math.Abs(TraitBreedingRules.ResultingStability(8, 10, 6) - 0.92f) < 0.0001f);
         Check("legacy rate migrates to wild chance", TraitBreedingRules.MigrateLegacySettings(0, 0.37f, 4, 0.2f, 2).WildExceptionalTraitChance == 0.37f);
