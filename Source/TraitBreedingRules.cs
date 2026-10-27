@@ -108,9 +108,11 @@ namespace AquacultureFishing
             var result = new List<string>();
             while (result.Count < cap && candidates.Count > 0)
             {
-                float totalWeight = candidates.Sum(candidate => candidate.Weight);
-                if (totalWeight <= 0f || float.IsNaN(totalWeight) || float.IsInfinity(totalWeight)) break;
-                float roll = Clamp01((nextValue ?? (() => 0f))()) * totalWeight;
+                // Individually finite float weights can overflow when summed in float.
+                // Double intermediates preserve valid weighted pools and draw boundaries.
+                double totalWeight = candidates.Sum(candidate => (double)candidate.Weight);
+                if (totalWeight <= 0d || double.IsNaN(totalWeight) || double.IsInfinity(totalWeight)) break;
+                double roll = Clamp01((nextValue ?? (() => 0f))()) * totalWeight;
                 Candidate selected = candidates[candidates.Count - 1];
                 foreach (Candidate candidate in candidates)
                 {

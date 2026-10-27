@@ -61,6 +61,15 @@ static class TraitBreedingRulesTests
         Check("incompatible successes are reduced to one per group", result.Count == 2 && result.Contains("a") && result.Contains("c"));
     }
 
+    private static List<string> DrawWeightedMutations(IEnumerable<TraitBreedingRules.Candidate> candidates,
+        float weightedRoll, int maximum = 1, ISet<string> excluded = null, ISet<string> occupiedGroups = null)
+    {
+        int draw = 0;
+        // The first random value decides whether mutation occurs; subsequent values choose weighted traits.
+        return TraitBreedingRules.RollNewMutationTraits(candidates, excluded, occupiedGroups, 1f, maximum,
+            () => draw++ == 0 ? 0f : weightedRoll, (minimum, maximumExclusive) => minimum);
+    }
+
     private static void TestMutationsAndOutliers()
     {
         List<string> result = TraitBreedingRules.RollNewMutationTraits(new[]
@@ -74,6 +83,53 @@ static class TraitBreedingRulesTests
             Array.Empty<TraitBreedingRules.Candidate>(), new HashSet<string>(), new HashSet<string>(), 1f, 2,
             () => 0f, null).Count == 0);
         Check("traitless parent union is safe", Inherited(Array.Empty<TraitBreedingRules.Candidate>(), 1f).Count == 0);
+
+        var hugeWeights = new[]
+        {
+            Candidate("huge-a", "a", weight: float.MaxValue),
+            Candidate("huge-b", "b", weight: float.MaxValue)
+        };
+        Check("finite giant weights permit first mutation",
+            DrawWeightedMutations(hugeWeights, 0f).SequenceEqual(new[] { "huge-a" }));
+        Check("finite giant weights preserve later weighted selection",
+            DrawWeightedMutations(hugeWeights, 0.75f).SequenceEqual(new[] { "huge-b" }));
+        Check("weighted upper-bound draw selects last candidate",
+            DrawWeightedMutations(hugeWeights, 1f).SequenceEqual(new[] { "huge-b" }));
+        Check("finite giant weights retain multiple compatible mutation slots",
+            DrawWeightedMutations(hugeWeights, 0.75f, 2).SequenceEqual(new[] { "huge-a", "huge-b" }));
+        Check("three giant weights preserve middle bucket",
+            DrawWeightedMutations(new[]
+            {
+                Candidate("one", "one", weight: float.MaxValue),
+                Candidate("two", "two", weight: float.MaxValue),
+                Candidate("three", "three", weight: float.MaxValue)
+            }, 0.5f).SequenceEqual(new[] { "two" }));
+
+        var ordinaryWeights = new[] { Candidate("light", "light", weight: 1f),
+            Candidate("heavy", "heavy", weight: 3f) };
+        Check("ordinary finite weights keep first weighted bucket",
+            DrawWeightedMutations(ordinaryWeights, 0.2f).SequenceEqual(new[] { "light" }));
+        Check("ordinary finite weights keep later weighted bucket",
+            DrawWeightedMutations(ordinaryWeights, 0.5f).SequenceEqual(new[] { "heavy" }));
+        Check("giant weights still exclude occupied compatibility groups",
+            DrawWeightedMutations(new[]
+            {
+                Candidate("alpha", "same", weight: float.MaxValue),
+                Candidate("beta", "same", weight: float.MaxValue),
+                Candidate("gamma", "different", weight: float.MaxValue)
+            }, 0f, 2).SequenceEqual(new[] { "alpha", "gamma" }));
+        Check("giant weights still respect inherited exclusions",
+            DrawWeightedMutations(hugeWeights, 0f, 2, new HashSet<string> { "huge-a" },
+                new HashSet<string> { "a" }).SequenceEqual(new[] { "huge-b" }));
+        Check("non-finite and nonpositive candidate weights remain excluded",
+            DrawWeightedMutations(new[]
+            {
+                Candidate("nan", "nan", weight: float.NaN),
+                Candidate("positive-infinity", "inf", weight: float.PositiveInfinity),
+                Candidate("negative-infinity", "negative-inf", weight: float.NegativeInfinity),
+                Candidate("zero", "zero", weight: 0f),
+                Candidate("negative", "negative", weight: -1f)
+            }, 0f, 5).Count == 0);
     }
 
     private static void TestStabilityAndMigration()
