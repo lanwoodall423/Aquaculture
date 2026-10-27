@@ -246,4 +246,18 @@ namespace AquacultureFishing
             return due >= int.MaxValue ? int.MaxValue : (int)due;
         }
     }
+
+    /// <summary>Pure timing contract for the managed pond ecology simulation.</summary>
+    public static class PondEcologyTimingRules
+    {
+        public static float ElapsedHours(int now, int lastEcologyTick)
+        {
+            // Uninitialized/legacy ecology records retain the existing one-hour default.
+            if (lastEcologyTick <= 0) return 1f;
+            // Saved or extreme ticks can make the difference exceed the signed int range.
+            // Compute elapsed time before clamping without overflowing to a false full day.
+            float hours = ((long)now - lastEcologyTick) / 2500f;
+            return Math.Max(0.1f, Math.Min(24f, hours));
+        }
+    }
 }

@@ -227,6 +227,32 @@ static class TraitBreedingRulesTests
             FishAgeTimingRules.ScheduleAfterTicks(int.MinValue, 1) == int.MinValue + 1);
     }
 
+    private static void TestPondEcologyTiming()
+    {
+        Check("new ponds and unloaded ecology history retain one-hour first update",
+            PondEcologyTimingRules.ElapsedHours(2500, 0) == 1f &&
+            PondEcologyTimingRules.ElapsedHours(int.MaxValue, -1) == 1f);
+        Check("ordinary pond ecology delta retains 1-hour progression",
+            PondEcologyTimingRules.ElapsedHours(3500, 1000) == 1f);
+        Check("pond ecology delta remains clamped at the usual lower and upper bounds",
+            PondEcologyTimingRules.ElapsedHours(1250, 1000) == 0.1f &&
+            PondEcologyTimingRules.ElapsedHours(100000, 1000) == 24f &&
+            PondEcologyTimingRules.ElapsedHours(1000, 3500) == 0.1f);
+        Check("overflowing backwards ecology clock cannot simulate a full day",
+            PondEcologyTimingRules.ElapsedHours(int.MinValue, 12345) == 0.1f);
+        Check("future positive saved ecology ticks never overflow into full-day progress",
+            PondEcologyTimingRules.ElapsedHours(int.MinValue + 100, 1000) == 0.1f);
+        Check("large valid forward ecology elapsed ticks remain bounded",
+            PondEcologyTimingRules.ElapsedHours(int.MaxValue, 1) == 24f);
+
+        Check("normal pond ecology initial jitter and interval retain their schedules",
+            FishAgeTimingRules.ScheduleAfterTicks(1000, 250 + 375) == 1625 &&
+            FishAgeTimingRules.ScheduleAfterTicks(1000, 2500) == 3500);
+        Check("pond ecology initial and recurring schedules cannot wrap at the tick limit",
+            FishAgeTimingRules.ScheduleAfterTicks(int.MaxValue - 100, 250 + 375) == int.MaxValue &&
+            FishAgeTimingRules.ScheduleAfterTicks(int.MaxValue - 100, 625) == int.MaxValue);
+    }
+
     private static void TestRecoveryRules()
     {
         NaturalWaterHabitat[] habitats = (NaturalWaterHabitat[])Enum.GetValues(typeof(NaturalWaterHabitat));
@@ -794,6 +820,7 @@ static class TraitBreedingRulesTests
         TestMutationsAndOutliers();
         TestStabilityAndMigration();
         TestFishAgeTiming();
+        TestPondEcologyTiming();
         TestRecoveryRules();
         TestCommissionRules();
         TestKnowledgeContract();

@@ -435,7 +435,10 @@ namespace AquacultureFishing
             float capacity = Mathf.Max(0.1f, info.cells.Count * 0.25f);
             if (record.algae < 0f) record.algae = capacity * 0.6f;
             int intervalTicks = Mathf.Max(625, Mathf.RoundToInt((AquacultureMod.Settings?.ecologyIntervalHours ?? 1f) * 2500f));
-            if (record.nextEcologyTick <= 0) record.nextEcologyTick = (Find.TickManager?.TicksGame ?? 0) + 250 + PositiveMod(info.anchor.GetHashCode(), Mathf.Max(1, intervalTicks - 250));
+            if (record.nextEcologyTick <= 0)
+                record.nextEcologyTick = FishAgeTimingRules.ScheduleAfterTicks(
+                    Find.TickManager?.TicksGame ?? 0,
+                    250 + PositiveMod(info.anchor.GetHashCode(), Mathf.Max(1, intervalTicks - 250)));
             return record;
         }
 
@@ -447,9 +450,10 @@ namespace AquacultureFishing
                 PondState pond = pondStates[pondIndex];
                 PondEcologyRecord record = pond.ecology;
                 if (now < record.nextEcologyTick) continue;
-                float hours = record.lastEcologyTick <= 0 ? 1f : Mathf.Clamp((now - record.lastEcologyTick) / 2500f, 0.1f, 24f);
+                float hours = PondEcologyTimingRules.ElapsedHours(now, record.lastEcologyTick);
                 record.lastEcologyTick = now;
-                record.nextEcologyTick = now + Mathf.Max(625, Mathf.RoundToInt((AquacultureMod.Settings?.ecologyIntervalHours ?? 1f) * 2500f));
+                record.nextEcologyTick = FishAgeTimingRules.ScheduleAfterTicks(now,
+                    Mathf.Max(625, Mathf.RoundToInt((AquacultureMod.Settings?.ecologyIntervalHours ?? 1f) * 2500f)));
                 TransferAutomaticFeed(pond);
                 SimulateEcology(pond, hours);
                 processedAny = true;
