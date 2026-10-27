@@ -427,10 +427,10 @@ namespace AquacultureFishing
             if (!initialized || lifespanTicks <= 0 || traitDefNames == null) return;
             int now = Find.TickManager?.TicksGame ?? birthTick;
             if (nextAgeCheckTick > now) return;
-            float fraction = Mathf.Clamp01((now - birthTick) / (float)lifespanTicks);
+            float fraction = FishAgeTimingRules.FractionElapsed(now, birthTick, lifespanTicks);
             string age = fraction < 0.10f ? FishTraitUtility.Fry : fraction < 0.30f ? FishTraitUtility.Juvenile : fraction < 0.80f ? FishTraitUtility.Adult : FishTraitUtility.Elder;
             float nextFraction = fraction < 0.10f ? 0.10f : fraction < 0.30f ? 0.30f : fraction < 0.80f ? 0.80f : 1f;
-            nextAgeCheckTick = birthTick + Mathf.RoundToInt(lifespanTicks * nextFraction) + 1;
+            nextAgeCheckTick = FishAgeTimingRules.NextCheckTick(birthTick, Mathf.RoundToInt(lifespanTicks * nextFraction));
             if (!traitDefNames.Contains(age))
             {
                 traitDefNames.RemoveAll(name => !name.NullOrEmpty() && name.StartsWith("AF_Age_"));
@@ -497,7 +497,9 @@ namespace AquacultureFishing
             }
             if (!BreedName.NullOrEmpty()) parts.Add("Breed: " + BreedName + " (generation " + breedGeneration + ")");
             if (HasAnyTraits) parts.Add("Traits: " + TraitSummary);
-            if (alive && lifespanTicks > 0) parts.Add("Lifespan remaining: " + Mathf.Max(0, lifespanTicks - ((Find.TickManager?.TicksGame ?? birthTick) - birthTick)).ToStringTicksToPeriod());
+            if (alive && lifespanTicks > 0) parts.Add("Lifespan remaining: " +
+                FishAgeTimingRules.RemainingTicks(Find.TickManager?.TicksGame ?? birthTick,
+                    birthTick, lifespanTicks).ToStringTicksToPeriod());
             if (IsSwimmingInPond) parts.Add("Swimming in pond");
             if (alive && IsInPond) parts.Add(starvationProgress > 0f ? "Starvation: " + starvationProgress.ToStringPercent() : "Food reserve: " + foodReserve.ToStringPercent());
             if (alive && IsInPond) parts.Add("Habitat fit: " + habitatFit.ToStringPercent() +

@@ -113,8 +113,10 @@ namespace AquacultureFishing
 
         public IReadOnlyCollection<T> ForBreed(string breedId)
         {
+            // Do not expose the mutable set owned by the index, even behind a read-only
+            // interface. A detached read-only snapshot also survives later reassignments.
             return !string.IsNullOrEmpty(breedId) && fishByBreed.TryGetValue(breedId, out HashSet<T> group)
-                ? group : Array.Empty<T>();
+                ? new List<T>(group).AsReadOnly() : Array.Empty<T>();
         }
 
         public void Clear()
@@ -332,6 +334,23 @@ namespace AquacultureFishing
                 minimumGeneration = Math.Max(0, generation),
                 minimumSizeFactor = NormalizeSizeThreshold(size)
             };
+        }
+
+        /// <summary>Schedules a commission tick without wrapping the saved int tick range.</summary>
+        public static int ScheduleTick(int startTick, long delayTicks)
+        {
+            if (delayTicks <= 0L) return startTick;
+            // Guard before adding: long.MaxValue delays must also saturate safely.
+            long available = (long)int.MaxValue - startTick;
+            return delayTicks >= available ? int.MaxValue : (int)((long)startTick + delayTicks);
+        }
+
+        /// <summary>Returns nonnegative, whole remaining days without overflowing tick subtraction.</summary>
+        public static int RemainingDays(int deadlineTick, int now)
+        {
+            if (deadlineTick < 0 || now >= deadlineTick) return 0;
+            long remainingTicks = (long)deadlineTick - now;
+            return (int)((remainingTicks + 59999L) / 60000L);
         }
 
         private static int CompletedGenerationSteps(int generation)

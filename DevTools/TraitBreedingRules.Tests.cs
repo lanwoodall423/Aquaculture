@@ -61,6 +61,15 @@ static class TraitBreedingRulesTests
         Check("incompatible successes are reduced to one per group", result.Count == 2 && result.Contains("a") && result.Contains("c"));
     }
 
+    private static List<string> DrawWeightedMutations(IEnumerable<TraitBreedingRules.Candidate> candidates,
+        float weightedRoll, int maximum = 1, ISet<string> excluded = null, ISet<string> occupiedGroups = null)
+    {
+        int draw = 0;
+        // The first random value decides whether mutation occurs; subsequent values choose weighted traits.
+        return TraitBreedingRules.RollNewMutationTraits(candidates, excluded, occupiedGroups, 1f, maximum,
+            () => draw++ == 0 ? 0f : weightedRoll, (minimum, maximumExclusive) => minimum);
+    }
+
     private static void TestMutationsAndOutliers()
     {
         List<string> result = TraitBreedingRules.RollNewMutationTraits(new[]
@@ -74,6 +83,53 @@ static class TraitBreedingRulesTests
             Array.Empty<TraitBreedingRules.Candidate>(), new HashSet<string>(), new HashSet<string>(), 1f, 2,
             () => 0f, null).Count == 0);
         Check("traitless parent union is safe", Inherited(Array.Empty<TraitBreedingRules.Candidate>(), 1f).Count == 0);
+
+        var hugeWeights = new[]
+        {
+            Candidate("huge-a", "a", weight: float.MaxValue),
+            Candidate("huge-b", "b", weight: float.MaxValue)
+        };
+        Check("finite giant weights permit first mutation",
+            DrawWeightedMutations(hugeWeights, 0f).SequenceEqual(new[] { "huge-a" }));
+        Check("finite giant weights preserve later weighted selection",
+            DrawWeightedMutations(hugeWeights, 0.75f).SequenceEqual(new[] { "huge-b" }));
+        Check("weighted upper-bound draw selects last candidate",
+            DrawWeightedMutations(hugeWeights, 1f).SequenceEqual(new[] { "huge-b" }));
+        Check("finite giant weights retain multiple compatible mutation slots",
+            DrawWeightedMutations(hugeWeights, 0.75f, 2).SequenceEqual(new[] { "huge-a", "huge-b" }));
+        Check("three giant weights preserve middle bucket",
+            DrawWeightedMutations(new[]
+            {
+                Candidate("one", "one", weight: float.MaxValue),
+                Candidate("two", "two", weight: float.MaxValue),
+                Candidate("three", "three", weight: float.MaxValue)
+            }, 0.5f).SequenceEqual(new[] { "two" }));
+
+        var ordinaryWeights = new[] { Candidate("light", "light", weight: 1f),
+            Candidate("heavy", "heavy", weight: 3f) };
+        Check("ordinary finite weights keep first weighted bucket",
+            DrawWeightedMutations(ordinaryWeights, 0.2f).SequenceEqual(new[] { "light" }));
+        Check("ordinary finite weights keep later weighted bucket",
+            DrawWeightedMutations(ordinaryWeights, 0.5f).SequenceEqual(new[] { "heavy" }));
+        Check("giant weights still exclude occupied compatibility groups",
+            DrawWeightedMutations(new[]
+            {
+                Candidate("alpha", "same", weight: float.MaxValue),
+                Candidate("beta", "same", weight: float.MaxValue),
+                Candidate("gamma", "different", weight: float.MaxValue)
+            }, 0f, 2).SequenceEqual(new[] { "alpha", "gamma" }));
+        Check("giant weights still respect inherited exclusions",
+            DrawWeightedMutations(hugeWeights, 0f, 2, new HashSet<string> { "huge-a" },
+                new HashSet<string> { "a" }).SequenceEqual(new[] { "huge-b" }));
+        Check("non-finite and nonpositive candidate weights remain excluded",
+            DrawWeightedMutations(new[]
+            {
+                Candidate("nan", "nan", weight: float.NaN),
+                Candidate("positive-infinity", "inf", weight: float.PositiveInfinity),
+                Candidate("negative-infinity", "negative-inf", weight: float.NegativeInfinity),
+                Candidate("zero", "zero", weight: 0f),
+                Candidate("negative", "negative", weight: -1f)
+            }, 0f, 5).Count == 0);
     }
 
     private static void TestStabilityAndMigration()
@@ -108,6 +164,47 @@ static class TraitBreedingRulesTests
         Check("legacy cap migrates to inherited cap", TraitBreedingRules.MigrateLegacySettings(0, 0.37f, 4, 0.2f, 2).MaximumInheritedTraits == 4);
         Check("new settings are not overwritten", TraitBreedingRules.MigrateLegacySettings(1, 0.37f, 4, 0.61f, 3).WildExceptionalTraitChance == 0.61f);
         Check("legacy births retain established floor", TraitBreedingRules.LegacyStability(3, 2) >= 0.79f);
+    }
+
+    private static void TestFishAgeTiming()
+    {
+        Check("ordinary fish aging fraction is preserved",
+            FishAgeTimingRules.FractionElapsed(60000, 0, 120000) == 0.5f &&
+            FishAgeTimingRules.FractionElapsed(120000, 0, 120000) == 1f &&
+            FishAgeTimingRules.FractionElapsed(0, 60000, 120000) == 0f);
+        Check("ordinary expiry uses exact lifetime boundary",
+            !FishAgeTimingRules.HasExpired(119999, 0, 120000) &&
+            FishAgeTimingRules.HasExpired(120000, 0, 120000));
+        Check("ordinary remaining lifespan and next check are unchanged",
+            FishAgeTimingRules.RemainingTicks(90000, 0, 120000) == 30000 &&
+            FishAgeTimingRules.RemainingTicks(120000, 0, 120000) == 0 &&
+            FishAgeTimingRules.NextCheckTick(100, 250) == 351);
+        Check("nonpositive lifespan never expires or creates an age fraction",
+            FishAgeTimingRules.FractionElapsed(int.MaxValue, 0, 0) == 0f &&
+            FishAgeTimingRules.FractionElapsed(int.MaxValue, 0, -1) == 0f &&
+            !FishAgeTimingRules.HasExpired(int.MaxValue, 0, 0) &&
+            !FishAgeTimingRules.HasExpired(int.MaxValue, 0, -1) &&
+            FishAgeTimingRules.RemainingTicks(int.MaxValue, 0, -1) == 0);
+
+        Check("very old fish reaches elder age despite elapsed tick overflow",
+            FishAgeTimingRules.FractionElapsed(int.MaxValue, int.MinValue, 120000) == 1f);
+        Check("birth in the future cannot appear aged after subtraction overflow",
+            FishAgeTimingRules.FractionElapsed(int.MinValue, int.MaxValue, 100) == 0f);
+        Check("very old fish expires despite elapsed tick overflow",
+            FishAgeTimingRules.HasExpired(int.MaxValue, int.MinValue, 120000));
+        Check("future birth never expires early despite subtraction overflow",
+            !FishAgeTimingRules.HasExpired(int.MinValue, int.MaxValue, 1));
+        Check("expired fish has no remaining lifespan after tick overflow",
+            FishAgeTimingRules.RemainingTicks(int.MaxValue, int.MinValue, 120000) == 0);
+        Check("future birth never displays more than configured lifespan",
+            FishAgeTimingRules.RemainingTicks(10, 11, 120000) == 120000 &&
+            FishAgeTimingRules.RemainingTicks(int.MinValue, int.MaxValue, 120000) == 120000);
+        Check("future age check saturates rather than wrapping negative",
+            FishAgeTimingRules.NextCheckTick(int.MaxValue - 2, 5) == int.MaxValue);
+        Check("negative threshold offsets cannot schedule before birth",
+            FishAgeTimingRules.NextCheckTick(100, -5) == 101);
+        Check("lower tick boundary retains valid checks",
+            FishAgeTimingRules.NextCheckTick(int.MinValue, 0) == int.MinValue + 1);
     }
 
     private static void TestRecoveryRules()
@@ -241,6 +338,32 @@ static class TraitBreedingRulesTests
             DeferredRealityProviderRules.AdvancePopulation(2f, float.NaN, 60000f, 1f) == 0f &&
             DeferredRealityProviderRules.AdvancePopulation(2f, float.PositiveInfinity, 60000f, 1f) == 0f);
         Check("deferred advancement is bounded", DeferredRealityProviderRules.AdvancePopulation(2f, 3f, 60000f, 1f) <= 3f);
+        float thirtyDays = 30f * 60000f;
+        float halfMaximum = float.MaxValue / 2f;
+        float highProjection = DeferredRealityProviderRules.AdvancePopulation(
+            halfMaximum, float.MaxValue, thirtyDays, 1f);
+        Check("large finite population survives intermediate growth overflow",
+            !float.IsNaN(highProjection) && !float.IsInfinity(highProjection) &&
+            Math.Abs((double)highProjection / halfMaximum - 1.75d) < 0.0001d);
+        Check("maximum finite population growth clamps to carrying capacity",
+            DeferredRealityProviderRules.AdvancePopulation(
+                float.MaxValue, float.MaxValue, thirtyDays, 1f) == float.MaxValue);
+        Check("extreme finite elapsed time retains positive bounded growth",
+            DeferredRealityProviderRules.AdvancePopulation(
+                halfMaximum, float.MaxValue, float.MaxValue, 1f) == float.MaxValue);
+        Check("large finite population with zero suitability retains mortality",
+            Math.Abs((double)DeferredRealityProviderRules.AdvancePopulation(
+                halfMaximum, float.MaxValue, thirtyDays, 0f) / halfMaximum - 0.70d) < 0.0001d);
+        Check("ordinary growth, low-population decline and capacity remain stable",
+            Math.Abs(DeferredRealityProviderRules.AdvancePopulation(2f, 3f, 60000f, 1f) - 2.05f) < 0.00001f &&
+            Math.Abs(DeferredRealityProviderRules.AdvancePopulation(1f, 3f, 60000f, 1f) - 0.99f) < 0.00001f &&
+            DeferredRealityProviderRules.AdvancePopulation(4f, 3f, 0f, 1f) == 3f);
+        Check("invalid advancement inputs retain safe normalization",
+            DeferredRealityProviderRules.AdvancePopulation(float.NaN, 3f, 60000f, 1f) == 0f &&
+            DeferredRealityProviderRules.AdvancePopulation(-5f, 3f, 60000f, 1f) == 0f &&
+            DeferredRealityProviderRules.AdvancePopulation(2f, 3f, float.NaN, 1f) == 2f &&
+            DeferredRealityProviderRules.AdvancePopulation(2f, 3f, float.NegativeInfinity, 1f) == 2f &&
+            DeferredRealityProviderRules.AdvancePopulation(2f, 0f, 60000f, 1f) == 0f);
         Check("deferred record bound is enforced", DeferredRealityProviderRules.IsWithinRecordLimit(
             DeferredRealityProviderRules.MaximumDynamicRecords) && !DeferredRealityProviderRules.IsWithinRecordLimit(
                 DeferredRealityProviderRules.MaximumDynamicRecords + 1));
@@ -429,6 +552,53 @@ static class TraitBreedingRulesTests
         index.Clear();
         Check("index invalidates load", index.Count == 0 && index.ForBreed("other").Count == 0);
 
+        var isolatedIndex = new AquacultureCommissionFishIndex<string>();
+        isolatedIndex.Register("first", "breed");
+        isolatedIndex.Register("second", "breed");
+        IReadOnlyCollection<string> exposed = isolatedIndex.ForBreed("breed");
+        bool clearedExternally = false;
+        if (exposed is ICollection<string> externallyMutable)
+        {
+            try
+            {
+                externallyMutable.Clear();
+                clearedExternally = true;
+            }
+            catch (NotSupportedException) { }
+        }
+        Check("breed query cannot clear the live index through a collection cast",
+            !clearedExternally && isolatedIndex.Count == 2 &&
+            isolatedIndex.ForBreed("breed").Count == 2 &&
+            isolatedIndex.ForBreed("breed").Contains("first"));
+        bool addedExternally = false;
+        if (isolatedIndex.ForBreed("breed") is ICollection<string> addable)
+        {
+            try
+            {
+                addable.Add("injected");
+                addedExternally = true;
+            }
+            catch (NotSupportedException) { }
+        }
+        Check("breed query cannot inject unregistered specimens",
+            !addedExternally && isolatedIndex.Count == 2 &&
+            !isolatedIndex.ForBreed("breed").Contains("injected"));
+
+        var snapshotIndex = new AquacultureCommissionFishIndex<string>();
+        snapshotIndex.Register("early", "breed");
+        IReadOnlyCollection<string> earlier = snapshotIndex.ForBreed("breed");
+        snapshotIndex.Register("later", "breed");
+        snapshotIndex.Register("early", "other");
+        Check("breed query is a detached snapshot across additions and reassignment",
+            earlier.Count == 1 && earlier.Contains("early") && !earlier.Contains("later") &&
+            snapshotIndex.Count == 2 && snapshotIndex.ForBreed("breed").SequenceEqual(new[] { "later" }) &&
+            snapshotIndex.ForBreed("other").Contains("early"));
+        snapshotIndex.Unregister("later");
+        snapshotIndex.Clear();
+        Check("captured breed snapshots survive index removals and reset",
+            earlier.Count == 1 && earlier.Contains("early") && snapshotIndex.Count == 0 &&
+            snapshotIndex.ForBreed("breed").Count == 0);
+
         Check("delivery requires every step", !AquacultureCommissionDeliveryRules.Completes(true, true, true, false));
         Check("delivery consumes only valid specimen", AquacultureCommissionDeliveryRules.Completes(true, true, true, true));
         Check("invalid delivery cannot complete", !AquacultureCommissionDeliveryRules.Completes(true, false, true, true));
@@ -448,6 +618,30 @@ static class TraitBreedingRulesTests
         };
         Check("invalid legacy commission rejected", !AquacultureCommissionGoalRules.TryNormalizeSavedState(invalidLegacy, true));
         Check("missing references rejected", !AquacultureCommissionGoalRules.TryNormalizeSavedState(legacy, false));
+
+        Check("ordinary commission tick offsets retain their exact schedule",
+            AquacultureCommissionGoalRules.ScheduleTick(100, 6000L) == 6100 &&
+            AquacultureCommissionGoalRules.ScheduleTick(20, 18L * 60000L) == 1080020);
+        Check("commission due tick saturates rather than wrapping near the int ceiling",
+            AquacultureCommissionGoalRules.ScheduleTick(int.MaxValue - 10, 6000L) == int.MaxValue &&
+            AquacultureCommissionGoalRules.ScheduleTick(int.MaxValue - 1, 30L * 60000L) == int.MaxValue);
+        Check("long commission delays cannot wrap into earlier ticks",
+            AquacultureCommissionGoalRules.ScheduleTick(0, long.MaxValue) == int.MaxValue);
+        Check("invalid negative delay cannot schedule commission events in the past",
+            AquacultureCommissionGoalRules.ScheduleTick(100, -500L) == 100);
+        Check("negative-base tick addition remains exact within int range",
+            AquacultureCommissionGoalRules.ScheduleTick(int.MinValue, 1L) == int.MinValue + 1);
+        Check("normal commission days remaining round up at day boundaries",
+            AquacultureCommissionGoalRules.RemainingDays(60000, 0) == 1 &&
+            AquacultureCommissionGoalRules.RemainingDays(60001, 0) == 2 &&
+            AquacultureCommissionGoalRules.RemainingDays(60000, 60000) == 0 &&
+            AquacultureCommissionGoalRules.RemainingDays(59999, 60000) == 0 &&
+            AquacultureCommissionGoalRules.RemainingDays(59999, 0) == 1);
+        Check("negative deadline sentinel still means no active commission",
+            AquacultureCommissionGoalRules.RemainingDays(-1, int.MinValue) == 0);
+        Check("commission remaining days use wide arithmetic across opposite int limits",
+            AquacultureCommissionGoalRules.RemainingDays(int.MaxValue, int.MinValue) == 71583 &&
+            AquacultureCommissionGoalRules.RemainingDays(0, int.MinValue) == 35792);
     }
 
     private static void TestFrameworkIntegrationRules()
@@ -550,6 +744,7 @@ static class TraitBreedingRulesTests
         TestParentalUnionAndCap();
         TestMutationsAndOutliers();
         TestStabilityAndMigration();
+        TestFishAgeTiming();
         TestRecoveryRules();
         TestCommissionRules();
         TestKnowledgeContract();
