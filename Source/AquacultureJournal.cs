@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using KnowledgeFramework;
 using RimWorld;
 using UnityEngine;
 using Verse;
@@ -592,7 +591,8 @@ namespace AquacultureFishing
 
         private JournalPage page;
         private string selectedSpecies;
-        private readonly KnowledgeMenuState expertiseState = new KnowledgeMenuState();
+        private readonly AquacultureKnowledgeAdapter.ExpertiseMenu expertiseMenu =
+            new AquacultureKnowledgeAdapter.ExpertiseMenu();
         private AquacultureJournalWorkspaceDocument insightWorkspaceDocument;
 
         public override Vector2 InitialSize => new Vector2(Mathf.Min(1180f, UI.screenWidth * 0.96f), Mathf.Min(720f, UI.screenHeight * 0.90f));
@@ -608,8 +608,7 @@ namespace AquacultureFishing
                 journal.page = JournalPage.Expertise;
                 journal.insightWorkspaceDocument?.PostClose();
                 journal.insightWorkspaceDocument = null;
-                journal.expertiseState.scope = KnowledgeMenuScope.Colonist;
-                journal.expertiseState.selectedPawn = pawn;
+                journal.expertiseMenu.SelectPawn(pawn);
             }
         }
 
@@ -664,13 +663,12 @@ namespace AquacultureFishing
             if (Widgets.ButtonText(backRect, "AquacultureFishing.WorkspaceBackToJournal".Translate()))
             {
                 page = JournalPage.Species;
-                expertiseState.scope = KnowledgeMenuScope.Colonist;
-                expertiseState.selectedPawn = null;
+                expertiseMenu.ClearSelection();
                 return;
             }
             Rect knowledgeRect = new Rect(inRect.x, inRect.y + navigationHeight + 8f, inRect.width,
                 Mathf.Max(0f, inRect.height - navigationHeight - 8f));
-            KnowledgeMenuUI.Draw(knowledgeRect, expertiseState, ExpertiseModelFor, ExpertiseFor);
+            expertiseMenu.Draw(knowledgeRect);
         }
 
         public override void PostClose()
@@ -678,68 +676,5 @@ namespace AquacultureFishing
             insightWorkspaceDocument?.PostClose();
             base.PostClose();
         }
-
-        private KnowledgeMenuModel ExpertiseModelFor(Pawn pawn, bool colony)
-        {
-            FishingProgressionComponent component = FishingProgressionComponent.Current;
-            if (colony)
-            {
-                List<PawnFishingProgress> colonyRecords = component?.PawnProgress
-                    .Where(record => record?.pawn?.Faction?.def?.isPlayer == true).ToList()
-                    ?? new List<PawnFishingProgress>();
-                return FishingKnowledgeModel(colonyRecords, null, true);
-            }
-            PawnFishingProgress personal = component?.ProgressFor(pawn, false);
-            return FishingKnowledgeModel(personal == null
-                ? new List<PawnFishingProgress>() : new List<PawnFishingProgress> { personal }, pawn, false);
-        }
-
-        private KnowledgeMenuModel FishingKnowledgeModel(List<PawnFishingProgress> records, Pawn pawn, bool colony)
-        {
-            PawnFishingProgress personal = colony ? null : records.FirstOrDefault();
-            FishingRank level = personal?.ExpertiseLevel ?? FishingRank.Novice;
-            var section = new KnowledgeMenuSection
-            {
-                id = "fish",
-                label = "Fish Knowledge",
-                emptyText = "No fish species are available."
-            };
-            foreach (ThingDef fishDef in DefDatabase<ThingDef>.AllDefs.Where(FishUtility.IsFish))
-            {
-                float knowledge = Mathf.Clamp01(records.Sum(record => record.KnowledgeFor(fishDef)));
-                FishingRank required = AquacultureMod.Settings?.MinimumExpertiseFor(fishDef) ?? FishingRank.Novice;
-                bool locked = !colony && required > level;
-                section.rows.Add(new KnowledgeMenuRow
-                {
-                    label = fishDef.LabelCap,
-                    iconDef = fishDef,
-                    rank = AquacultureKnowledgeAdapter.ToKnowledgeRank(FishingProgressionUtility.LevelFor(knowledge * 700f)),
-                    progress = knowledge,
-                    status = locked ? "Locked - requires " + required : "Available",
-                    tooltip = fishDef.LabelCap + "\n\n" + (locked ? "Requires " + required + " fishing expertise." : "Available to catch.") +
-                        "\nKnowledge: " + knowledge.ToStringPercent()
-                });
-            }
-            if (colony)
-            {
-                return new KnowledgeMenuModel
-                {
-                    title = "Colony Fishing Knowledge",
-                    sections = new List<KnowledgeMenuSection> { section }
-                };
-            }
-            return new KnowledgeMenuModel
-            {
-                title = (pawn?.LabelShortCap ?? "Colonist") + " - Fishing",
-                expertiseLabel = "Fishing expertise",
-                expertiseRank = AquacultureKnowledgeAdapter.ToKnowledgeRank(level),
-                expertiseProgress = personal?.ExpertiseProgress ?? 0f,
-                sections = new List<KnowledgeMenuSection> { section }
-            };
-        }
-
-        private static KnowledgeRank ExpertiseFor(Pawn pawn) =>
-            AquacultureKnowledgeAdapter.ToKnowledgeRank(
-                FishingProgressionComponent.Current?.ProgressFor(pawn, false)?.ExpertiseLevel ?? FishingRank.Novice);
     }
 }

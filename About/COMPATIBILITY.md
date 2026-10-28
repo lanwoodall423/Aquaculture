@@ -77,6 +77,17 @@ migration and provider remain authoritative whenever the framework is ready.
 The mandatory framework assembly reference and player dependency have **not**
 been removed, and exact game/save compatibility testing is still required.
 
+AQ-DEP-03C1 moves the Knowledge Framework expertise browser model, UI state and
+drawing out of the native Journal window into a per-window `ExpertiseMenu` owned
+by the existing Knowledge adapter. Journal navigation and colonist/colony
+selection remain the same, with framework rank conversion and row-locking
+inside the adapter. `Source/AquacultureJournal.cs` no longer imports Knowledge
+Framework types; `Source/AquacultureKnowledgeAdapter.cs` is now the sole core
+source file importing that namespace. This is a **source boundary only**:
+the adapter remains in the core assembly and its Knowledge Framework DLL
+is still required. Portable UI contracts verify the boundary, not a live
+RimWorld render or a dependency-free build.
+
 Complete optionalization only after a build **without the four optional
 mods or their APIs**, a clean player package, a managed RimTest load, a
 fresh-colony fishing/stocking/breeding/harvest path, UI access, save/reload and

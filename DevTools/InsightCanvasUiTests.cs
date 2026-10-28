@@ -40,6 +40,7 @@ namespace AquacultureFishing.Tests
             TestMetadataAndBuildContract(root);
             TestStandaloneDependencyInventory(root);
             TestNativeFishingRankBoundary(root);
+            TestKnowledgeJournalAdapterBoundary(root);
             TestNativeKnowledgeFallbackBoundary(root);
             TestNativeColonyKnowledgeBoundary(root);
             TestConditionalDeferredRealityPackageContract(root);
@@ -422,8 +423,12 @@ namespace AquacultureFishing.Tests
 
             string journal = File.ReadAllText(Path.Combine(root, "Source", "AquacultureJournal.cs"));
             string planner = File.ReadAllText(Path.Combine(root, "Source", "PondStockingPlanner.cs"));
-            Check(journal.Contains("KnowledgeMenuUI") && journal.Contains("insightWorkspaceDocument"),
-                "Journal keeps Knowledge browsing native and embeds the workspace");
+            string knowledgeAdapter = File.ReadAllText(Path.Combine(root, "Source", "AquacultureKnowledgeAdapter.cs"));
+            Check(journal.Contains("expertiseMenu.Draw(knowledgeRect);") &&
+                journal.Contains("AquacultureKnowledgeAdapter.ExpertiseMenu") &&
+                journal.Contains("insightWorkspaceDocument") &&
+                knowledgeAdapter.Contains("KnowledgeMenuUI.Draw(bounds, state, ExpertiseModelFor, ExpertiseFor);"),
+                "Journal keeps canonical Knowledge browsing behind the adapter and embeds the workspace");
             Check(!journal.Contains("DrawHeader") && !journal.Contains("DrawSpeciesList") &&
                 !journal.Contains("listScroll") && !journal.Contains("detailScroll"),
                 "obsolete Journal renderer and scroll state are removed");
@@ -557,9 +562,62 @@ namespace AquacultureFishing.Tests
                 adapter.Contains("public static KnowledgeRank ToKnowledgeRank(") &&
                 adapter.Contains("KnowledgeQuery.Expertise("),
                 "original framework rank calculation and expertise projection remain within the adapter");
-            Check(journal.Contains("KnowledgeMenuUI.Draw(") &&
-                journal.Contains("AquacultureKnowledgeAdapter.ToKnowledgeRank("),
-                "canonical Knowledge Journal keeps the framework rank conversion at its UI boundary");
+            Check(!journal.Contains("KnowledgeMenuUI.Draw(") &&
+                journal.Contains("expertiseMenu.Draw(knowledgeRect);") &&
+                adapter.Contains("KnowledgeMenuUI.Draw(bounds, state, ExpertiseModelFor, ExpertiseFor);") &&
+                adapter.Contains("AquacultureKnowledgeAdapter.ToKnowledgeRank("),
+                "canonical Knowledge Journal menu and rank conversion live behind the adapter boundary");
+        }
+
+        private static void TestKnowledgeJournalAdapterBoundary(string root)
+        {
+            string journal = File.ReadAllText(Path.Combine(root, "Source", "AquacultureJournal.cs"));
+            string adapter = File.ReadAllText(Path.Combine(root, "Source", "AquacultureKnowledgeAdapter.cs"));
+
+            Check(!Regex.IsMatch(journal, @"\busing\s+KnowledgeFramework\s*;") &&
+                !Regex.IsMatch(journal, @"\bKnowledgeMenu(?:State|Scope|Model|Row|Section|UI)\b") &&
+                !Regex.IsMatch(journal, @"\bKnowledgeRank\b"),
+                "the core Journal is independent of framework-specific browser and rank types");
+            Check(journal.Contains("private readonly AquacultureKnowledgeAdapter.ExpertiseMenu expertiseMenu") &&
+                journal.Contains("new AquacultureKnowledgeAdapter.ExpertiseMenu();") &&
+                journal.Contains("journal.expertiseMenu.SelectPawn(pawn);") &&
+                journal.Contains("expertiseMenu.ClearSelection();") &&
+                journal.Contains("expertiseMenu.Draw(knowledgeRect);"),
+                "Journal owns per-window expertise selection and preserves tab/back navigation");
+            Check(journal.Contains("AquacultureKnowledgeAdapter.EnsureRegistration();") &&
+                journal.Contains("insightWorkspaceDocument.Draw(inRect);") &&
+                journal.Contains("Widgets.ButtonText(backRect,") &&
+                journal.Contains("page = JournalPage.Species;"),
+                "native Journal navigation and other pages retain their existing behavior");
+
+            Check(adapter.Contains("public sealed class ExpertiseMenu") &&
+                adapter.Contains("private readonly KnowledgeMenuState state = new KnowledgeMenuState();") &&
+                adapter.Contains("state.scope = KnowledgeMenuScope.Colonist;") &&
+                adapter.Contains("state.selectedPawn = pawn;") &&
+                adapter.Contains("state.selectedPawn = null;") &&
+                adapter.Contains("KnowledgeMenuUI.Draw(bounds, state, ExpertiseModelFor, ExpertiseFor);"),
+                "framework adapter owns one browser state per window and canonical browser drawing");
+            Check(adapter.Contains("private KnowledgeMenuModel ExpertiseModelFor(Pawn pawn, bool colony)") &&
+                adapter.Contains("private KnowledgeMenuModel FishingKnowledgeModel(") &&
+                adapter.Contains("record?.pawn?.Faction?.def?.isPlayer == true") &&
+                adapter.Contains("records.Sum(record => record.KnowledgeFor(fishDef))") &&
+                adapter.Contains("bool locked = !colony && required > level;") &&
+                adapter.Contains("section.rows.Add(new KnowledgeMenuRow") &&
+                adapter.Contains("title = \"Colony Fishing Knowledge\"") &&
+                adapter.Contains("expertiseProgress = personal?.ExpertiseProgress ?? 0f") &&
+                adapter.Contains("AquacultureKnowledgeAdapter.ToKnowledgeRank("),
+                "existing colony/personal expertise rows and rank presentation moved without gameplay changes");
+
+            string sourceRoot = Path.Combine(root, "Source");
+            string[] imports = Directory.GetFiles(sourceRoot, "*.cs", SearchOption.AllDirectories)
+                .Where(path => !path.Replace('\\', '/').Contains("/DeferredRealityProvider/") &&
+                    !path.Replace('\\', '/').Contains("/obj/") &&
+                    !path.Replace('\\', '/').Contains("/bin/") &&
+                    Regex.IsMatch(File.ReadAllText(path), @"(?m)^\s*using\s+KnowledgeFramework\s*;"))
+                .Select(path => Path.GetRelativePath(root, path).Replace('\\', '/'))
+                .OrderBy(path => path, StringComparer.Ordinal).ToArray();
+            Check(imports.SequenceEqual(new[] { "Source/AquacultureKnowledgeAdapter.cs" }),
+                "only the existing isolated adapter source imports KnowledgeFramework");
         }
 
         private static void TestNativeKnowledgeFallbackBoundary(string root)
