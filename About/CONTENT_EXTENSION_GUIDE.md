@@ -2,6 +2,8 @@
 
 Aquaculture discovers loaded fish at startup. A `ThingDef` is treated as a fish when it belongs to `VCEF_RawFishCategory` or `Fish`, has the Aquariums fish comp, **or explicitly declares `AquacultureFishing.AquaticSpeciesExtension`**. This extension is a category-independent positive fish marker: fish packs can use it without a VFE fish category. Do not add it to non-fish items, plants, or culture materials; it opts the Def into individual fish lifecycle and comp handling. Ordinary fish-pack Defs need no separate assembly reference.
 
+The first-party prototype `AF_PondMinnow` uses its own `AF_NativeFish` storage category and `AquaticSpeciesExtension` to identify a freshwater fish without VFE category/texture requirements. Its tinted generic raw-meat sprite is a temporary visual placeholder, **not dedicated fish artwork**; live Def loading, visuals and fishing/save scenarios have not yet been qualified.
+
 Every discovered fish automatically appears in Fishing settings with a Novice minimum expertise. Players may raise that requirement without an XML patch; progression and settings remain keyed by the fish `ThingDef.defName`.
 
 External fishing rods can opt in by adding `CompProperties_FishingRodTackle` and `FishingRodExtension` to the rod def. New tackle and lure options are ordinary `FishingTacklePartDef` records, including their slot, performance factors, Max Fish Mass offsets, costs, work, skill, and research. Rod and Line slots may change Max Fish Mass; Rod slots never change Reel Time. Fish packs may add `FishFishingExtension` for freshwater/saltwater lure attraction, while actual fish mass comes from the loaded Mass stat and individual size-related traits.

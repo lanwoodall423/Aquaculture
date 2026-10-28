@@ -1,5 +1,52 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Defs>
+  <!-- First-party freshwater species prototype. Explicitly marked for native
+       fish recognition; no VFE category, art or DLL is referenced. -->
+  <ThingCategoryDef>
+    <defName>AF_NativeFish</defName>
+    <label>aquaculture fish</label>
+    <parent>Root</parent>
+  </ThingCategoryDef>
+  <ThingDef ParentName="ResourceBase">
+    <defName>AF_PondMinnow</defName>
+    <label>pond minnow</label>
+    <description>A small hardy freshwater fish that can establish in ponds, lakes, marshes and rivers. Aquaculture tracks its individual life cycle and can process dead specimens into fish meat.</description>
+    <thingClass>ThingWithComps</thingClass>
+    <drawerType>RealtimeOnly</drawerType>
+    <!-- Temporary vanilla graphic until dedicated fish art is qualified. -->
+    <graphicData>
+      <texPath>Things/Item/Resource/MeatFoodRaw/Meat_Small</texPath>
+      <graphicClass>Graphic_Single</graphicClass>
+      <color>(0.55,0.70,0.75)</color>
+      <drawSize>(0.50,0.50)</drawSize>
+    </graphicData>
+    <stackLimit>1</stackLimit>
+    <statBases>
+      <MarketValue>2</MarketValue>
+      <Mass>0.12</Mass>
+      <Nutrition>0.05</Nutrition>
+      <Beauty>1</Beauty>
+      <Flammability>0</Flammability>
+      <DeteriorationRate>0</DeteriorationRate>
+    </statBases>
+    <thingCategories><li>AF_NativeFish</li></thingCategories>
+    <comps><li Class="CompProperties_Forbiddable" /></comps>
+    <modExtensions>
+      <li Class="AquacultureFishing.AquaticSpeciesExtension">
+        <overrideDiet>true</overrideDiet>
+        <diet>Omnivore</diet>
+        <overrideWater>true</overrideWater>
+        <waterKind>Freshwater</waterKind>
+        <minimumTemperature>0</minimumTemperature>
+        <maximumTemperature>34</maximumTemperature>
+        <populationMinimumTemperature>2</populationMinimumTemperature>
+        <populationMaximumTemperature>30</populationMaximumTemperature>
+        <populationRarity>Common</populationRarity>
+        <populationDensity>0.5</populationDensity>
+        <compatibleHabitats><li>Pond</li><li>Lake</li><li>River</li><li>Marsh</li></compatibleHabitats>
+      </li>
+    </modExtensions>
+  </ThingDef>
   <ThingDef ParentName="ResourceBase">
     <defName>AF_FishFeed</defName>
     <label>fish feed</label>

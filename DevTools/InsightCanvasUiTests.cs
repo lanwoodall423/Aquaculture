@@ -42,6 +42,7 @@ namespace AquacultureFishing.Tests
             TestNativeFishingRankBoundary(root);
             TestExplicitNativeFishIdentityBoundary(root);
             TestSelfContainedFishProcessingDefs(root);
+            TestFirstPartyFreshwaterFishPrototype(root);
             TestNativeKnowledgeBuildSeam(root);
             TestKnowledgeJournalAdapterBoundary(root);
             TestNativeJournalExpertiseFallback(root);
@@ -647,6 +648,109 @@ namespace AquacultureFishing.Tests
                 "VFE player dependency remains required until real load/bill/save validation");
         }
 
+        private static void TestFirstPartyFreshwaterFishPrototype(string root)
+        {
+            string defsRoot = Path.Combine(root, "1.6", "Defs");
+            string[] paths = Directory.GetFiles(defsRoot, "*.xml", SearchOption.AllDirectories);
+            XDocument[] documents = paths.Select(XDocument.Load).ToArray();
+            XElement[] allThingDefs = documents.SelectMany(document => document.Descendants("ThingDef")).ToArray();
+            XElement[] categoryDefs = documents.SelectMany(document => document.Descendants("ThingCategoryDef"))
+                .Where(def => (string)def.Element("defName") == "AF_NativeFish").ToArray();
+            Check(categoryDefs.Length == 1 &&
+                (string)categoryDefs[0].Element("parent") == "Root",
+                "first-party fish storage category is owned and has a vanilla root");
+
+            XElement[] fishDefs = allThingDefs
+                .Where(def => (string)def.Element("defName") == "AF_PondMinnow").ToArray();
+            Check(fishDefs.Length == 1, "one stable first-party native minnow Def is present");
+            if (fishDefs.Length != 1) return;
+            XElement fish = fishDefs[0];
+            string[] categoryAssignments = allThingDefs.Where(def =>
+                def.Element("thingCategories")?.Elements("li")
+                    .Any(item => item.Value == "AF_NativeFish") == true)
+                .Select(def => (string)def.Element("defName")).ToArray();
+            Check(categoryAssignments.SequenceEqual(new[] { "AF_PondMinnow" }) &&
+                (string)fish.Attribute("ParentName") == "ResourceBase" &&
+                (string)fish.Element("thingClass") == "ThingWithComps" &&
+                (string)fish.Element("stackLimit") == "1" &&
+                (string)fish.Element("drawerType") == "RealtimeOnly" &&
+                fish.Element("ingestible") == null &&
+                fish.Element("comps")?.Elements("li").Any(node =>
+                    (string)node.Attribute("Class") == "CompProperties_Forbiddable") == true,
+                "native fish is uniquely categorized, unstackable, non-ingestible, and comp-ready");
+
+            XElement species = fish.Element("modExtensions")?.Elements("li")
+                .SingleOrDefault(node => (string)node.Attribute("Class") ==
+                    "AquacultureFishing.AquaticSpeciesExtension");
+            Check(species != null &&
+                (string)species.Element("overrideDiet") == "true" &&
+                (string)species.Element("diet") == "Omnivore" &&
+                (string)species.Element("overrideWater") == "true" &&
+                (string)species.Element("waterKind") == "Freshwater" &&
+                species.Element("compatibleHabitats")?.Elements("li").Select(node => node.Value)
+                    .SequenceEqual(new[] { "Pond", "Lake", "River", "Marsh" }) == true,
+                "native species identity and freshwater habitats use no VFE dependencies");
+
+            bool Bounded(XElement element, float minimum, float maximum) =>
+                float.TryParse(element?.Value, System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out float value) &&
+                !float.IsNaN(value) && !float.IsInfinity(value) &&
+                value >= minimum && value <= maximum;
+            Check(Bounded(fish.Element("statBases")?.Element("Mass"), 0.01f, 1f) &&
+                Bounded(fish.Element("statBases")?.Element("Nutrition"), 0.01f, 0.5f) &&
+                Bounded(fish.Element("statBases")?.Element("MarketValue"), 0.01f, 20f) &&
+                Bounded(species?.Element("populationDensity"), 0.01f, 1f) &&
+                (string)species?.Element("populationRarity") == "Common" &&
+                Bounded(species?.Element("populationMinimumTemperature"), 0f, 10f) &&
+                Bounded(species?.Element("populationMaximumTemperature"), 25f, 38f) &&
+                Bounded(species?.Element("minimumTemperature"), -5f, 10f) &&
+                Bounded(species?.Element("maximumTemperature"), 25f, 40f),
+                "first-party fish has conservative finite ecology, nutrition, and population values");
+
+            XDocument things = XDocument.Load(Path.Combine(defsRoot, "ThingDefs.xml"));
+            XElement fishMeat = things.Descendants("ThingDef").Single(def =>
+                (string)def.Element("defName") == "AF_FishMeat");
+            Check((string)fish.Element("graphicData")?.Element("texPath") ==
+                    (string)fishMeat.Element("graphicData")?.Element("texPath") &&
+                (string)fish.Element("graphicData")?.Element("graphicClass") == "Graphic_Single" &&
+                (string)fish.Element("graphicData")?.Element("color") == "(0.55,0.70,0.75)" &&
+                fish.Element("thingCategories")?.Elements("li")
+                    .All(item => item.Value != "Fish" && item.Value != "VCEF_RawFishCategory") == true,
+                "fish uses only existing generic vanilla placeholder art and Aquaculture categories");
+
+            string core = File.ReadAllText(Path.Combine(root, "Source", "AquacultureCore.cs"));
+            string audit = File.ReadAllText(Path.Combine(root, "DevTools", "InsightCanvasUiTests.cs"));
+            Check(core.Contains("def.GetModExtension<AquaticSpeciesExtension>() != null") &&
+                core.Contains("DefDatabase<ThingDef>.AllDefs.Where(FishUtility.IsFish).ToList();") &&
+                core.Contains("ConfigureFishProcessingRecipe(fishDefs);") &&
+                audit.Contains("extension.Attribute(\"Class\") == \"AquacultureFishing.AquaticSpeciesExtension\""),
+                "runtime discovers extension-marked fish and static readiness inventory recognizes it");
+
+            Check(paths.All(path => !Regex.IsMatch(File.ReadAllText(path),
+                @"\bVCEF_[A-Za-z0-9_]+\b|\bVCE_Fishing\b")) &&
+                allThingDefs.Any(def => (string)def.Element("defName") == "AF_FishMeat") &&
+                allThingDefs.Any(def => (string)def.Element("defName") == "AF_FishEgg") &&
+                allThingDefs.Any(def => (string)def.Element("defName") == "AF_FishFeed"),
+                "first-party fish adds content without restoring VFE Def refs or renaming saved items");
+
+            XDocument recipe = XDocument.Load(Path.Combine(defsRoot, "RecipeDefs.xml"));
+            XElement fishRecipe = recipe.Descendants("RecipeDef").Single(def =>
+                (string)def.Element("defName") == "AF_ProcessDeadFish");
+            Check(fishRecipe.Descendants("categories").Elements("li")
+                    .All(node => node.Value == "AF_RecognizedFishIngredient") &&
+                !fish.Descendants("thingCategories").Elements("li")
+                    .Any(node => node.Value == "AF_RecognizedFishIngredient"),
+                "native fish does not pre-populate the owned dead-fish processing filter");
+            string guide = File.ReadAllText(Path.Combine(root, "About", "CONTENT_EXTENSION_GUIDE.md"));
+            string compatibility = File.ReadAllText(Path.Combine(root, "About", "COMPATIBILITY.md"));
+            Check(guide.Contains("AF_PondMinnow") &&
+                compatibility.Contains("provisional generic-meat graphic") &&
+                compatibility.Contains("native fishing-job provider") &&
+                compatibility.Contains("RimTest") &&
+                !compatibility.Contains("VFE is now optional"),
+                "developer prototype discloses art, native job and game/save qualification gaps");
+        }
+
         private static void TestNativeFishingRankBoundary(string root)
         {
             string[] owners = {
@@ -1015,8 +1119,10 @@ namespace AquacultureFishing.Tests
                 .SelectMany(path => XDocument.Load(path).Descendants("ThingDef"))
                 .Count(def => ((string)def.Element("defName") ?? string.Empty)
                     .StartsWith("AF_", StringComparison.Ordinal) &&
-                    def.Descendants("thingCategories").Descendants("li").Any(category =>
-                        category.Value == "Fish" || category.Value == "VCEF_RawFishCategory"));
+                    (def.Descendants("thingCategories").Descendants("li").Any(category =>
+                        category.Value == "Fish" || category.Value == "VCEF_RawFishCategory") ||
+                    def.Descendants("modExtensions").Elements("li").Any(extension =>
+                        (string)extension.Attribute("Class") == "AquacultureFishing.AquaticSpeciesExtension")));
 
             var blockers = new List<string>();
             string[] optionalPackages = {
@@ -1039,7 +1145,7 @@ namespace AquacultureFishing.Tests
             if (vfeDefs.Length > 0)
                 blockers.Add("core Defs reference VFE content, texture or category names");
             if (explicitAquacultureFishDefs == 0)
-                blockers.Add("no first-party fish ThingDef has an explicit recognized Fish category");
+                blockers.Add("no first-party fish ThingDef has an explicitly recognized category or species extension");
             if (separateDrfProvider && providerReferencesDrf &&
                 providerUsesPlayerAssemblyDirectory && packageIncludesVersionedAssemblies)
                 blockers.Add("separate DRF provider outputs into a player-packaged assembly folder");
@@ -1056,7 +1162,7 @@ namespace AquacultureFishing.Tests
             Console.WriteLine("  Knowledge Framework source references: " + DescribeDependencyPaths(root, knowledgeUsers));
             Console.WriteLine("  Deferred Reality core source references: " + DescribeDependencyPaths(root, drfUsers));
             Console.WriteLine("  VFE content Def references: " + DescribeDependencyPaths(root, vfeDefs));
-            Console.WriteLine("  First-party fish ThingDefs with explicit recognized category: " +
+            Console.WriteLine("  First-party fish ThingDefs with explicit recognized category or extension: " +
                 explicitAquacultureFishDefs);
             Console.WriteLine("  DRF provider excluded from core: " + separateDrfProvider +
                 "; DRF reference: " + providerReferencesDrf +
