@@ -41,6 +41,7 @@ namespace AquacultureFishing.Tests
             TestStandaloneDependencyInventory(root);
             TestNativeFishingRankBoundary(root);
             TestNativeKnowledgeBuildSeam(root);
+            TestManagedNativeKnowledgeCompileGate(root);
             TestKnowledgeJournalAdapterBoundary(root);
             TestNativeJournalExpertiseFallback(root);
             TestNativeKnowledgeFallbackBoundary(root);
@@ -661,6 +662,62 @@ namespace AquacultureFishing.Tests
             Check(about.Descendants("modDependencies").Descendants("packageId")
                 .Any(element => element.Value == "lan.knowledgeframework"),
                 "AQ-DEP-03D1 leaves current player dependency metadata unchanged");
+        }
+
+        private static void TestManagedNativeKnowledgeCompileGate(string root)
+        {
+            using (JsonDocument manifest = JsonDocument.Parse(
+                File.ReadAllText(Path.Combine(root, ".projectnexus", "project.json"))))
+            {
+                JsonElement project = manifest.RootElement;
+                JsonElement[] checks = project.GetProperty("capabilities").GetProperty("checks")
+                    .EnumerateArray().Where(check =>
+                        check.GetProperty("capabilityId").GetString() == "validation.native-knowledge-build")
+                    .ToArray();
+                Check(checks.Length == 1,
+                    "an independent fixed native-Knowledge compilation check is declared exactly once");
+                if (checks.Length != 1) return;
+
+                JsonElement check = checks[0];
+                JsonElement command = check.GetProperty("command");
+                string[] arguments = command.GetProperty("args").EnumerateArray()
+                    .Select(item => item.GetString()).ToArray();
+                string[] expected = {
+                    "build", "Source/AquacultureFishing.csproj", "--configuration", "Release",
+                    "--nologo", "-p:AquacultureNativeKnowledge=true",
+                    "-p:AquacultureDeveloperTests=false"
+                };
+                Check(command.GetProperty("executable").GetString() == "dotnet" &&
+                    command.GetProperty("cwd").GetString() == "." &&
+                    arguments.SequenceEqual(expected, StringComparer.Ordinal) &&
+                    check.GetProperty("tier").GetString() == "development-confidence" &&
+                    check.GetProperty("requirements").GetProperty("platform").GetString() == "win32",
+                    "native compile executes fixed Win32 dotnet build with explicit developer-only flags");
+                Check(check.GetProperty("maxAttempts").GetInt32() == 1 &&
+                    check.GetProperty("reuse").GetProperty("mode").GetString() == "exact-candidate" &&
+                    check.GetProperty("concurrency").GetProperty("mode").GetString() == "serial",
+                    "native build proof is exact-candidate, single-attempt and serial");
+
+                JsonElement[] profiles = project.GetProperty("validationPack").GetProperty("profiles")
+                    .EnumerateArray().ToArray();
+                Check(profiles.Length >= 3 && profiles.All(profile =>
+                    !profile.GetProperty("checkIds").EnumerateArray().Any(id =>
+                        id.GetString() == "validation.native-knowledge-build")),
+                    "untrusted external-reference build check never blocks existing portable or release profiles");
+            }
+
+            XDocument core = XDocument.Load(Path.Combine(root, "Source", "AquacultureFishing.csproj"));
+            Check(core.Descendants().Any(element => element.Name.LocalName == "Compile" &&
+                    (string)element.Attribute("Remove") == "AquacultureKnowledgeAdapter.cs" &&
+                    ((string)element.Parent.Attribute("Condition") ?? string.Empty)
+                        .Contains("'$(AquacultureNativeKnowledge)' == 'true'")) &&
+                core.Descendants().Where(element => element.Name.LocalName == "Reference" &&
+                    (string)element.Attribute("Include") == "KnowledgeFramework")
+                    .All(element => ((string)element.Parent.Attribute("Condition") ?? string.Empty)
+                        .Contains("'$(AquacultureNativeKnowledge)' != 'true'")) &&
+                core.Descendants().Any(element => element.Name.LocalName == "OutputPath" &&
+                    element.Value.Replace('\\', '/').Contains("artifacts/NativeKnowledge/")),
+                "native compile gate excludes external adapter and targets developer-only assembly output");
         }
 
         private static void TestKnowledgeJournalAdapterBoundary(string root)

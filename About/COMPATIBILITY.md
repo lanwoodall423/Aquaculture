@@ -124,6 +124,25 @@ gameplay, old Knowledge V3 save migration or framework add/remove scenario
 has yet passed.** Do not install or publish the experimental DLL and do not
 remove the Knowledge Framework mod dependency on this evidence alone.
 
+AQ-DEP-03D2 declares an **optional, fixed native-Knowledge compilation
+check** named `validation.native-knowledge-build` in
+`.projectnexus/project.json`. Once the exact check definition is separately
+trusted by the developer through ProjectNexus's local capability trust flow,
+ProjectNexus can execute it against an authorized managed workspace with
+`workspace.check`. It invokes `dotnet build` using the native flag in
+Release, without Knowledge Framework, and leaves the ordinary player build
+and validation profiles unchanged. The executor still requires real
+RimWorld 1.6 managed assemblies, Harmony, and Insight Canvas development
+references; missing prerequisites are build blockers, not a reason to
+bypass the owning RimTest/RimLiaison workflow.
+
+Declaring and portably testing a check **does not execute or locally trust**
+it. Treat the compiled assembly as **UNVERIFIED** until a separately
+trusted, exact-candidate build operation reports success; a successful
+build still does **not** establish RimWorld load, gameplay, Knowledge V3
+save migration or dependency removal safety. Neither the player
+`modDependencies` nor any release acceptance profile has been changed.
+
 Complete optionalization only after a build **without the four optional
 mods or their APIs**, a clean player package, a managed RimTest load, a
 fresh-colony fishing/stocking/breeding/harvest path, UI access, save/reload and

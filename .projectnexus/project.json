@@ -5,6 +5,35 @@
   "capabilities": {
     "checks": [
       {
+        "capabilityId": "validation.native-knowledge-build",
+        "title": "Aquaculture native Knowledge-free core compilation (developer-only)",
+        "tier": "development-confidence",
+        "taskCheckName": "Aquaculture native Knowledge-free core compilation",
+        "command": {
+          "executable": "dotnet",
+          "args": [
+            "build",
+            "Source/AquacultureFishing.csproj",
+            "--configuration",
+            "Release",
+            "--nologo",
+            "-p:AquacultureNativeKnowledge=true",
+            "-p:AquacultureDeveloperTests=false"
+          ],
+          "cwd": "."
+        },
+        "requirements": {
+          "platform": "win32"
+        },
+        "maxAttempts": 1,
+        "reuse": {
+          "mode": "exact-candidate"
+        },
+        "concurrency": {
+          "mode": "serial"
+        }
+      },
+      {
         "capabilityId": "validation.trait-rules",
         "title": "Aquaculture portable trait and rules tests",
         "tier": "development-confidence",
