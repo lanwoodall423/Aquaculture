@@ -206,6 +206,25 @@ static class TraitBreedingRulesTests
         Check("lower tick boundary retains valid checks",
             FishAgeTimingRules.NextCheckTick(int.MinValue, 0) == int.MinValue + 1);
 
+        Check("ordinary oldest-first pond harvest age keys remain exact",
+            FishAgeTimingRules.AgeTicksForOrdering(60000, 10000) == 50000L &&
+            FishAgeTimingRules.AgeTicksForOrdering(60000, 30000) == 30000L &&
+            FishAgeTimingRules.AgeTicksForOrdering(60000, 60001) == -1L &&
+            FishAgeTimingRules.AgeTicksForOrdering(100, -500) == 600L);
+        Check("very old fish retain full age across positive signed overflow",
+            FishAgeTimingRules.AgeTicksForOrdering(int.MaxValue, int.MinValue) == 4294967295L);
+        Check("saved fish with future birth retain negative age across signed overflow",
+            FishAgeTimingRules.AgeTicksForOrdering(int.MinValue, int.MaxValue) == -4294967295L);
+        Check("manual harvest oldest-first sort cannot reverse when an old fish has a negative birth tick",
+            new[] { 0, int.MinValue }.OrderByDescending(birth =>
+                FishAgeTimingRules.AgeTicksForOrdering(int.MaxValue, birth)).First() == int.MinValue);
+        Check("automatic harvest does not treat a future-born fish as oldest after tick overflow",
+            new[] { int.MaxValue, int.MinValue }.OrderByDescending(birth =>
+                FishAgeTimingRules.AgeTicksForOrdering(int.MinValue, birth)).First() == int.MinValue);
+        Check("ordinary harvest ordering still prefers the older birth date",
+            new[] { 50000, 20000, 30000 }.OrderByDescending(birth =>
+                FishAgeTimingRules.AgeTicksForOrdering(60000, birth)).SequenceEqual(new[] { 20000, 30000, 50000 }));
+
         Check("ordinary egg hatch and breeding rescan intervals remain exact",
             FishAgeTimingRules.ScheduleAfterTicks(100, 3 * 60000) == 180100 &&
             FishAgeTimingRules.ScheduleAfterTicks(100, 250) == 350 &&

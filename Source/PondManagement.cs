@@ -405,7 +405,8 @@ namespace AquacultureFishing
                     && (species == null || fish.parent.def == species)
                     && map.designationManager.DesignationOn(fish.parent, AquacultureJobDefOf.AF_HarvestPondFishDesignation) == null)
                 .OrderBy(fish => fish.parent.def.label)
-                .ThenByDescending(fish => Find.TickManager.TicksGame - fish.birthTick)
+                .ThenByDescending(fish =>
+                    FishAgeTimingRules.AgeTicksForOrdering(Find.TickManager.TicksGame, fish.birthTick))
                 .ToList();
         }
 
@@ -457,11 +458,13 @@ namespace AquacultureFishing
                         .Where(fish => IsEligibleForHarvest(pond, fish)
                             && !fish.harvestReserved
                             && map.designationManager.DesignationOn(fish.parent, AquacultureJobDefOf.AF_HarvestPondFishDesignation) == null)
-                        .OrderByDescending(fish => Find.TickManager.TicksGame - fish.birthTick)
+                        .OrderByDescending(fish =>
+                            FishAgeTimingRules.AgeTicksForOrdering(Find.TickManager.TicksGame, fish.birthTick))
                         .Take(speciesSurplus));
                 }
                 foreach (CompFishTraits candidate in blueprintCandidates
-                    .OrderByDescending(fish => Find.TickManager.TicksGame - fish.birthTick)
+                    .OrderByDescending(fish =>
+                        FishAgeTimingRules.AgeTicksForOrdering(Find.TickManager.TicksGame, fish.birthTick))
                     .Take(removable))
                     FishHarvestUtility.Designate(candidate, false);
                 return;
@@ -472,7 +475,8 @@ namespace AquacultureFishing
                 .Where(fish => IsEligibleForHarvest(pond, fish)
                     && !fish.harvestReserved
                     && map.designationManager.DesignationOn(fish.parent, AquacultureJobDefOf.AF_HarvestPondFishDesignation) == null)
-                .OrderByDescending(fish => Find.TickManager.TicksGame - fish.birthTick)
+                .OrderByDescending(fish =>
+                    FishAgeTimingRules.AgeTicksForOrdering(Find.TickManager.TicksGame, fish.birthTick))
                 .Take(surplus)
                 .ToList();
             for (int i = 0; i < candidates.Count; i++) FishHarvestUtility.Designate(candidates[i], false);

@@ -210,6 +210,13 @@ namespace AquacultureFishing
             return (long)now - birthTick;
         }
 
+        /// <summary>Oldest-first sort key for manual and automatic pond harvesting.</summary>
+        public static long AgeTicksForOrdering(int now, int birthTick)
+        {
+            // Preserve the full signed age when saved birth ticks cross int boundaries.
+            return ElapsedTicks(now, birthTick);
+        }
+
         public static float FractionElapsed(int now, int birthTick, int lifespanTicks)
         {
             if (lifespanTicks <= 0) return 0f;
