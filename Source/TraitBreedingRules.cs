@@ -300,6 +300,16 @@ namespace AquacultureFishing
         }
     }
 
+    /// <summary>Pure watcher lifetime and observation intervals for live pond viewing.</summary>
+    public static class PondWatcherTimingRules
+    {
+        // Preserve the original watch, survey, and cleanup intervals without wrapping
+        // future deadlines into the past near the signed game-tick ceiling.
+        public static int WatcherExpiryTick(int now) => FishAgeTimingRules.ScheduleAfterTicks(now, 120);
+        public static int ObservationDueTick(int now) => FishAgeTimingRules.ScheduleAfterTicks(now, 2500);
+        public static int PruneDueTick(int now) => FishAgeTimingRules.ScheduleAfterTicks(now, 250);
+    }
+
     /// <summary>Pure timing contract for the managed pond ecology simulation.</summary>
     public static class PondEcologyTimingRules
     {

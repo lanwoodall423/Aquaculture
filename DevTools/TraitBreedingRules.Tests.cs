@@ -326,6 +326,38 @@ static class TraitBreedingRulesTests
                 .Max() == 30100);
     }
 
+    private static void TestPondWatcherTiming()
+    {
+        Check("ordinary active watcher lifetime retains 120-tick expiry",
+            PondWatcherTimingRules.WatcherExpiryTick(100) == 220 &&
+            PondWatcherTimingRules.WatcherExpiryTick(1000) == 1120);
+        Check("ordinary pond watching observation remains 2500 ticks apart",
+            PondWatcherTimingRules.ObservationDueTick(100) == 2600 &&
+            PondWatcherTimingRules.ObservationDueTick(1000) == 3500);
+        Check("ordinary watcher cleanup remains scheduled 250 ticks apart",
+            PondWatcherTimingRules.PruneDueTick(100) == 350 &&
+            PondWatcherTimingRules.PruneDueTick(1000) == 1250);
+
+        Check("active watcher does not immediately expire at the tick ceiling",
+            PondWatcherTimingRules.WatcherExpiryTick(int.MaxValue - 30) == int.MaxValue);
+        Check("watcher observation cannot repeat every tick after due-time wraparound",
+            PondWatcherTimingRules.ObservationDueTick(int.MaxValue - 100) == int.MaxValue);
+        Check("watcher cleanup does not reschedule into a negative past deadline",
+            PondWatcherTimingRules.PruneDueTick(int.MaxValue - 10) == int.MaxValue);
+        Check("all watcher deadlines saturate safely at the tick ceiling",
+            PondWatcherTimingRules.WatcherExpiryTick(int.MaxValue) == int.MaxValue &&
+            PondWatcherTimingRules.ObservationDueTick(int.MaxValue) == int.MaxValue &&
+            PondWatcherTimingRules.PruneDueTick(int.MaxValue) == int.MaxValue);
+        Check("representable watcher deadlines near tick ceiling remain exact",
+            PondWatcherTimingRules.WatcherExpiryTick(int.MaxValue - 121) == int.MaxValue - 1 &&
+            PondWatcherTimingRules.ObservationDueTick(int.MaxValue - 2501) == int.MaxValue - 1 &&
+            PondWatcherTimingRules.PruneDueTick(int.MaxValue - 251) == int.MaxValue - 1);
+        Check("negative stored game ticks preserve representable watcher deadlines",
+            PondWatcherTimingRules.WatcherExpiryTick(int.MinValue) == int.MinValue + 120 &&
+            PondWatcherTimingRules.ObservationDueTick(int.MinValue) == int.MinValue + 2500 &&
+            PondWatcherTimingRules.PruneDueTick(int.MinValue) == int.MinValue + 250);
+    }
+
     private static void TestFishSchoolTiming()
     {
         Check("normal school update cadence remains unchanged",
@@ -1070,6 +1102,7 @@ static class TraitBreedingRulesTests
         TestFishAgeTiming();
         TestPondEcologyTiming();
         TestPondEffectTiming();
+        TestPondWatcherTiming();
         TestFishSchoolTiming();
         TestRecoveryRules();
         TestCommissionRules();

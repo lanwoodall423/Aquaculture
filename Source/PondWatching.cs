@@ -64,9 +64,9 @@ namespace AquacultureFishing
                 pondWatchers[pawn] = state;
             }
             int now = Find.TickManager?.TicksGame ?? 0;
-            state.expiresAt = now + 120;
+            state.expiresAt = PondWatcherTimingRules.WatcherExpiryTick(now);
             if (now < state.nextObservationTick) return;
-            state.nextObservationTick = now + 2500;
+            state.nextObservationTick = PondWatcherTimingRules.ObservationDueTick(now);
             foreach (IGrouping<ThingDef, CompFishTraits> group in pond.fish.Where(fish => fish?.IsAlive == true)
                 .GroupBy(fish => fish.parent.def).Take(3))
             {
@@ -95,7 +95,7 @@ namespace AquacultureFishing
         private void PrunePondWatchers(int now)
         {
             if (now < nextWatcherPruneTick) return;
-            nextWatcherPruneTick = now + 250;
+            nextWatcherPruneTick = PondWatcherTimingRules.PruneDueTick(now);
             expiredWatchers.Clear();
             foreach (KeyValuePair<Pawn, PondWatcherState> pair in pondWatchers)
                 if (pair.Key?.Spawned != true || pair.Value.expiresAt < now) expiredWatchers.Add(pair.Key);
