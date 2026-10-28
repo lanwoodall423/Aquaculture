@@ -41,6 +41,7 @@ namespace AquacultureFishing.Tests
             TestStandaloneDependencyInventory(root);
             TestNativeFishingRankBoundary(root);
             TestNativeKnowledgeFallbackBoundary(root);
+            TestNativeColonyKnowledgeBoundary(root);
             TestConditionalDeferredRealityPackageContract(root);
             TestSerializedSettingsContract(root);
             TestPresentationContract(root);
@@ -588,6 +589,54 @@ namespace AquacultureFishing.Tests
                 !contract.Contains("using UnityEngine;") &&
                 !contract.Contains("using Verse;"),
                 "fallback is portable and legacy pawn progression save contracts are unchanged");
+        }
+
+        private static void TestNativeColonyKnowledgeBoundary(string root)
+        {
+            string adapter = File.ReadAllText(Path.Combine(root, "Source", "AquacultureKnowledgeAdapter.cs"));
+            string pure = File.ReadAllText(Path.Combine(root, "Source", "AquacultureKnowledgeContract.cs"));
+            string progress = File.ReadAllText(Path.Combine(root, "Source", "FishingExpertise.cs"));
+
+            int queryStart = adapter.IndexOf("public static float ColonySpeciesKnowledgeFor(ThingDef fishDef)",
+                StringComparison.Ordinal);
+            int queryEnd = queryStart < 0 ? -1 : adapter.IndexOf("public static IEnumerable<ThingDef> KnownSpeciesFor",
+                queryStart, StringComparison.Ordinal);
+            string query = queryStart >= 0 && queryEnd > queryStart
+                ? adapter.Substring(queryStart, queryEnd - queryStart) : string.Empty;
+            Check(query.Contains("if (!FrameworkReady) return LegacyColonySpeciesKnowledge(fishDef);") &&
+                query.Contains("KnowledgeQuery.Facet(DomainId, SpeciesSubjectId(fishDef)") &&
+                query.Contains("KnowledgeScope.Colony"),
+                "colony query uses native fallback without displacing framework colony authority");
+
+            int viewStart = adapter.IndexOf("public static AquacultureKnowledgeView SpeciesView(", StringComparison.Ordinal);
+            int viewEnd = viewStart < 0 ? -1 : adapter.IndexOf("private static float StageKnowledge(", viewStart,
+                StringComparison.Ordinal);
+            string view = viewStart >= 0 && viewEnd > viewStart
+                ? adapter.Substring(viewStart, viewEnd - viewStart) : string.Empty;
+            Check(view.Contains("colony ? LegacyColonySpeciesKnowledge(fishDef) : LegacySpeciesKnowledge(pawn, fishDef)") &&
+                view.Contains("KnowledgeQuery.Subject(DomainId, SpeciesSubjectId(fishDef)") &&
+                view.Contains("KnowledgeDiscovery.StageSnapshot("),
+                "colony dossier and direct query use identical native projection; V3 view remains intact");
+
+            int fallbackStart = adapter.IndexOf("private static float LegacyColonySpeciesKnowledge(", StringComparison.Ordinal);
+            int fallbackEnd = fallbackStart < 0 ? -1 : adapter.IndexOf("private static float LegacySpeciesKnowledge(",
+                fallbackStart, StringComparison.Ordinal);
+            string fallback = fallbackStart >= 0 && fallbackEnd > fallbackStart
+                ? adapter.Substring(fallbackStart, fallbackEnd - fallbackStart) : string.Empty;
+            Check(fallback.Contains("NativeFishingKnowledgeRules.ColonySpeciesKnowledge(") &&
+                fallback.Contains("FishingProgressionComponent.Current?.PawnProgress") &&
+                fallback.Contains("record?.pawn?.Faction?.def?.isPlayer == true") &&
+                fallback.Contains("record => record?.speciesKnowledge"),
+                "legacy colony projection reads only player-faction pawn progress");
+
+            Check(pure.Contains("public static float ColonySpeciesKnowledge<T>(") &&
+                pure.Contains("!belongsToPlayerFaction(record)") &&
+                pure.Contains("SpeciesKnowledge(readSpeciesKnowledge(record), speciesDefName)") &&
+                !pure.Contains("using KnowledgeFramework;") &&
+                progress.Contains("\"aquacultureFishingProgression\"") &&
+                progress.Contains("\"expertiseExperience\"") &&
+                progress.Contains("\"speciesKnowledge\""),
+                "colony projection is framework-free, read-only and preserves original save keys");
         }
 
         private static void TestStandaloneDependencyInventory(string root)

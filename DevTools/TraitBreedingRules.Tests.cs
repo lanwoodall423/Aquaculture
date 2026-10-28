@@ -1093,6 +1093,87 @@ static class TraitBreedingRulesTests
             && !FrameworkIntegrationRules.IsFiniteNonNegative(-1f));
     }
 
+    private sealed class TestColonyFishingProgress
+    {
+        public bool PlayerFaction;
+        public IReadOnlyDictionary<string, float> Species;
+    }
+
+    private static void TestNativeColonyFishingKnowledgeFallback()
+    {
+        var one = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["AF_Pike"] = 0.20f,
+            ["AF_Bass"] = 0.40f
+        };
+        var two = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["AF_Pike"] = 0.35f,
+            ["AF_Corrupt"] = float.NaN
+        };
+        var outsider = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["AF_Pike"] = 0.95f,
+            ["AF_Bass"] = 0.99f
+        };
+        var records = new List<TestColonyFishingProgress>
+        {
+            null,
+            new TestColonyFishingProgress { PlayerFaction = true, Species = one },
+            new TestColonyFishingProgress { PlayerFaction = false, Species = outsider },
+            new TestColonyFishingProgress { PlayerFaction = true, Species = two },
+            new TestColonyFishingProgress { PlayerFaction = true, Species = null }
+        };
+        Func<TestColonyFishingProgress, bool> playerOnly = record => record.PlayerFaction;
+        Func<TestColonyFishingProgress, IReadOnlyDictionary<string, float>> read =
+            record => record.Species;
+        float combined = NativeFishingKnowledgeRules.ColonySpeciesKnowledge(records,
+            "AF_Pike", playerOnly, read);
+        Check("native colony aggregation combines only the player's saved species discovery",
+            Math.Abs(combined - 0.55f) < 0.00001f);
+        Check("colony knowledge does not reveal non-player species records",
+            Math.Abs(NativeFishingKnowledgeRules.ColonySpeciesKnowledge(records, "AF_Bass",
+                playerOnly, read) - 0.40f) < 0.00001f);
+        Check("colony fallback handles absent fish, null records and invalid values",
+            NativeFishingKnowledgeRules.ColonySpeciesKnowledge(records, "AF_NotPresent",
+                playerOnly, read) == 0f &&
+            NativeFishingKnowledgeRules.ColonySpeciesKnowledge(records, "AF_Corrupt",
+                playerOnly, read) == 0f &&
+            NativeFishingKnowledgeRules.ColonySpeciesKnowledge(null, "AF_Pike",
+                playerOnly, read) == 0f &&
+            NativeFishingKnowledgeRules.ColonySpeciesKnowledge(records, null,
+                playerOnly, read) == 0f &&
+            NativeFishingKnowledgeRules.ColonySpeciesKnowledge(records, "AF_Pike",
+                null, read) == 0f &&
+            NativeFishingKnowledgeRules.ColonySpeciesKnowledge(records, "AF_Pike",
+                playerOnly, null) == 0f);
+        Check("colony filter runs before a non-player record's data is read",
+            Math.Abs(NativeFishingKnowledgeRules.ColonySpeciesKnowledge(records,
+                "AF_Pike", playerOnly, record =>
+                {
+                    if (!record.PlayerFaction) throw new InvalidOperationException("NPC knowledge must not be read.");
+                    return record.Species;
+                }) - 0.55f) < 0.00001f);
+        Check("colony knowledge saturates instead of exceeding one",
+            NativeFishingKnowledgeRules.ColonySpeciesKnowledge(new[]
+            {
+                new TestColonyFishingProgress
+                {
+                    PlayerFaction = true,
+                    Species = new Dictionary<string, float> { ["AF_Pike"] = 0.80f }
+                },
+                new TestColonyFishingProgress
+                {
+                    PlayerFaction = true,
+                    Species = new Dictionary<string, float> { ["AF_Pike"] = 0.70f }
+                }
+            }, "AF_Pike", playerOnly, read) == 1f);
+        Check("colony projection never mutates saved knowledge records",
+            one.Count == 2 && one["AF_Pike"] == 0.20f && one["AF_Bass"] == 0.40f &&
+            two.Count == 2 && two["AF_Pike"] == 0.35f && float.IsNaN(two["AF_Corrupt"]) &&
+            outsider.Count == 2 && outsider["AF_Pike"] == 0.95f && records.Count == 5);
+    }
+
     private static void TestNativeFishingKnowledgeFallback()
     {
         var species = new Dictionary<string, float>(StringComparer.Ordinal)
@@ -1178,6 +1259,7 @@ static class TraitBreedingRulesTests
     {
         TestFishingRankContract();
         TestNativeFishingKnowledgeFallback();
+        TestNativeColonyFishingKnowledgeFallback();
         TestProbabilityBoundaries();
         TestParentalUnionAndCap();
         TestMutationsAndOutliers();

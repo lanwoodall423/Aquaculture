@@ -67,6 +67,16 @@ available; its rank/bonus APIs, registration, event identities, migrations,
 and save keys have not changed. This still cannot run without the framework
 DLL while the core project retains its mandatory assembly reference.
 
+AQ-DEP-03B2 extends the native fallback to colony-wide species identity
+knowledge. While the framework is not ready, both the direct colony query and
+the colony species view aggregate existing per-pawn discovery for the player's
+faction, clamping the total to 100%. Non-player pawn records are excluded
+before any knowledge is read. This reuses legacy saved values without a
+separate knowledge store or new save fields; the Knowledge V3 colony query,
+migration and provider remain authoritative whenever the framework is ready.
+The mandatory framework assembly reference and player dependency have **not**
+been removed, and exact game/save compatibility testing is still required.
+
 Complete optionalization only after a build **without the four optional
 mods or their APIs**, a clean player package, a managed RimTest load, a
 fresh-colony fishing/stocking/breeding/harvest path, UI access, save/reload and

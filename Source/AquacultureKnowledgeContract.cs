@@ -66,6 +66,29 @@ namespace AquacultureFishing
                 ? SpeciesAmount(amount) : 0f;
         }
 
+        /// <summary>
+        /// Aggregate legacy personal knowledge for the player's faction only.
+        /// The supplied eligibility predicate is evaluated before accessing the
+        /// record's knowledge, so unowned pawns cannot contribute to colony UI.
+        /// This reads existing records and never changes them.
+        /// </summary>
+        public static float ColonySpeciesKnowledge<T>(IEnumerable<T> records, string speciesDefName,
+            Func<T, bool> belongsToPlayerFaction,
+            Func<T, IReadOnlyDictionary<string, float>> readSpeciesKnowledge) where T : class
+        {
+            if (records == null || string.IsNullOrEmpty(speciesDefName) ||
+                belongsToPlayerFaction == null || readSpeciesKnowledge == null) return 0f;
+            float total = 0f;
+            foreach (T record in records)
+            {
+                if (record == null || !belongsToPlayerFaction(record)) continue;
+                total += SpeciesKnowledge(readSpeciesKnowledge(record), speciesDefName);
+                // Equivalent to clamp01(sum) without risking large or nonfinite totals.
+                if (total >= 1f) return 1f;
+            }
+            return total;
+        }
+
         public static FishingRank RankForExperience(float amount, float adeptMin = AdeptExperience,
             float expertMin = ExpertExperience, float masterMin = MasterExperience)
         {

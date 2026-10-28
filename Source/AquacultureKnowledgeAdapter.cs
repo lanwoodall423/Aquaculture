@@ -241,7 +241,8 @@ namespace AquacultureFishing
 
         public static float ColonySpeciesKnowledgeFor(ThingDef fishDef)
         {
-            if (fishDef == null || !FrameworkReady) return 0f;
+            if (fishDef == null) return 0f;
+            if (!FrameworkReady) return LegacyColonySpeciesKnowledge(fishDef);
             KnowledgeFacetSnapshotV2 snapshot = KnowledgeQuery.Facet(DomainId, SpeciesSubjectId(fishDef), "identity", null,
                 KnowledgeScope.Colony, true, false);
             return Mathf.Clamp01(snapshot.amount / 100f);
@@ -329,7 +330,7 @@ namespace AquacultureFishing
             EnsureSpeciesSubject(fishDef);
             if (!FrameworkReady)
             {
-                float legacy = colony ? 0f : LegacySpeciesKnowledge(pawn, fishDef);
+                float legacy = colony ? LegacyColonySpeciesKnowledge(fishDef) : LegacySpeciesKnowledge(pawn, fishDef);
                 return new AquacultureKnowledgeView(SpeciesSubjectId(fishDef), legacy > 0f ? "Identified" : "Unknown",
                     legacy, legacy, legacy > 0f, legacy > 0f ? new[] { "identity" } : Array.Empty<string>());
             }
@@ -1540,6 +1541,14 @@ namespace AquacultureFishing
                 conditionMet = true,
                 elapsedTicks = int.MaxValue
             });
+        }
+
+        private static float LegacyColonySpeciesKnowledge(ThingDef fishDef)
+        {
+            return NativeFishingKnowledgeRules.ColonySpeciesKnowledge(
+                FishingProgressionComponent.Current?.PawnProgress, fishDef?.defName,
+                record => record?.pawn?.Faction?.def?.isPlayer == true,
+                record => record?.speciesKnowledge);
         }
 
         private static float LegacySpeciesKnowledge(Pawn pawn, ThingDef fishDef)
