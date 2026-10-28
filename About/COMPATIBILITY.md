@@ -8,6 +8,50 @@
 - Deferred Reality Framework
 - Vanilla Fishing Expanded
 
+## Standalone-core migration (planned; not yet available)
+
+**Current status: dependency-required.** The list above is the current player
+install contract, not an optional list. Do not remove these `modDependencies`
+or treat successful portable/quicktest checks as proof of a standalone mod.
+The target for AQ-DEP is **RimWorld 1.6 + Harmony**, with Insight Canvas,
+Knowledge Framework, Deferred Reality Framework and Vanilla Fishing Expanded
+as separately enabled enhancements. No standalone build, clean-install, live
+gameplay or old-save compatibility qualification has passed for that target.
+
+The developer-only AQ-DEP-01 inventory runs as part of the portable
+`DevTools/InsightCanvasUiTests.csproj` executable. It reports the current
+required package IDs, direct main-project references and build errors, core
+C# namespace uses, VFE-dependent XML Def references, first-party fish content
+with an explicit recognized category, and the separately built DRF provider's
+output/package boundary. Its passing result means that the audit ran; any
+`BLOCKER` lines remain blockers. Zero static blockers still means **UNVERIFIED**
+until the exact standalone artifact and in-game scenarios pass. The inventory
+reads project files only and does not need framework assemblies or a
+RimWorld process.
+
+The inventory can also run **without the rest of the legacy UI-contract
+suite** during later decoupling work:
+
+```powershell
+dotnet run --project DevTools/InsightCanvasUiTests.csproj --configuration Release -- --dependency-audit
+```
+
+| Integration | Current hard edge | Intended optional boundary |
+| --- | --- | --- |
+| Insight Canvas | The core project directly references `InsightCanvas.dll`; settings, Journal, dossier, planner and dialogs construct Canvas documents. | Keep authoritative game state in Aquaculture; provide usable native UI when absent, with optional enhanced documents in a safely isolated adapter. |
+| Knowledge Framework | `KnowledgeFramework.dll` is required at build time; progression/rank and Journal types also appear in core, beyond the retry-safe framework adapter. | Move core rank/progression types and basic understanding to Aquaculture; isolate V3 observations, evidence, migration and browsing behind an optional adapter without rewriting saved legacy keys. |
+| Deferred Reality Framework | The provider is a separate C# project and the active-map legacy simulation already has an authority fallback, but provider output targets the shared `1.6/Assemblies` package folder. | Make provider assembly inclusion/load conditional; prove active and latent ownership, provider removal/restoration and saves without a second simulation. |
+| Vanilla Fishing Expanded | Fishing patches are dynamically discovered from VFE and Odyssey job drivers, but VFE categories and texture paths occur in base Defs; there are no first-party explicitly categorized fish ThingDefs or proven independent natural-water catch job. | Add core-owned fish species, assets and a reliable native fishing path; keep VFE jobs, species, zones and fish packs as opt-in compatibility. |
+| Harmony | Core patches depend on it throughout. | Remains required in the initial standalone target. |
+
+Complete optionalization only after a build **without the four optional
+mods or their APIs**, a clean player package, a managed RimTest load, a
+fresh-colony fishing/stocking/breeding/harvest path, UI access, save/reload and
+dependency add/remove scenarios have independent evidence. Removing a
+fish-content provider from a save containing its ThingDefs is not automatically
+safe; retain that explicit compatibility limitation. The historical
+release-readiness matrix remains blocked until its own acceptance gates pass.
+
 ## Optional
 
 - Vanilla Fishing Expanded - Fishing Treasures AddOn: VFE's optional fishing-loot content. Aquaculture has no direct Def, assembly, recipe, species, treasure, or patch dependency on it; when installed, load it after Vanilla Fishing Expanded and before Aquaculture for its own VFE content.

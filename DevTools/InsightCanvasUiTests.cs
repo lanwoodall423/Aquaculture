@@ -19,9 +19,18 @@ namespace AquacultureFishing.Tests
             Console.Error.WriteLine("FAIL: " + message);
         }
 
-        public static int Main()
+        public static int Main(string[] args)
         {
             string root = FindRoot();
+            // Existing managed test runners may forward unrelated CLI switches. Only the
+            // explicit single-argument audit mode changes the normal full-suite behavior.
+            if (args.Length == 1 && args[0] == "--dependency-audit")
+            {
+                TestStandaloneDependencyInventory(root);
+                Console.WriteLine(failures == 0 ? "Aquaculture dependency audit: PASS (inventory only)" :
+                    "Aquaculture dependency audit: FAIL (inventory errors)");
+                return failures == 0 ? 0 : 1;
+            }
             TestSnapshotsAndPurity();
             TestStableIdsAndResponsiveMath();
             TestContentAwareListSizing();
@@ -29,6 +38,7 @@ namespace AquacultureFishing.Tests
             TestPrompt3AuthorityMatrix();
             TestPrompt2Contracts(root);
             TestMetadataAndBuildContract(root);
+            TestStandaloneDependencyInventory(root);
             TestSerializedSettingsContract(root);
             TestPresentationContract(root);
             Console.WriteLine(failures == 0 ? "Insight Canvas UI tests: PASS" : "Insight Canvas UI tests: FAIL (" + failures + ")");
@@ -507,6 +517,136 @@ namespace AquacultureFishing.Tests
             Check(!Directory.GetFiles(uiRoot, "*.cs", SearchOption.AllDirectories)
                 .Select(File.ReadAllText).Any(text => text.Contains("GUI.skin")),
                 "new UI source does not mutate GUI.skin");
+        }
+
+        private static void TestStandaloneDependencyInventory(string root)
+        {
+            // AQ-DEP-01 inventories current blockers; it does not qualify a standalone game build.
+            // Do not freeze today's optional dependencies as permanent test requirements.
+            XDocument about = XDocument.Load(Path.Combine(root, "About", "About.xml"));
+            XDocument mainProject = XDocument.Load(Path.Combine(root, "Source", "AquacultureFishing.csproj"));
+            XDocument providerProject = XDocument.Load(Path.Combine(root, "Source",
+                "DeferredRealityProvider", "DeferredReality.Aquaculture.csproj"));
+
+            string[] requiredPackages = about.Descendants("modDependencies").Descendants("packageId")
+                .Select(node => node.Value.Trim()).OrderBy(id => id, StringComparer.Ordinal).ToArray();
+            string[] mainReferences = mainProject.Descendants()
+                .Where(element => element.Name.LocalName == "Reference")
+                .Select(element => (string)element.Attribute("Include"))
+                .Where(name => !string.IsNullOrEmpty(name))
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(name => name, StringComparer.Ordinal).ToArray();
+            string[] requiredBuildErrors = mainProject.Descendants()
+                .Where(element => element.Name.LocalName == "Error")
+                .Select(element => (string)element.Attribute("Text") ?? string.Empty).ToArray();
+            bool separateDrfProvider = mainProject.Descendants()
+                .Any(element => element.Name.LocalName == "Compile" &&
+                    ((string)element.Attribute("Remove") ?? string.Empty).Contains("DeferredRealityProvider"));
+            bool providerReferencesDrf = providerProject.Descendants()
+                .Any(element => element.Name.LocalName == "Reference" &&
+                    (string)element.Attribute("Include") == "DeferredRealityFramework");
+            bool providerUsesPlayerAssemblyDirectory = providerProject.Descendants()
+                .Where(element => element.Name.LocalName == "OutputPath")
+                .Any(element => element.Value.Replace('\\', '/').Contains("1.6/Assemblies/"));
+            bool packageIncludesVersionedAssemblies =
+                File.ReadAllText(Path.Combine(root, ".rimdev", "stack.json")).Contains("\"1.*/**\"");
+
+            string sourceRoot = Path.Combine(root, "Source");
+            string[] coreSources = Directory.GetFiles(sourceRoot, "*.cs", SearchOption.AllDirectories)
+                .Where(path =>
+                {
+                    string relative = Path.GetRelativePath(sourceRoot, path).Replace('\\', '/');
+                    string surrounded = "/" + relative + "/";
+                    return !relative.StartsWith("DeferredRealityProvider/", StringComparison.OrdinalIgnoreCase) &&
+                        !surrounded.Contains("/obj/", StringComparison.OrdinalIgnoreCase) &&
+                        !surrounded.Contains("/bin/", StringComparison.OrdinalIgnoreCase);
+                })
+                .OrderBy(path => path, StringComparer.Ordinal).ToArray();
+            string[] insightUsers = coreSources
+                .Where(path => UsesExternalNamespace(File.ReadAllText(path), "InsightCanvas")).ToArray();
+            string[] knowledgeUsers = coreSources
+                .Where(path => UsesExternalNamespace(File.ReadAllText(path), "KnowledgeFramework")).ToArray();
+            string[] drfUsers = coreSources
+                .Where(path => UsesExternalNamespace(File.ReadAllText(path), "DeferredReality")).ToArray();
+            string[] defPaths = Directory.GetFiles(Path.Combine(root, "1.6", "Defs"), "*.xml",
+                SearchOption.AllDirectories);
+            string[] vfeDefs = defPaths
+                .Where(path => Regex.IsMatch(File.ReadAllText(path), @"\bVCEF_[A-Za-z0-9_]+\b|\bVCE_Fishing\b"))
+                .OrderBy(path => path, StringComparer.Ordinal).ToArray();
+            int explicitAquacultureFishDefs = defPaths
+                .SelectMany(path => XDocument.Load(path).Descendants("ThingDef"))
+                .Count(def => ((string)def.Element("defName") ?? string.Empty)
+                    .StartsWith("AF_", StringComparison.Ordinal) &&
+                    def.Descendants("thingCategories").Descendants("li").Any(category =>
+                        category.Value == "Fish" || category.Value == "VCEF_RawFishCategory"));
+
+            var blockers = new List<string>();
+            string[] optionalPackages = {
+                "lan.insightcanvas", "lan.knowledgeframework", "lan.deferredreality.framework",
+                "VanillaExpanded.VCEF"
+            };
+            foreach (string package in optionalPackages)
+                if (requiredPackages.Contains(package))
+                    blockers.Add("About.xml still requires " + package);
+            if (mainReferences.Contains("InsightCanvas") ||
+                requiredBuildErrors.Any(message => message.Contains("requires the installed InsightCanvas.dll")) ||
+                insightUsers.Length > 0)
+                blockers.Add("core build/source directly uses Insight Canvas");
+            if (mainReferences.Contains("KnowledgeFramework") ||
+                requiredBuildErrors.Any(message => message.Contains("requires KnowledgeFrameworkAssemblyPath")) ||
+                knowledgeUsers.Length > 0)
+                blockers.Add("core build/source directly uses Knowledge Framework");
+            if (mainReferences.Contains("DeferredRealityFramework") || drfUsers.Length > 0)
+                blockers.Add("core build/source directly uses Deferred Reality");
+            if (vfeDefs.Length > 0)
+                blockers.Add("core Defs reference VFE content, texture or category names");
+            if (explicitAquacultureFishDefs == 0)
+                blockers.Add("no first-party fish ThingDef has an explicit recognized Fish category");
+            if (separateDrfProvider && providerReferencesDrf &&
+                providerUsesPlayerAssemblyDirectory && packageIncludesVersionedAssemblies)
+                blockers.Add("separate DRF provider outputs into a player-packaged assembly folder");
+
+            Console.WriteLine("AQ-DEP-01 static dependency audit (not runtime/release qualification)");
+            Console.WriteLine("  Required mod packages: " + string.Join(", ", requiredPackages));
+            Console.WriteLine("  Main project assembly references: " + string.Join(", ", mainReferences));
+            Console.WriteLine("  Insight Canvas source references: " + DescribeDependencyPaths(root, insightUsers));
+            Console.WriteLine("  Knowledge Framework source references: " + DescribeDependencyPaths(root, knowledgeUsers));
+            Console.WriteLine("  Deferred Reality core source references: " + DescribeDependencyPaths(root, drfUsers));
+            Console.WriteLine("  VFE content Def references: " + DescribeDependencyPaths(root, vfeDefs));
+            Console.WriteLine("  First-party fish ThingDefs with explicit recognized category: " +
+                explicitAquacultureFishDefs);
+            Console.WriteLine("  DRF provider excluded from core: " + separateDrfProvider +
+                "; DRF reference: " + providerReferencesDrf +
+                "; shared package assembly path: " +
+                (providerUsesPlayerAssemblyDirectory && packageIncludesVersionedAssemblies));
+            foreach (string blocker in blockers)
+                Console.WriteLine("  BLOCKER: " + blocker);
+            Console.WriteLine("  Standalone readiness: " +
+                (blockers.Count > 0 ? "BLOCKED (static blockers found)" :
+                    "UNVERIFIED (requires standalone build, RimTest and player scenarios)"));
+
+            Check(requiredPackages.Contains("brrainz.harmony"),
+                "AQ-DEP-01 retains Harmony as the baseline required runtime mod");
+            Check(UsesExternalNamespace("using InsightCanvas;", "InsightCanvas") &&
+                UsesExternalNamespace("KnowledgeFramework.KnowledgeQuery.Facet()", "KnowledgeFramework") &&
+                !UsesExternalNamespace("class MyKnowledgeFrameworkFeature {}", "KnowledgeFramework"),
+                "AQ-DEP-01 detects using and qualified source references without substring false positives");
+            Check(mainProject.Root != null && providerProject.Root != null,
+                "AQ-DEP-01 parses both core and provider build contracts");
+        }
+
+        private static bool UsesExternalNamespace(string source, string name)
+        {
+            return Regex.IsMatch(source, @"(?m)^\s*using\s+" + Regex.Escape(name) +
+                @"(?:\.[A-Za-z_][A-Za-z0-9_]*)*\s*;") ||
+                source.Contains(name + ".", StringComparison.Ordinal);
+        }
+
+        private static string DescribeDependencyPaths(string root, IEnumerable<string> paths)
+        {
+            string[] names = paths.Select(path => Path.GetRelativePath(root, path).Replace('\\', '/'))
+                .OrderBy(name => name, StringComparer.Ordinal).ToArray();
+            return names.Length == 0 ? "none" : string.Join(", ", names);
         }
 
         private static void TestSerializedSettingsContract(string root)
