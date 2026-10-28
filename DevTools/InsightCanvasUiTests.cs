@@ -40,6 +40,7 @@ namespace AquacultureFishing.Tests
             TestMetadataAndBuildContract(root);
             TestStandaloneDependencyInventory(root);
             TestNativeFishingRankBoundary(root);
+            TestNativeKnowledgeBuildSeam(root);
             TestKnowledgeJournalAdapterBoundary(root);
             TestNativeJournalExpertiseFallback(root);
             TestNativeKnowledgeFallbackBoundary(root);
@@ -568,6 +569,98 @@ namespace AquacultureFishing.Tests
                 adapter.Contains("KnowledgeMenuUI.Draw(bounds, state, ExpertiseModelFor, ExpertiseFor);") &&
                 adapter.Contains("AquacultureKnowledgeAdapter.ToKnowledgeRank("),
                 "canonical Knowledge Journal menu and rank conversion live behind the adapter boundary");
+        }
+
+        private static void TestNativeKnowledgeBuildSeam(string root)
+        {
+            XDocument project = XDocument.Load(Path.Combine(root, "Source", "AquacultureFishing.csproj"));
+            XElement nativeFlag = project.Descendants().SingleOrDefault(element =>
+                element.Name.LocalName == "AquacultureNativeKnowledge" &&
+                ((string)element.Attribute("Condition") ?? string.Empty)
+                    .Contains("'$(AquacultureNativeKnowledge)' == ''"));
+            Check(nativeFlag?.Value.Trim() == "false",
+                "developer-only Knowledge-free compiler variant defaults disabled");
+
+            XElement nativeGroup = project.Root.Elements().SingleOrDefault(element =>
+                element.Name.LocalName == "PropertyGroup" &&
+                ((string)element.Attribute("Condition") ?? string.Empty) ==
+                    "'$(AquacultureNativeKnowledge)' == 'true'");
+            Check(nativeGroup != null &&
+                nativeGroup.Descendants().Any(e => e.Name.LocalName == "DefineConstants" &&
+                    e.Value.Contains("AQUACULTURE_NATIVE_KNOWLEDGE")) &&
+                nativeGroup.Descendants().Any(e => e.Name.LocalName == "OutputPath" &&
+                    e.Value.Replace('\\', '/').Contains("artifacts/NativeKnowledge/")),
+                "native-Knowledge compiler symbol outputs only to a developer artifact folder");
+
+            XElement exclude = project.Descendants().SingleOrDefault(element =>
+                element.Name.LocalName == "Compile" &&
+                (string)element.Attribute("Remove") == "AquacultureKnowledgeAdapter.cs");
+            Check(exclude != null &&
+                ((string)exclude.Parent.Attribute("Condition") ?? string.Empty) ==
+                    "'$(AquacultureNativeKnowledge)' == 'true'",
+                "Knowledge Framework adapter is excluded only in native build");
+
+            XElement[] knowledgeRefs = project.Descendants().Where(element =>
+                element.Name.LocalName == "Reference" &&
+                (string)element.Attribute("Include") == "KnowledgeFramework").ToArray();
+            Check(knowledgeRefs.Length == 2 &&
+                knowledgeRefs.All(reference => ((string)reference.Parent.Attribute("Condition") ??
+                    string.Empty).Contains("'$(AquacultureNativeKnowledge)' != 'true'")),
+                "both Knowledge Framework reference paths remain default-only");
+
+            XElement[] knowledgeErrors = project.Descendants().Where(element =>
+                element.Name.LocalName == "Error" &&
+                ((string)element.Attribute("Text") ?? string.Empty).Contains("requires KnowledgeFramework")).ToArray();
+            Check(knowledgeErrors.Length == 1 &&
+                ((string)knowledgeErrors[0].Attribute("Condition") ?? string.Empty)
+                    .Contains("'$(AquacultureNativeKnowledge)' != 'true'"),
+                "missing Knowledge assembly blocks the default build but not native variant");
+
+            string legacy = File.ReadAllText(Path.Combine(root, "Source", "SharedKnowledgeIntegration.cs"));
+            int start = legacy.IndexOf("#if AQUACULTURE_NATIVE_KNOWLEDGE", StringComparison.Ordinal);
+            int end = start < 0 ? -1 : legacy.LastIndexOf("#endif", StringComparison.Ordinal);
+            string native = start >= 0 && end > start ? legacy.Substring(start, end - start) : string.Empty;
+            Check(start >= 0 && end > start &&
+                native.Contains("public static class AquacultureKnowledgeAdapter") &&
+                native.Contains("public sealed class ExpertiseMenu") &&
+                native.Contains("public static bool IsFrameworkReady => false;") &&
+                native.Contains("NativeFishingKnowledgeRules.SpeciesKnowledge(") &&
+                native.Contains("NativeFishingKnowledgeRules.ColonySpeciesKnowledge<PawnFishingProgress>(") &&
+                native.Contains("NativeFishingKnowledgeRules.RankForExperience(") &&
+                native.Contains("NativeFishingKnowledgeRules.ProgressForExperience(") &&
+                native.Contains("public static void Handle(AquacultureEvent value) { }") &&
+                !native.Contains("using KnowledgeFramework;") &&
+                !Regex.IsMatch(native, @"\bKnowledge(?:Query|Registry|ClaimService|MenuUI|ProviderRegistry)\b"),
+                "native adapter implements read-only fishing projection without V3 APIs");
+
+            string sourceRoot = Path.Combine(root, "Source");
+            string[] members = Directory.GetFiles(sourceRoot, "*.cs", SearchOption.AllDirectories)
+                .Where(path =>
+                {
+                    string relative = Path.GetRelativePath(sourceRoot, path).Replace('\\', '/');
+                    return relative != "AquacultureKnowledgeAdapter.cs" &&
+                        relative != "SharedKnowledgeIntegration.cs" &&
+                        !relative.StartsWith("DeferredRealityProvider/", StringComparison.OrdinalIgnoreCase) &&
+                        !relative.Contains("/obj/") && !relative.Contains("/bin/");
+                })
+                .SelectMany(path => Regex.Matches(File.ReadAllText(path),
+                    @"\bAquacultureKnowledgeAdapter\.([A-Za-z_][A-Za-z0-9_]*)")
+                    .Cast<Match>().Select(match => match.Groups[1].Value))
+                .Distinct(StringComparer.Ordinal).OrderBy(name => name, StringComparer.Ordinal).ToArray();
+            foreach (string member in members)
+            {
+                bool exposed = member == "ExpertiseMenu"
+                    ? native.Contains("public sealed class ExpertiseMenu")
+                    : Regex.IsMatch(native, @"(?m)^\s*public\s+(?:static\s+)?[A-Za-z0-9_<>,\[\]? \t]+\b" +
+                        Regex.Escape(member) + @"\s*(?:\(|=>)");
+                Check(exposed, "native adapter exports core-required member: " + member);
+            }
+            Check(members.Length >= 10, "native adapter surface audit covers gameplay and UI entry points");
+
+            XDocument about = XDocument.Load(Path.Combine(root, "About", "About.xml"));
+            Check(about.Descendants("modDependencies").Descendants("packageId")
+                .Any(element => element.Value == "lan.knowledgeframework"),
+                "AQ-DEP-03D1 leaves current player dependency metadata unchanged");
         }
 
         private static void TestKnowledgeJournalAdapterBoundary(string root)

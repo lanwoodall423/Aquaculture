@@ -10,6 +10,8 @@
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <AquacultureDeveloperTests Condition="'$(AquacultureDeveloperTests)' == ''">false</AquacultureDeveloperTests>
+    <!-- Developer-only opt-in: standard player build still requires Knowledge Framework. -->
+    <AquacultureNativeKnowledge Condition="'$(AquacultureNativeKnowledge)' == ''">false</AquacultureNativeKnowledge>
   </PropertyGroup>
   <!--
     These paths are intentionally configurable. They may come from the command
@@ -38,6 +40,11 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(AquacultureDeveloperTests)' == 'true'"><DefineConstants>$(DefineConstants);AQUACULTURE_DEV_TESTS</DefineConstants></PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|AnyCPU'"><Optimize>true</Optimize><OutputPath>..\1.6\Assemblies\</OutputPath><DebugType>none</DebugType></PropertyGroup>
+  <!-- Prevent an unqualified experimental DLL from replacing a player assembly. -->
+  <PropertyGroup Condition="'$(AquacultureNativeKnowledge)' == 'true'">
+    <DefineConstants>$(DefineConstants);AQUACULTURE_NATIVE_KNOWLEDGE</DefineConstants>
+    <OutputPath>..\artifacts\NativeKnowledge\</OutputPath>
+  </PropertyGroup>
   <ItemGroup>
     <!-- Keep isolated DevBridge2 builds from globbing stale local intermediates. -->
     <Compile Remove="obj\**" />
@@ -51,6 +58,9 @@
     <EmbeddedResource Remove="DeferredRealityProvider\**" />
     <None Remove="DeferredRealityProvider\**" />
   </ItemGroup>
+  <ItemGroup Condition="'$(AquacultureNativeKnowledge)' == 'true'">
+    <Compile Remove="AquacultureKnowledgeAdapter.cs" />
+  </ItemGroup>
   <ItemGroup Condition="'$(RimWorldManagedDir)' != ''">
     <Reference Include="Assembly-CSharp"><HintPath>$(RimWorldManagedDir)/Assembly-CSharp.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="UnityEngine.CoreModule"><HintPath>$(RimWorldManagedDir)/UnityEngine.CoreModule.dll</HintPath><Private>false</Private></Reference>
@@ -63,10 +73,10 @@
   <ItemGroup Condition="'$(InsightCanvasAssemblyPath)' != '' and Exists('$(InsightCanvasAssemblyPath)')">
     <Reference Include="InsightCanvas"><HintPath>$(InsightCanvasAssemblyPath)</HintPath><Private>false</Private></Reference>
   </ItemGroup>
-  <ItemGroup Condition="'$(KnowledgeFrameworkAssemblyPath)' == '' and Exists('$(MSBuildThisFileDirectory)..\..\KnowledgeFramework\1.6\Assemblies\KnowledgeFramework.dll')">
+  <ItemGroup Condition="'$(AquacultureNativeKnowledge)' != 'true' and '$(KnowledgeFrameworkAssemblyPath)' == '' and Exists('$(MSBuildThisFileDirectory)..\..\KnowledgeFramework\1.6\Assemblies\KnowledgeFramework.dll')">
     <Reference Include="KnowledgeFramework"><HintPath>$(MSBuildThisFileDirectory)..\..\KnowledgeFramework\1.6\Assemblies\KnowledgeFramework.dll</HintPath><Private>false</Private></Reference>
   </ItemGroup>
-  <ItemGroup Condition="'$(KnowledgeFrameworkAssemblyPath)' != '' and Exists('$(KnowledgeFrameworkAssemblyPath)')">
+  <ItemGroup Condition="'$(AquacultureNativeKnowledge)' != 'true' and '$(KnowledgeFrameworkAssemblyPath)' != '' and Exists('$(KnowledgeFrameworkAssemblyPath)')">
     <Reference Include="KnowledgeFramework"><HintPath>$(KnowledgeFrameworkAssemblyPath)</HintPath><Private>false</Private></Reference>
   </ItemGroup>
   <Target Name="ValidateAquacultureReferences" BeforeTargets="ResolveReferences">
@@ -74,7 +84,7 @@
     <Error Condition="'$(RimWorldManagedDir)' == ''" Text="AquacultureFishing could not find RimWorld managed assemblies. Set RimWorldDir to the 1.6 installation directory." />
     <Error Condition="'$(HarmonyPath)' == '' or !Exists('$(HarmonyPath)')" Text="AquacultureFishing requires HarmonyPath pointing to 0Harmony.dll." />
     <Error Condition="'$(InsightCanvasAssemblyPath)' == '' or !Exists('$(InsightCanvasAssemblyPath)')" Text="AquacultureFishing requires the installed InsightCanvas.dll. Set InsightCanvasDir or InsightCanvasAssemblyPath." />
-    <Error Condition="'$(KnowledgeFrameworkAssemblyPath)' == '' and !Exists('$(MSBuildThisFileDirectory)..\..\KnowledgeFramework\1.6\Assemblies\KnowledgeFramework.dll')" Text="AquacultureFishing requires KnowledgeFrameworkAssemblyPath or the sibling KnowledgeFramework checkout." />
+    <Error Condition="'$(AquacultureNativeKnowledge)' != 'true' and '$(KnowledgeFrameworkAssemblyPath)' == '' and !Exists('$(MSBuildThisFileDirectory)..\..\KnowledgeFramework\1.6\Assemblies\KnowledgeFramework.dll')" Text="AquacultureFishing requires KnowledgeFrameworkAssemblyPath or the sibling KnowledgeFramework checkout." />
   </Target>
   <Target Name="BuildBridgeTools" AfterTargets="Build" Condition="'$(AquacultureDeveloperTests)' == 'true'">
     <Error Condition="'$(RimBridgeSdkAssemblyPath)' == '' or !Exists('$(RimBridgeSdkAssemblyPath)')" Text="Aquaculture developer tests require RimBridgeServer.Sdk.dll. Set RimBridgeSdkAssemblyPath or RimBridgeServerDir to the installed RimBridgeServer checkout." />

@@ -101,6 +101,29 @@ Because the core still compiles against `KnowledgeFramework.dll`,
 this is a native UI **fallback**, not a dependency-free player package;
 live UI/save qualification is still required.
 
+AQ-DEP-03D1 introduces **an opt-in, developer-only native-Knowledge build
+variant**, not a new player package. The ordinary `AquacultureFishing` build
+continues to compile the existing Knowledge V3 adapter and requires its
+framework DLL. Setting `-p:AquacultureNativeKnowledge=true` instead
+excludes that source file and its Knowledge Framework assembly reference,
+defines `AQUACULTURE_NATIVE_KNOWLEDGE`, and builds a read-only native
+adapter against the existing fishing progression save fields and Journal
+fallback. Output goes only to `artifacts/NativeKnowledge/`, not
+`1.6/Assemblies/`, to prevent accidental player packaging.
+
+With the RimWorld 1.6 managed assemblies, Harmony, and Insight Canvas
+development references available, the intended **unqualified experiment**
+can be requested through the project owner and RimTest using
+`dotnet build Source/AquacultureFishing.csproj -c Release -p:AquacultureNativeKnowledge=true`.
+The native path intentionally does not publish Knowledge V3 events or
+restore its external observation/evidence state. Ordinary Aquaculture
+catch completion still updates legacy saved species discovery and expertise.
+Portable checks verify the compiler switch, adapter source surface and
+metadata boundary only. **No framework-free main DLL compilation, live
+gameplay, old Knowledge V3 save migration or framework add/remove scenario
+has yet passed.** Do not install or publish the experimental DLL and do not
+remove the Knowledge Framework mod dependency on this evidence alone.
+
 Complete optionalization only after a build **without the four optional
 mods or their APIs**, a clean player package, a managed RimTest load, a
 fresh-colony fishing/stocking/breeding/harvest path, UI access, save/reload and
