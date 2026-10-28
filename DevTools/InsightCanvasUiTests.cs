@@ -40,6 +40,7 @@ namespace AquacultureFishing.Tests
             TestMetadataAndBuildContract(root);
             TestStandaloneDependencyInventory(root);
             TestNativeFishingRankBoundary(root);
+            TestNativeKnowledgeFallbackBoundary(root);
             TestConditionalDeferredRealityPackageContract(root);
             TestSerializedSettingsContract(root);
             TestPresentationContract(root);
@@ -558,6 +559,35 @@ namespace AquacultureFishing.Tests
             Check(journal.Contains("KnowledgeMenuUI.Draw(") &&
                 journal.Contains("AquacultureKnowledgeAdapter.ToKnowledgeRank("),
                 "canonical Knowledge Journal keeps the framework rank conversion at its UI boundary");
+        }
+
+        private static void TestNativeKnowledgeFallbackBoundary(string root)
+        {
+            string adapter = File.ReadAllText(Path.Combine(root, "Source", "AquacultureKnowledgeAdapter.cs"));
+            string contract = File.ReadAllText(Path.Combine(root, "Source", "AquacultureKnowledgeContract.cs"));
+            string progress = File.ReadAllText(Path.Combine(root, "Source", "FishingExpertise.cs"));
+
+            int start = adapter.IndexOf("public static float ExpertiseProgressFor(Pawn pawn)", StringComparison.Ordinal);
+            int end = start < 0 ? -1 : adapter.IndexOf("public static void Invalidate(Pawn pawn)", start, StringComparison.Ordinal);
+            string body = start >= 0 && end > start ? adapter.Substring(start, end - start) : string.Empty;
+            Check(body.Contains("NativeFishingKnowledgeRules.ProgressForExperience(") &&
+                body.Contains("?.expertiseExperience ?? 0f") &&
+                !body.Contains("?.ExpertiseProgress") &&
+                body.Contains("KnowledgeQuery.Expertise(DomainId, pawn, ExpertiseTrackId).progress"),
+                "native expertise-progress fallback reads saved experience without calling itself");
+            Check(adapter.Contains("NativeFishingKnowledgeRules.SpeciesKnowledge(progress?.speciesKnowledge, fishDef?.defName)") &&
+                adapter.Contains("NativeFishingKnowledgeRules.RankForExperience(legacy)") &&
+                adapter.Contains("NativeFishingKnowledgeRules.Experience(") &&
+                adapter.Contains("KnowledgeRanks.ForExperience(") &&
+                adapter.Contains("KnowledgeRanks.Bonus("),
+                "native fallback covers species, experience and rank without displacing framework authority");
+            Check(progress.Contains("public float ExpertiseProgress => AquacultureKnowledgeAdapter.ExpertiseProgressFor(pawn);") &&
+                progress.Contains("\"expertiseExperience\"") && progress.Contains("\"speciesKnowledge\"") &&
+                contract.Contains("public static class NativeFishingKnowledgeRules") &&
+                !contract.Contains("using KnowledgeFramework;") &&
+                !contract.Contains("using UnityEngine;") &&
+                !contract.Contains("using Verse;"),
+                "fallback is portable and legacy pawn progression save contracts are unchanged");
         }
 
         private static void TestStandaloneDependencyInventory(string root)

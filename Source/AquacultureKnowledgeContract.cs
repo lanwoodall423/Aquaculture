@@ -38,6 +38,68 @@ namespace AquacultureFishing
         }
     }
 
+    /// <summary>
+    /// Read-only, framework-free projections of the saved Aquaculture fishing
+    /// progress records. This is not a second Knowledge Framework state store.
+    /// </summary>
+    public static class NativeFishingKnowledgeRules
+    {
+        public const float AdeptExperience = 100f;
+        public const float ExpertExperience = 300f;
+        public const float MasterExperience = 700f;
+
+        public static float SpeciesAmount(float amount)
+        {
+            if (float.IsNaN(amount) || float.IsInfinity(amount)) return 0f;
+            return Math.Min(1f, Math.Max(0f, amount));
+        }
+
+        public static float Experience(float amount)
+        {
+            return float.IsNaN(amount) || float.IsInfinity(amount) || amount < 0f ? 0f : amount;
+        }
+
+        public static float SpeciesKnowledge(IReadOnlyDictionary<string, float> amounts, string speciesDefName)
+        {
+            return amounts != null && !string.IsNullOrEmpty(speciesDefName) &&
+                amounts.TryGetValue(speciesDefName, out float amount)
+                ? SpeciesAmount(amount) : 0f;
+        }
+
+        public static FishingRank RankForExperience(float amount, float adeptMin = AdeptExperience,
+            float expertMin = ExpertExperience, float masterMin = MasterExperience)
+        {
+            if (!ValidThresholds(adeptMin, expertMin, masterMin)) return FishingRank.Novice;
+            float experience = Experience(amount);
+            if (experience >= masterMin) return FishingRank.Master;
+            if (experience >= expertMin) return FishingRank.Expert;
+            if (experience >= adeptMin) return FishingRank.Adept;
+            return FishingRank.Novice;
+        }
+
+        public static float ProgressForExperience(float amount, float adeptMin = AdeptExperience,
+            float expertMin = ExpertExperience, float masterMin = MasterExperience)
+        {
+            if (!ValidThresholds(adeptMin, expertMin, masterMin)) return 0f;
+            float experience = Experience(amount);
+            FishingRank rank = RankForExperience(experience, adeptMin, expertMin, masterMin);
+            if (rank == FishingRank.Master) return 1f;
+            float low = rank == FishingRank.Expert ? expertMin :
+                rank == FishingRank.Adept ? adeptMin : 0f;
+            float high = rank == FishingRank.Expert ? masterMin :
+                rank == FishingRank.Adept ? expertMin : adeptMin;
+            return Math.Min(1f, Math.Max(0f, (experience - low) / (high - low)));
+        }
+
+        private static bool ValidThresholds(float adeptMin, float expertMin, float masterMin)
+        {
+            return !float.IsNaN(adeptMin) && !float.IsInfinity(adeptMin) &&
+                !float.IsNaN(expertMin) && !float.IsInfinity(expertMin) &&
+                !float.IsNaN(masterMin) && !float.IsInfinity(masterMin) &&
+                adeptMin > 0f && expertMin > adeptMin && masterMin > expertMin;
+        }
+    }
+
     /// <summary>Pure compatibility and identity rules shared by the runtime adapter and executable tests.</summary>
     public static class AquacultureKnowledgeContract
     {

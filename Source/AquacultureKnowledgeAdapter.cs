@@ -258,7 +258,8 @@ namespace AquacultureFishing
         {
             if (pawn == null) return 0f;
             TryMigrateLegacy();
-            if (!FrameworkReady) return FishingProgressionComponent.Current?.ProgressFor(pawn, false)?.expertiseExperience ?? 0f;
+            if (!FrameworkReady) return NativeFishingKnowledgeRules.Experience(
+                FishingProgressionComponent.Current?.ProgressFor(pawn, false)?.expertiseExperience ?? 0f);
             return KnowledgeQuery.Expertise(DomainId, pawn, ExpertiseTrackId).amount;
         }
 
@@ -266,6 +267,8 @@ namespace AquacultureFishing
         // defines its installed threshold and bonus behavior until the adapter is isolated.
         public static FishingRank RankForExperience(float experience, float adeptMin, float expertMin, float masterMin)
         {
+            if (!FrameworkReady)
+                return NativeFishingKnowledgeRules.RankForExperience(experience, adeptMin, expertMin, masterMin);
             return FromKnowledgeRank(KnowledgeRanks.ForExperience(experience, adeptMin, expertMin, masterMin));
         }
 
@@ -301,14 +304,17 @@ namespace AquacultureFishing
             if (!FrameworkReady)
             {
                 float legacy = FishingProgressionComponent.Current?.ProgressFor(pawn, false)?.expertiseExperience ?? 0f;
-                return FishingProgressionUtility.LevelFor(legacy);
+                return NativeFishingKnowledgeRules.RankForExperience(legacy);
             }
             return FromKnowledgeRank(KnowledgeQuery.Expertise(DomainId, pawn, ExpertiseTrackId).rank);
         }
 
         public static float ExpertiseProgressFor(Pawn pawn)
         {
-            if (!FrameworkReady) return FishingProgressionComponent.Current?.ProgressFor(pawn, false)?.ExpertiseProgress ?? 0f;
+            // Never read PawnFishingProgress.ExpertiseProgress here: that property
+            // calls back into this adapter and would recurse when the framework is absent.
+            if (!FrameworkReady) return NativeFishingKnowledgeRules.ProgressForExperience(
+                FishingProgressionComponent.Current?.ProgressFor(pawn, false)?.expertiseExperience ?? 0f);
             return KnowledgeQuery.Expertise(DomainId, pawn, ExpertiseTrackId).progress;
         }
 
@@ -1518,7 +1524,7 @@ namespace AquacultureFishing
 
         private static float FiniteLegacyKnowledge(float value)
         {
-            return AquacultureKnowledgeContract.IsFiniteNonNegative(value) ? Mathf.Clamp01(value) : 0f;
+            return NativeFishingKnowledgeRules.SpeciesAmount(value);
         }
 
         private static void AddLegacyMilestone(List<KnowledgeMilestoneConditionSample> target, string subjectId, string milestoneId, bool met)
@@ -1539,8 +1545,7 @@ namespace AquacultureFishing
         private static float LegacySpeciesKnowledge(Pawn pawn, ThingDef fishDef)
         {
             PawnFishingProgress progress = FishingProgressionComponent.Current?.ProgressFor(pawn, false);
-            return progress != null && fishDef != null && progress.speciesKnowledge.TryGetValue(fishDef.defName, out float value)
-                ? Mathf.Clamp01(value) : 0f;
+            return NativeFishingKnowledgeRules.SpeciesKnowledge(progress?.speciesKnowledge, fishDef?.defName);
         }
 
         private sealed class FishingCellContextResolver : IKnowledgeContextResolver

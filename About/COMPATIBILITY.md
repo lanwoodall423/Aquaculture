@@ -54,6 +54,19 @@ the framework-owned browser model. This is a partial refactor: the main
 assembly still references the framework and cannot be loaded without it.
 Portable rank tests do not substitute for exact-build and save/load tests.
 
+AQ-DEP-03B1 adds a framework-free, read-only projection of legacy fishing
+experience, rank progress, and species discovery in
+`NativeFishingKnowledgeRules`. The existing Knowledge adapter now uses
+that projection only when the framework is not ready. It also fixes a
+fallback recursion: `ExpertiseProgressFor` previously read the pawn's
+`ExpertiseProgress` property, which calls back into the adapter. The
+fallback now reads saved `expertiseExperience` directly. Corrupt
+or nonfinite legacy read values are treated as unknown/zero rather than
+creating invalid UI progress. Knowledge V3 remains authoritative when
+available; its rank/bonus APIs, registration, event identities, migrations,
+and save keys have not changed. This still cannot run without the framework
+DLL while the core project retains its mandatory assembly reference.
+
 Complete optionalization only after a build **without the four optional
 mods or their APIs**, a clean player package, a managed RimTest load, a
 fresh-colony fishing/stocking/breeding/harvest path, UI access, save/reload and

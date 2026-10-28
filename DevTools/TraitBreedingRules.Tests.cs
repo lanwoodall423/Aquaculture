@@ -1093,6 +1093,62 @@ static class TraitBreedingRulesTests
             && !FrameworkIntegrationRules.IsFiniteNonNegative(-1f));
     }
 
+    private static void TestNativeFishingKnowledgeFallback()
+    {
+        var species = new Dictionary<string, float>(StringComparer.Ordinal)
+        {
+            ["AF_Pike"] = 0.42f,
+            ["AF_Unknown"] = float.NaN,
+            ["AF_Overfull"] = 3f,
+            ["AF_Negative"] = -2f
+        };
+        Check("native fallback returns recorded species knowledge without changing saved values",
+            NativeFishingKnowledgeRules.SpeciesKnowledge(species, "AF_Pike") == 0.42f &&
+            species["AF_Pike"] == 0.42f && species.Count == 4);
+        Check("native fallback treats missing species as unknown",
+            NativeFishingKnowledgeRules.SpeciesKnowledge(species, "AF_Missing") == 0f &&
+            NativeFishingKnowledgeRules.SpeciesKnowledge(species, null) == 0f &&
+            NativeFishingKnowledgeRules.SpeciesKnowledge(null, "AF_Pike") == 0f);
+        Check("native fallback safely clamps corrupted species values",
+            NativeFishingKnowledgeRules.SpeciesKnowledge(species, "AF_Overfull") == 1f &&
+            NativeFishingKnowledgeRules.SpeciesKnowledge(species, "AF_Negative") == 0f &&
+            NativeFishingKnowledgeRules.SpeciesKnowledge(species, "AF_Unknown") == 0f &&
+            NativeFishingKnowledgeRules.SpeciesAmount(float.PositiveInfinity) == 0f &&
+            NativeFishingKnowledgeRules.SpeciesAmount(float.NegativeInfinity) == 0f);
+
+        Check("native fallback keeps valid legacy expertise and sanitizes invalid values",
+            NativeFishingKnowledgeRules.Experience(450f) == 450f &&
+            NativeFishingKnowledgeRules.Experience(-3f) == 0f &&
+            NativeFishingKnowledgeRules.Experience(float.NaN) == 0f &&
+            NativeFishingKnowledgeRules.Experience(float.PositiveInfinity) == 0f &&
+            NativeFishingKnowledgeRules.Experience(float.NegativeInfinity) == 0f);
+        Check("native ranks match the existing 100/300/700 threshold ordering",
+            NativeFishingKnowledgeRules.RankForExperience(0f) == FishingRank.Novice &&
+            NativeFishingKnowledgeRules.RankForExperience(99f) == FishingRank.Novice &&
+            NativeFishingKnowledgeRules.RankForExperience(100f) == FishingRank.Adept &&
+            NativeFishingKnowledgeRules.RankForExperience(299f) == FishingRank.Adept &&
+            NativeFishingKnowledgeRules.RankForExperience(300f) == FishingRank.Expert &&
+            NativeFishingKnowledgeRules.RankForExperience(699f) == FishingRank.Expert &&
+            NativeFishingKnowledgeRules.RankForExperience(700f) == FishingRank.Master &&
+            NativeFishingKnowledgeRules.RankForExperience(100000f) == FishingRank.Master);
+        Check("native progress resets at rank boundaries and caps at master",
+            NativeFishingKnowledgeRules.ProgressForExperience(0f) == 0f &&
+            NativeFishingKnowledgeRules.ProgressForExperience(50f) == 0.5f &&
+            NativeFishingKnowledgeRules.ProgressForExperience(100f) == 0f &&
+            NativeFishingKnowledgeRules.ProgressForExperience(200f) == 0.5f &&
+            NativeFishingKnowledgeRules.ProgressForExperience(300f) == 0f &&
+            NativeFishingKnowledgeRules.ProgressForExperience(500f) == 0.5f &&
+            NativeFishingKnowledgeRules.ProgressForExperience(700f) == 1f &&
+            NativeFishingKnowledgeRules.ProgressForExperience(1000f) == 1f);
+        Check("invalid experience and malformed thresholds cannot create infinite or elevated progress",
+            NativeFishingKnowledgeRules.ProgressForExperience(-10f) == 0f &&
+            NativeFishingKnowledgeRules.ProgressForExperience(float.NaN) == 0f &&
+            NativeFishingKnowledgeRules.ProgressForExperience(float.PositiveInfinity) == 0f &&
+            NativeFishingKnowledgeRules.RankForExperience(500f, 100f, 100f, 700f) == FishingRank.Novice &&
+            NativeFishingKnowledgeRules.ProgressForExperience(500f, 100f, 100f, 700f) == 0f &&
+            NativeFishingKnowledgeRules.ProgressForExperience(500f, float.NaN, 300f, 700f) == 0f);
+    }
+
     private static void TestFishingRankContract()
     {
         Check("fishing rank ordinal stable",
@@ -1121,6 +1177,7 @@ static class TraitBreedingRulesTests
     public static int Main()
     {
         TestFishingRankContract();
+        TestNativeFishingKnowledgeFallback();
         TestProbabilityBoundaries();
         TestParentalUnionAndCap();
         TestMutationsAndOutliers();
