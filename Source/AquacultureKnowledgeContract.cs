@@ -3,6 +3,41 @@ using System.Collections.Generic;
 
 namespace AquacultureFishing
 {
+    /// <summary>
+    /// Four stable fishing ranks owned by Aquaculture. This type has no framework
+    /// assembly dependency and is not itself a serialized value.
+    /// </summary>
+    public enum FishingRank
+    {
+        Novice = 0,
+        Adept = 1,
+        Expert = 2,
+        Master = 3
+    }
+
+    public static class FishingRankRules
+    {
+        // Legacy player settings persist 0/2/3/4, not the rank's ordinal.
+        public static FishingRank FromLegacySetting(int value)
+        {
+            if (value >= 4) return FishingRank.Master;
+            if (value == 3) return FishingRank.Expert;
+            if (value == 2) return FishingRank.Adept;
+            return FishingRank.Novice;
+        }
+
+        public static int LegacySettingForRank(FishingRank rank)
+        {
+            switch (rank)
+            {
+                case FishingRank.Master: return 4;
+                case FishingRank.Expert: return 3;
+                case FishingRank.Adept: return 2;
+                default: return 0;
+            }
+        }
+    }
+
     /// <summary>Pure compatibility and identity rules shared by the runtime adapter and executable tests.</summary>
     public static class AquacultureKnowledgeContract
     {

@@ -1093,8 +1093,34 @@ static class TraitBreedingRulesTests
             && !FrameworkIntegrationRules.IsFiniteNonNegative(-1f));
     }
 
+    private static void TestFishingRankContract()
+    {
+        Check("fishing rank ordinal stable",
+            (int)FishingRank.Novice == 0 && (int)FishingRank.Adept == 1 &&
+            (int)FishingRank.Expert == 2 && (int)FishingRank.Master == 3);
+        Check("native rank names retained",
+            Enum.GetNames<FishingRank>().SequenceEqual(new[] { "Novice", "Adept", "Expert", "Master" }));
+        Check("legacy novice settings preserved",
+            FishingRankRules.FromLegacySetting(-1) == FishingRank.Novice &&
+            FishingRankRules.FromLegacySetting(0) == FishingRank.Novice &&
+            FishingRankRules.FromLegacySetting(1) == FishingRank.Novice &&
+            FishingRankRules.LegacySettingForRank(FishingRank.Novice) == 0);
+        Check("legacy rank requirements preserved",
+            FishingRankRules.FromLegacySetting(2) == FishingRank.Adept &&
+            FishingRankRules.FromLegacySetting(3) == FishingRank.Expert &&
+            FishingRankRules.FromLegacySetting(4) == FishingRank.Master &&
+            FishingRankRules.FromLegacySetting(100) == FishingRank.Master &&
+            FishingRankRules.LegacySettingForRank(FishingRank.Adept) == 2 &&
+            FishingRankRules.LegacySettingForRank(FishingRank.Expert) == 3 &&
+            FishingRankRules.LegacySettingForRank(FishingRank.Master) == 4);
+        Check("invalid rank writes revert to legacy novice safely",
+            FishingRankRules.LegacySettingForRank((FishingRank)(-1)) == 0 &&
+            FishingRankRules.LegacySettingForRank((FishingRank)77) == 0);
+    }
+
     public static int Main()
     {
+        TestFishingRankContract();
         TestProbabilityBoundaries();
         TestParentalUnionAndCap();
         TestMutationsAndOutliers();

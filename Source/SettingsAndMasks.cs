@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using HarmonyLib;
-using KnowledgeFramework;
 using RimWorld;
 using UnityEngine;
 using Verse;
@@ -183,9 +182,9 @@ namespace AquacultureFishing
             return record;
         }
 
-        public KnowledgeRank MinimumExpertiseFor(ThingDef fishDef)
+        public FishingRank MinimumExpertiseFor(ThingDef fishDef)
         {
-            return GetFishExpertiseSetting(fishDef, false)?.minimumFishingExpertise ?? KnowledgeRank.Novice;
+            return GetFishExpertiseSetting(fishDef, false)?.minimumFishingExpertise ?? FishingRank.Novice;
         }
 
         public FishMaskRecord GetMask(string defName, bool create = true)

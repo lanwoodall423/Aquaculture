@@ -44,6 +44,16 @@ dotnet run --project DevTools/InsightCanvasUiTests.csproj --configuration Releas
 | Vanilla Fishing Expanded | Fishing patches are dynamically discovered from VFE and Odyssey job drivers, but VFE categories and texture paths occur in base Defs; there are no first-party explicitly categorized fish ThingDefs or proven independent natural-water catch job. | Add core-owned fish species, assets and a reliable native fishing path; keep VFE jobs, species, zones and fish packs as opt-in compatibility. |
 | Harmony | Core patches depend on it throughout. | Remains required in the initial standalone target. |
 
+AQ-DEP-03A narrows Knowledge Framework coupling without changing its player
+requirement. Aquaculture now owns the `FishingRank` model and legacy
+0/2/3/4 settings mapping; fishing progression, rods and settings no longer
+import the framework rank type. The original Knowledge Framework
+`KnowledgeRanks.ForExperience` and `KnowledgeRanks.Bonus` behavior remains
+inside the adapter, and the Knowledge Journal converts only when constructing
+the framework-owned browser model. This is a partial refactor: the main
+assembly still references the framework and cannot be loaded without it.
+Portable rank tests do not substitute for exact-build and save/load tests.
+
 Complete optionalization only after a build **without the four optional
 mods or their APIs**, a clean player package, a managed RimTest load, a
 fresh-colony fishing/stocking/breeding/harvest path, UI access, save/reload and

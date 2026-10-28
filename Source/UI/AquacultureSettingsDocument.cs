@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using InsightCanvas;
-using KnowledgeFramework;
 using RimWorld;
 using UnityEngine;
 using Verse;
@@ -15,8 +14,8 @@ namespace AquacultureFishing
     /// </summary>
     public sealed class AquacultureSettingsDocument
     {
-        private static readonly KnowledgeRank[] KnowledgeRanks = (KnowledgeRank[])Enum.GetValues(typeof(KnowledgeRank));
-        private static readonly string[] KnowledgeRankLabels = KnowledgeRanks.Select(rank => rank.ToString()).ToArray();
+        private static readonly FishingRank[] FishingRanks = (FishingRank[])Enum.GetValues(typeof(FishingRank));
+        private static readonly string[] FishingRankLabels = FishingRanks.Select(rank => rank.ToString()).ToArray();
 
         private readonly AquacultureSettings settings;
         private readonly Dictionary<string, ThingDef> fishDefinitions = new Dictionary<string, ThingDef>(StringComparer.Ordinal);
@@ -164,11 +163,11 @@ namespace AquacultureFishing
         {
             ThingDef definition = fishDefinitions[fish.DefName];
             InsightUiSelect select = InsightUi.Select(AquacultureUiStableIds.For("fishing.expertise", fish.DefName),
-                L("AquacultureFishing.SettingsExpertise"), KnowledgeRankLabels, RankIndex(settings.MinimumExpertiseFor(definition)));
+                L("AquacultureFishing.SettingsExpertise"), FishingRankLabels, RankIndex(settings.MinimumExpertiseFor(definition)));
             select.Bind(() => RankIndex(settings.MinimumExpertiseFor(definition)), index =>
             {
-                if (index < 0 || index >= KnowledgeRanks.Length) return;
-                Set(() => settings.GetFishExpertiseSetting(definition).minimumFishingExpertise = KnowledgeRanks[index]);
+                if (index < 0 || index >= FishingRanks.Length) return;
+                Set(() => settings.GetFishExpertiseSetting(definition).minimumFishingExpertise = FishingRanks[index]);
             });
             select.SetTooltip(L("AquacultureFishing.SettingsExpertiseTip"));
             return InsightUi.Row(AquacultureUiStableIds.For("fishing.row", fish.DefName))
@@ -418,9 +417,9 @@ namespace AquacultureFishing
             }
         }
 
-        private int RankIndex(KnowledgeRank rank)
+        private int RankIndex(FishingRank rank)
         {
-            int index = Array.IndexOf(KnowledgeRanks, rank);
+            int index = Array.IndexOf(FishingRanks, rank);
             return index < 0 ? 0 : index;
         }
 

@@ -262,14 +262,48 @@ namespace AquacultureFishing
             return KnowledgeQuery.Expertise(DomainId, pawn, ExpertiseTrackId).amount;
         }
 
-        public static KnowledgeRank ExpertiseRankFor(Pawn pawn)
+        // Rank arithmetic belongs to Aquaculture; the Knowledge Framework alone
+        // defines its installed threshold and bonus behavior until the adapter is isolated.
+        public static FishingRank RankForExperience(float experience, float adeptMin, float expertMin, float masterMin)
+        {
+            return FromKnowledgeRank(KnowledgeRanks.ForExperience(experience, adeptMin, expertMin, masterMin));
+        }
+
+        public static float TimeReductionForRank(FishingRank rank)
+        {
+            return KnowledgeRanks.Bonus(ToKnowledgeRank(rank), 0.10f);
+        }
+
+        public static KnowledgeRank ToKnowledgeRank(FishingRank rank)
+        {
+            switch (rank)
+            {
+                case FishingRank.Master: return KnowledgeRank.Master;
+                case FishingRank.Expert: return KnowledgeRank.Expert;
+                case FishingRank.Adept: return KnowledgeRank.Adept;
+                default: return KnowledgeRank.Novice;
+            }
+        }
+
+        private static FishingRank FromKnowledgeRank(KnowledgeRank rank)
+        {
+            switch (rank)
+            {
+                case KnowledgeRank.Master: return FishingRank.Master;
+                case KnowledgeRank.Expert: return FishingRank.Expert;
+                case KnowledgeRank.Adept: return FishingRank.Adept;
+                default: return FishingRank.Novice;
+            }
+        }
+
+        public static FishingRank ExpertiseRankFor(Pawn pawn)
         {
             if (!FrameworkReady)
             {
                 float legacy = FishingProgressionComponent.Current?.ProgressFor(pawn, false)?.expertiseExperience ?? 0f;
                 return FishingProgressionUtility.LevelFor(legacy);
             }
-            return KnowledgeQuery.Expertise(DomainId, pawn, ExpertiseTrackId).rank;
+            return FromKnowledgeRank(KnowledgeQuery.Expertise(DomainId, pawn, ExpertiseTrackId).rank);
         }
 
         public static float ExpertiseProgressFor(Pawn pawn)

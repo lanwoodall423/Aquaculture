@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using HarmonyLib;
-using KnowledgeFramework;
 using RimWorld;
 using UnityEngine;
 using Verse;
@@ -17,7 +16,7 @@ namespace AquacultureFishing
         public string fishDefName;
         private int minimumFishingExpertiseValue;
 
-        public KnowledgeRank minimumFishingExpertise
+        public FishingRank minimumFishingExpertise
         {
             get { return FishingProgressionUtility.RankFromLegacySetting(minimumFishingExpertiseValue); }
             set { minimumFishingExpertiseValue = FishingProgressionUtility.LegacySettingForRank(value); }
@@ -45,7 +44,7 @@ namespace AquacultureFishing
         public float expertiseExperience;
         public Dictionary<string, float> speciesKnowledge = new Dictionary<string, float>();
 
-        public KnowledgeRank ExpertiseLevel => AquacultureKnowledgeAdapter.ExpertiseRankFor(pawn);
+        public FishingRank ExpertiseLevel => AquacultureKnowledgeAdapter.ExpertiseRankFor(pawn);
         public float ExpertiseProgress => AquacultureKnowledgeAdapter.ExpertiseProgressFor(pawn);
 
         public float KnowledgeFor(ThingDef fishDef)
@@ -148,36 +147,26 @@ namespace AquacultureFishing
     {
         private static readonly float[] Thresholds = { 0f, 100f, 300f, 700f };
 
-        public static KnowledgeRank LevelFor(float experience)
+        public static FishingRank LevelFor(float experience)
         {
-            return KnowledgeRanks.ForExperience(experience, Thresholds[1], Thresholds[2], Thresholds[3]);
+            return AquacultureKnowledgeAdapter.RankForExperience(experience,
+                Thresholds[1], Thresholds[2], Thresholds[3]);
         }
 
         public static float ProgressFor(float experience)
         {
-            KnowledgeRank level = LevelFor(experience);
-            if (level == KnowledgeRank.Master) return 1f;
+            FishingRank level = LevelFor(experience);
+            if (level == FishingRank.Master) return 1f;
             int index = (int)level;
             return Mathf.InverseLerp(Thresholds[index], Thresholds[index + 1], experience);
         }
 
-        public static float TimeReduction(KnowledgeRank rank) => KnowledgeRanks.Bonus(rank, 0.10f);
+        public static float TimeReduction(FishingRank rank) =>
+            AquacultureKnowledgeAdapter.TimeReductionForRank(rank);
 
-        public static KnowledgeRank RankFromLegacySetting(int value)
-        {
-            if (value >= 4) return KnowledgeRank.Master;
-            if (value == 3) return KnowledgeRank.Expert;
-            if (value == 2) return KnowledgeRank.Adept;
-            return KnowledgeRank.Novice;
-        }
+        public static FishingRank RankFromLegacySetting(int value) => FishingRankRules.FromLegacySetting(value);
 
-        public static int LegacySettingForRank(KnowledgeRank rank)
-        {
-            if (rank == KnowledgeRank.Master) return 4;
-            if (rank == KnowledgeRank.Expert) return 3;
-            if (rank == KnowledgeRank.Adept) return 2;
-            return 0;
-        }
+        public static int LegacySettingForRank(FishingRank rank) => FishingRankRules.LegacySettingForRank(rank);
 
         public static int AnimalsSkill(Pawn pawn)
         {
@@ -189,7 +178,7 @@ namespace AquacultureFishing
             PawnFishingProgress progress = FishingProgressionComponent.Current?.ProgressFor(pawn, false);
             float animals = AnimalsSkill(pawn) / 20f;
             float knowledge = progress?.KnowledgeFor(fishDef) ?? 0f;
-            float expertise = (int)(progress?.ExpertiseLevel ?? KnowledgeRank.Novice) / 3f;
+            float expertise = (int)(progress?.ExpertiseLevel ?? FishingRank.Novice) / 3f;
             float baseEscape = Mathf.Clamp(0.55f - animals * 0.25f - knowledge * 0.20f - expertise * 0.15f, 0.05f, 0.80f);
             float catchFactor = FishingRodUtility.ActiveRod(pawn)?.CatchChanceFactor ?? 1f;
             return Mathf.Clamp01(1f - (1f - baseEscape) * catchFactor);
@@ -199,7 +188,7 @@ namespace AquacultureFishing
         {
             PawnFishingProgress progress = FishingProgressionComponent.Current?.ProgressFor(pawn, false);
             float knowledge = progress?.KnowledgeFor(fishDef) ?? 0f;
-            float expertise = (int)(progress?.ExpertiseLevel ?? KnowledgeRank.Novice) / 3f;
+            float expertise = (int)(progress?.ExpertiseLevel ?? FishingRank.Novice) / 3f;
             return Mathf.Clamp(0.82f + knowledge * 0.08f + expertise * 0.10f, 0.05f, 1f);
         }
     }
@@ -297,10 +286,10 @@ namespace AquacultureFishing
         private void DecideBite(FishingAttemptRecord attempt, IEnumerable<ThingDef> presentSpecies, Func<ThingDef, float> attraction)
         {
             if (attempt == null || attempt.biteDecided) return;
-            KnowledgeRank level = ProgressFor(attempt.pawn, false)?.ExpertiseLevel ?? KnowledgeRank.Novice;
+            FishingRank level = ProgressFor(attempt.pawn, false)?.ExpertiseLevel ?? FishingRank.Novice;
             NaturalFishPopulationMapComponent populations = attempt.pawn.Map.GetComponent<NaturalFishPopulationMapComponent>();
             List<ThingDef> eligible = presentSpecies?.Where(FishUtility.IsFish).Distinct()
-                .Where(fish => (AquacultureMod.Settings?.MinimumExpertiseFor(fish) ?? KnowledgeRank.Novice) <= level)
+                .Where(fish => (AquacultureMod.Settings?.MinimumExpertiseFor(fish) ?? FishingRank.Novice) <= level)
                 .Where(fish => populations?.Contains(attempt.waterCell, fish) == true)
                 .ToList() ?? new List<ThingDef>();
             ThingDef selected = eligible.Count == 0 ? null : eligible.RandomElementByWeight(fish => Mathf.Max(0.01f,
@@ -325,8 +314,8 @@ namespace AquacultureFishing
             if (attempt == null) return false;
             CompFishingRodTackle rod = FishingRodUtility.ActiveRod(pawn);
             bool allowed = rod != null && attempt.biteDecided && attempt.fishBit && stillAvailable?.Invoke(attempt) == true &&
-                (AquacultureMod.Settings?.MinimumExpertiseFor(attempt.FishDef) ?? KnowledgeRank.Novice) <=
-                (ProgressFor(pawn, false)?.ExpertiseLevel ?? KnowledgeRank.Novice);
+                (AquacultureMod.Settings?.MinimumExpertiseFor(attempt.FishDef) ?? FishingRank.Novice) <=
+                (ProgressFor(pawn, false)?.ExpertiseLevel ?? FishingRank.Novice);
             bool capacityPassed = allowed && attempt.HookedFishMass <= rod.MaxFishMass;
             bool caught = capacityPassed && !Rand.Chance(FishingProgressionUtility.EscapeChance(pawn, attempt.FishDef));
             if (!caught)
@@ -354,7 +343,7 @@ namespace AquacultureFishing
             float knowledge = progress.speciesKnowledge.TryGetValue(attempt.fishDefName, out float legacyKnowledge)
                 ? Mathf.Clamp01(legacyKnowledge) : 0f;
             progress.speciesKnowledge[attempt.fishDefName] = Mathf.Clamp01(knowledge + 0.08f + (1f - knowledge) * 0.04f);
-            KnowledgeRank required = AquacultureMod.Settings?.MinimumExpertiseFor(attempt.FishDef) ?? KnowledgeRank.Novice;
+            FishingRank required = AquacultureMod.Settings?.MinimumExpertiseFor(attempt.FishDef) ?? FishingRank.Novice;
             progress.expertiseExperience += 8f + (int)required * 2f + (1f - knowledge) * 4f;
             attempts.Remove(attempt);
             AquacultureEventRouter.FishCaught(attempt);

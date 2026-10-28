@@ -39,6 +39,7 @@ namespace AquacultureFishing.Tests
             TestPrompt2Contracts(root);
             TestMetadataAndBuildContract(root);
             TestStandaloneDependencyInventory(root);
+            TestNativeFishingRankBoundary(root);
             TestConditionalDeferredRealityPackageContract(root);
             TestSerializedSettingsContract(root);
             TestPresentationContract(root);
@@ -518,6 +519,45 @@ namespace AquacultureFishing.Tests
             Check(!Directory.GetFiles(uiRoot, "*.cs", SearchOption.AllDirectories)
                 .Select(File.ReadAllText).Any(text => text.Contains("GUI.skin")),
                 "new UI source does not mutate GUI.skin");
+        }
+
+        private static void TestNativeFishingRankBoundary(string root)
+        {
+            string[] owners = {
+                "Source/FishingExpertise.cs", "Source/FishingRods.cs",
+                "Source/SettingsAndMasks.cs", "Source/UI/AquacultureSettingsDocument.cs"
+            };
+            foreach (string relative in owners)
+            {
+                string source = File.ReadAllText(Path.Combine(root, relative.Replace('/', Path.DirectorySeparatorChar)));
+                Check(!Regex.IsMatch(source, @"\busing\s+KnowledgeFramework\s*;") &&
+                    !Regex.IsMatch(source, @"\bKnowledgeRank\b") &&
+                    !source.Contains("KnowledgeRanks."),
+                    "AQ-DEP-03A native fishing and settings code has no framework rank references: " + relative);
+            }
+            string contract = File.ReadAllText(Path.Combine(root, "Source", "AquacultureKnowledgeContract.cs"));
+            string progression = File.ReadAllText(Path.Combine(root, "Source", "FishingExpertise.cs"));
+            string adapter = File.ReadAllText(Path.Combine(root, "Source", "AquacultureKnowledgeAdapter.cs"));
+            string journal = File.ReadAllText(Path.Combine(root, "Source", "AquacultureJournal.cs"));
+            Check(contract.Contains("public enum FishingRank") &&
+                contract.Contains("public static class FishingRankRules") &&
+                !contract.Contains("using KnowledgeFramework;"),
+                "native fishing ranks are declared in a portable contract");
+            Check(progression.Contains("\"minimumFishingExpertise\"") &&
+                progression.Contains("\"expertiseExperience\"") &&
+                progression.Contains("\"speciesKnowledge\"") &&
+                progression.Contains("FishingRankRules.FromLegacySetting(value)") &&
+                progression.Contains("FishingRankRules.LegacySettingForRank(rank)"),
+                "existing serialized progression and legacy setting mapping remain in Aquaculture");
+            Check(adapter.Contains("KnowledgeRanks.ForExperience(") &&
+                adapter.Contains("KnowledgeRanks.Bonus(") &&
+                adapter.Contains("private static FishingRank FromKnowledgeRank(") &&
+                adapter.Contains("public static KnowledgeRank ToKnowledgeRank(") &&
+                adapter.Contains("KnowledgeQuery.Expertise("),
+                "original framework rank calculation and expertise projection remain within the adapter");
+            Check(journal.Contains("KnowledgeMenuUI.Draw(") &&
+                journal.Contains("AquacultureKnowledgeAdapter.ToKnowledgeRank("),
+                "canonical Knowledge Journal keeps the framework rank conversion at its UI boundary");
         }
 
         private static void TestStandaloneDependencyInventory(string root)

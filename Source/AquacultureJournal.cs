@@ -697,7 +697,7 @@ namespace AquacultureFishing
         private KnowledgeMenuModel FishingKnowledgeModel(List<PawnFishingProgress> records, Pawn pawn, bool colony)
         {
             PawnFishingProgress personal = colony ? null : records.FirstOrDefault();
-            KnowledgeRank level = personal?.ExpertiseLevel ?? KnowledgeRank.Novice;
+            FishingRank level = personal?.ExpertiseLevel ?? FishingRank.Novice;
             var section = new KnowledgeMenuSection
             {
                 id = "fish",
@@ -707,13 +707,13 @@ namespace AquacultureFishing
             foreach (ThingDef fishDef in DefDatabase<ThingDef>.AllDefs.Where(FishUtility.IsFish))
             {
                 float knowledge = Mathf.Clamp01(records.Sum(record => record.KnowledgeFor(fishDef)));
-                KnowledgeRank required = AquacultureMod.Settings?.MinimumExpertiseFor(fishDef) ?? KnowledgeRank.Novice;
+                FishingRank required = AquacultureMod.Settings?.MinimumExpertiseFor(fishDef) ?? FishingRank.Novice;
                 bool locked = !colony && required > level;
                 section.rows.Add(new KnowledgeMenuRow
                 {
                     label = fishDef.LabelCap,
                     iconDef = fishDef,
-                    rank = FishingProgressionUtility.LevelFor(knowledge * 700f),
+                    rank = AquacultureKnowledgeAdapter.ToKnowledgeRank(FishingProgressionUtility.LevelFor(knowledge * 700f)),
                     progress = knowledge,
                     status = locked ? "Locked - requires " + required : "Available",
                     tooltip = fishDef.LabelCap + "\n\n" + (locked ? "Requires " + required + " fishing expertise." : "Available to catch.") +
@@ -732,13 +732,14 @@ namespace AquacultureFishing
             {
                 title = (pawn?.LabelShortCap ?? "Colonist") + " - Fishing",
                 expertiseLabel = "Fishing expertise",
-                expertiseRank = level,
+                expertiseRank = AquacultureKnowledgeAdapter.ToKnowledgeRank(level),
                 expertiseProgress = personal?.ExpertiseProgress ?? 0f,
                 sections = new List<KnowledgeMenuSection> { section }
             };
         }
 
         private static KnowledgeRank ExpertiseFor(Pawn pawn) =>
-            FishingProgressionComponent.Current?.ProgressFor(pawn, false)?.ExpertiseLevel ?? KnowledgeRank.Novice;
+            AquacultureKnowledgeAdapter.ToKnowledgeRank(
+                FishingProgressionComponent.Current?.ProgressFor(pawn, false)?.ExpertiseLevel ?? FishingRank.Novice);
     }
 }

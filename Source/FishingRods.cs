@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using KnowledgeFramework;
 using RimWorld;
 using UnityEngine;
 using Verse;
@@ -381,7 +380,7 @@ namespace AquacultureFishing
 
         public static float ExpertiseFactor(Pawn pawn)
         {
-            KnowledgeRank level = FishingProgressionComponent.Current?.ProgressFor(pawn, false)?.ExpertiseLevel ?? KnowledgeRank.Novice;
+            FishingRank level = FishingProgressionComponent.Current?.ProgressFor(pawn, false)?.ExpertiseLevel ?? FishingRank.Novice;
             return 1f - FishingProgressionUtility.TimeReduction(level);
         }
 
