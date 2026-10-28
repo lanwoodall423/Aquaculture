@@ -41,6 +41,7 @@ namespace AquacultureFishing.Tests
             TestStandaloneDependencyInventory(root);
             TestNativeFishingRankBoundary(root);
             TestKnowledgeJournalAdapterBoundary(root);
+            TestNativeJournalExpertiseFallback(root);
             TestNativeKnowledgeFallbackBoundary(root);
             TestNativeColonyKnowledgeBoundary(root);
             TestConditionalDeferredRealityPackageContract(root);
@@ -618,6 +619,55 @@ namespace AquacultureFishing.Tests
                 .OrderBy(path => path, StringComparer.Ordinal).ToArray();
             Check(imports.SequenceEqual(new[] { "Source/AquacultureKnowledgeAdapter.cs" }),
                 "only the existing isolated adapter source imports KnowledgeFramework");
+        }
+
+        private static void TestNativeJournalExpertiseFallback(string root)
+        {
+            string journal = File.ReadAllText(Path.Combine(root, "Source", "AquacultureJournal.cs"));
+            string adapter = File.ReadAllText(Path.Combine(root, "Source", "AquacultureKnowledgeAdapter.cs"));
+            string progress = File.ReadAllText(Path.Combine(root, "Source", "FishingExpertise.cs"));
+
+            Check(journal.Contains("private readonly NativeExpertiseMenu nativeExpertiseMenu = new NativeExpertiseMenu();") &&
+                journal.Contains("journal.nativeExpertiseMenu.SelectPawn(pawn);") &&
+                journal.Contains("nativeExpertiseMenu.ClearSelection();") &&
+                journal.Contains("if (AquacultureKnowledgeAdapter.IsFrameworkReady)") &&
+                journal.Contains("expertiseMenu.Draw(knowledgeRect);") &&
+                journal.Contains("nativeExpertiseMenu.Draw(knowledgeRect);") &&
+                adapter.Contains("KnowledgeMenuUI.Draw(bounds, state, ExpertiseModelFor, ExpertiseFor);"),
+                "native Journal mode is selected only when framework V3 is unready; canonical UI stays intact");
+
+            int start = journal.IndexOf("private sealed class NativeExpertiseMenu", StringComparison.Ordinal);
+            int end = start < 0 ? -1 : journal.IndexOf("public override void PostClose()", start, StringComparison.Ordinal);
+            string native = start >= 0 && end > start ? journal.Substring(start, end - start) : string.Empty;
+            Check(native.Contains("private Pawn selectedPawn;") &&
+                native.Contains("private bool colonyScope = true;") &&
+                native.Contains("private Vector2 scrollPosition;") &&
+                native.Contains("void SelectPawn(Pawn pawn)") &&
+                native.Contains("void ClearSelection()") &&
+                native.Contains("ChooseAngler(playerRecords)") &&
+                native.Contains("Find.WindowStack.Add(new FloatMenu(options))"),
+                "native expertise state, angler switching and scroll remain window-scoped");
+            Check(native.Contains("record?.pawn?.Faction?.def?.isPlayer == true") &&
+                native.Contains("selectedPawn?.Faction?.def?.isPlayer != true") &&
+                native.Contains("NativeFishingKnowledgeRules.ColonySpeciesKnowledge(") &&
+                native.Contains("NativeFishingKnowledgeRules.SpeciesKnowledge("),
+                "native knowledge is limited to player-faction legacy records");
+            Check(native.Contains("NativeFishingKnowledgeRules.Experience(") &&
+                native.Contains("NativeFishingKnowledgeRules.RankForExperience(") &&
+                native.Contains("NativeFishingKnowledgeRules.ProgressForExperience(") &&
+                native.Contains("knowledge > 0f && (colonyScope || rank >= required)") &&
+                native.Contains("Widgets.BeginScrollView(") &&
+                native.Contains("Widgets.EndScrollView()"),
+                "native display handles rank/progress and hides unknown or expertise-locked species");
+            Check(!native.Contains("KnowledgeQuery.") &&
+                !native.Contains("KnowledgeMenuUI") &&
+                !native.Contains("KnowledgeFramework.") &&
+                !native.Contains("?.KnowledgeFor(") &&
+                !native.Contains("?.ExpertiseLevel") &&
+                !Regex.IsMatch(journal, @"(?m)^\s*using\s+KnowledgeFramework\s*;") &&
+                progress.Contains("\"expertiseExperience\"") &&
+                progress.Contains("\"speciesKnowledge\""),
+                "native Journal does not call framework-owned APIs or change saved progress contracts");
         }
 
         private static void TestNativeKnowledgeFallbackBoundary(string root)

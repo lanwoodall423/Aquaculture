@@ -593,6 +593,7 @@ namespace AquacultureFishing
         private string selectedSpecies;
         private readonly AquacultureKnowledgeAdapter.ExpertiseMenu expertiseMenu =
             new AquacultureKnowledgeAdapter.ExpertiseMenu();
+        private readonly NativeExpertiseMenu nativeExpertiseMenu = new NativeExpertiseMenu();
         private AquacultureJournalWorkspaceDocument insightWorkspaceDocument;
 
         public override Vector2 InitialSize => new Vector2(Mathf.Min(1180f, UI.screenWidth * 0.96f), Mathf.Min(720f, UI.screenHeight * 0.90f));
@@ -609,6 +610,7 @@ namespace AquacultureFishing
                 journal.insightWorkspaceDocument?.PostClose();
                 journal.insightWorkspaceDocument = null;
                 journal.expertiseMenu.SelectPawn(pawn);
+                journal.nativeExpertiseMenu.SelectPawn(pawn);
             }
         }
 
@@ -664,11 +666,138 @@ namespace AquacultureFishing
             {
                 page = JournalPage.Species;
                 expertiseMenu.ClearSelection();
+                nativeExpertiseMenu.ClearSelection();
                 return;
             }
             Rect knowledgeRect = new Rect(inRect.x, inRect.y + navigationHeight + 8f, inRect.width,
                 Mathf.Max(0f, inRect.height - navigationHeight - 8f));
-            expertiseMenu.Draw(knowledgeRect);
+            if (AquacultureKnowledgeAdapter.IsFrameworkReady)
+                expertiseMenu.Draw(knowledgeRect);
+            else
+                nativeExpertiseMenu.Draw(knowledgeRect);
+        }
+
+        /// <summary>
+        /// Read-only RimWorld-native expertise view used only when Knowledge V3
+        /// is not ready. It reads legacy Aquaculture records directly and
+        /// deliberately hides unidentified or expertise-locked species.
+        /// </summary>
+        private sealed class NativeExpertiseMenu
+        {
+            private Pawn selectedPawn;
+            private bool colonyScope = true;
+            private Vector2 scrollPosition;
+
+            public void SelectPawn(Pawn pawn)
+            {
+                selectedPawn = pawn?.Faction?.def?.isPlayer == true ? pawn : null;
+                colonyScope = selectedPawn == null;
+                scrollPosition = Vector2.zero;
+            }
+
+            public void ClearSelection()
+            {
+                selectedPawn = null;
+                colonyScope = true;
+                scrollPosition = Vector2.zero;
+            }
+
+            private void ChooseAngler(List<PawnFishingProgress> records)
+            {
+                List<Pawn> pawns = records.Select(record => record.pawn).Distinct()
+                    .OrderBy(pawn => pawn.LabelShortCap.ToString()).ToList();
+                if (selectedPawn?.Faction?.def?.isPlayer == true && !pawns.Contains(selectedPawn))
+                    pawns.Insert(0, selectedPawn);
+                List<FloatMenuOption> options = pawns
+                    .Select(pawn => new FloatMenuOption(pawn.LabelShortCap.ToString(), () => SelectPawn(pawn)))
+                    .ToList();
+                if (options.Count > 0) Find.WindowStack.Add(new FloatMenu(options));
+            }
+
+            public void Draw(Rect rect)
+            {
+                List<PawnFishingProgress> playerRecords = FishingProgressionComponent.Current?.PawnProgress
+                    .Where(record => record?.pawn?.Faction?.def?.isPlayer == true).ToList()
+                    ?? new List<PawnFishingProgress>();
+
+                // A pawn changing factions must not expose its saved knowledge.
+                if (!colonyScope && selectedPawn?.Faction?.def?.isPlayer != true)
+                    ClearSelection();
+
+                const float buttonHeight = 30f;
+                Rect colonyButton = new Rect(rect.x, rect.y, Mathf.Min(172f, rect.width * 0.45f), buttonHeight);
+                Rect anglerButton = new Rect(colonyButton.xMax + 8f, rect.y,
+                    Mathf.Max(0f, Mathf.Min(290f, rect.xMax - colonyButton.xMax - 8f)), buttonHeight);
+                if (Widgets.ButtonText(colonyButton, colonyScope ? "Colony knowledge (selected)" : "Colony knowledge"))
+                {
+                    colonyScope = true;
+                    selectedPawn = null;
+                    scrollPosition = Vector2.zero;
+                }
+                if (anglerButton.width > 0f && Widgets.ButtonText(anglerButton,
+                    colonyScope ? "Choose angler" : "Angler: " + selectedPawn.LabelShortCap))
+                    ChooseAngler(playerRecords);
+
+                PawnFishingProgress personal = colonyScope ? null :
+                    FishingProgressionComponent.Current?.ProgressFor(selectedPawn, false);
+                float experience = NativeFishingKnowledgeRules.Experience(personal?.expertiseExperience ?? 0f);
+                FishingRank rank = NativeFishingKnowledgeRules.RankForExperience(experience);
+                float rankProgress = NativeFishingKnowledgeRules.ProgressForExperience(experience);
+
+                float summaryY = rect.y + buttonHeight + 10f;
+                Widgets.Label(new Rect(rect.x, summaryY, rect.width, 28f),
+                    colonyScope ? "Colony fishing knowledge - recorded player anglers" :
+                    selectedPawn.LabelShortCap + " - Fishing expertise: " + rank + " (" + experience.ToString("0") + " XP)");
+                if (!colonyScope)
+                    Widgets.FillableBar(new Rect(rect.x, summaryY + 28f, Mathf.Min(320f, rect.width), 12f),
+                        rankProgress);
+
+                float listY = summaryY + (colonyScope ? 38f : 50f);
+                Rect scrollRect = new Rect(rect.x, listY, rect.width, Mathf.Max(0f, rect.yMax - listY));
+                if (scrollRect.height <= 0f) return;
+
+                // Never read the framework's query API in native mode, including
+                // through PawnFishingProgress.KnowledgeFor or ExpertiseLevel.
+                List<ThingDef> identified = DefDatabase<ThingDef>.AllDefsListForReading
+                    .Where(FishUtility.IsFish)
+                    .Where(fish =>
+                    {
+                        float knowledge = KnowledgeFor(fish, playerRecords, personal);
+                        FishingRank required = AquacultureMod.Settings?.MinimumExpertiseFor(fish) ?? FishingRank.Novice;
+                        return knowledge > 0f && (colonyScope || rank >= required);
+                    })
+                    .OrderBy(fish => fish.label).ThenBy(fish => fish.defName).ToList();
+
+                const float rowHeight = 31f;
+                float viewHeight = Mathf.Max(scrollRect.height, identified.Count * rowHeight + 30f);
+                Rect viewRect = new Rect(0f, 0f, Mathf.Max(0f, scrollRect.width - 18f), viewHeight);
+                Widgets.BeginScrollView(scrollRect, ref scrollPosition, viewRect);
+                if (identified.Count == 0)
+                    Widgets.Label(new Rect(0f, 0f, viewRect.width, 28f),
+                        "No identified fish species are available for this view.");
+                for (int i = 0; i < identified.Count; i++)
+                {
+                    ThingDef fish = identified[i];
+                    float amount = KnowledgeFor(fish, playerRecords, personal);
+                    float y = i * rowHeight;
+                    Widgets.Label(new Rect(4f, y, Mathf.Max(0f, viewRect.width - 185f), 27f), fish.LabelCap);
+                    Widgets.FillableBar(new Rect(Mathf.Max(0f, viewRect.width - 172f), y + 3f, 104f, 17f),
+                        amount);
+                    Widgets.Label(new Rect(Mathf.Max(0f, viewRect.width - 61f), y, 60f, 27f),
+                        amount.ToStringPercent());
+                }
+                Widgets.EndScrollView();
+            }
+
+            private float KnowledgeFor(ThingDef fish, List<PawnFishingProgress> records,
+                PawnFishingProgress personal)
+            {
+                if (colonyScope)
+                    return NativeFishingKnowledgeRules.ColonySpeciesKnowledge(records, fish?.defName,
+                        record => record?.pawn?.Faction?.def?.isPlayer == true,
+                        record => record?.speciesKnowledge);
+                return NativeFishingKnowledgeRules.SpeciesKnowledge(personal?.speciesKnowledge, fish?.defName);
+            }
         }
 
         public override void PostClose()

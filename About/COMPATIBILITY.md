@@ -88,6 +88,19 @@ the adapter remains in the core assembly and its Knowledge Framework DLL
 is still required. Portable UI contracts verify the boundary, not a live
 RimWorld render or a dependency-free build.
 
+AQ-DEP-03C2 adds a **read-only native RimWorld expertise page** for the
+Aquaculture Journal when Knowledge V3 is unready. It shows recorded
+player-faction anglers or colony discovery from the legacy progress save,
+using the existing native rank and knowledge projections. Undiscovered fish
+and personal species locked by the selected angler's minimum expertise remain
+hidden. The original Knowledge Framework browser remains unchanged and is
+used whenever registered and ready. Both views retain independent
+window-local selection and reset it on Back. No new knowledge database,
+serialized keys, observations or migration markers were introduced.
+Because the core still compiles against `KnowledgeFramework.dll`,
+this is a native UI **fallback**, not a dependency-free player package;
+live UI/save qualification is still required.
+
 Complete optionalization only after a build **without the four optional
 mods or their APIs**, a clean player package, a managed RimTest load, a
 fresh-colony fishing/stocking/breeding/harvest path, UI access, save/reload and
