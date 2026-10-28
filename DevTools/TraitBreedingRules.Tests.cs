@@ -358,6 +358,31 @@ static class TraitBreedingRulesTests
             PondWatcherTimingRules.PruneDueTick(int.MinValue) == int.MinValue + 250);
     }
 
+    private static void TestKnowledgeRegistrationTiming()
+    {
+        Check("ordinary Knowledge Framework retry remains scheduled after 60 ticks",
+            KnowledgeRegistrationTimingRules.NextRetryTick(0) == 60 &&
+            KnowledgeRegistrationTimingRules.NextRetryTick(100) == 160 &&
+            KnowledgeRegistrationTimingRules.NextRetryTick(60000) == 60060);
+        Check("registration retry gate skips ticks before the normal deadline",
+            159 < KnowledgeRegistrationTimingRules.NextRetryTick(100) &&
+            !(160 < KnowledgeRegistrationTimingRules.NextRetryTick(100)));
+        Check("latest representable 60-tick retry remains exact",
+            KnowledgeRegistrationTimingRules.NextRetryTick(int.MaxValue - 60) == int.MaxValue &&
+            KnowledgeRegistrationTimingRules.NextRetryTick(int.MaxValue - 61) == int.MaxValue - 1);
+        Check("registration retry must not wrap negative 50 ticks before int ceiling",
+            KnowledgeRegistrationTimingRules.NextRetryTick(int.MaxValue - 50) == int.MaxValue);
+        Check("registration retry must not wrap negative one tick before int ceiling",
+            KnowledgeRegistrationTimingRules.NextRetryTick(int.MaxValue - 1) == int.MaxValue);
+        Check("registration retry at maximum representable game tick remains bounded",
+            KnowledgeRegistrationTimingRules.NextRetryTick(int.MaxValue) == int.MaxValue);
+        Check("registration gate still defers a near-ceiling retry until last representable tick",
+            int.MaxValue - 49 < KnowledgeRegistrationTimingRules.NextRetryTick(int.MaxValue - 50));
+        Check("negative stored game ticks preserve representable retry intervals",
+            KnowledgeRegistrationTimingRules.NextRetryTick(int.MinValue) == int.MinValue + 60 &&
+            KnowledgeRegistrationTimingRules.NextRetryTick(-100) == -40);
+    }
+
     private static void TestFishSchoolTiming()
     {
         Check("normal school update cadence remains unchanged",
@@ -1103,6 +1128,7 @@ static class TraitBreedingRulesTests
         TestPondEcologyTiming();
         TestPondEffectTiming();
         TestPondWatcherTiming();
+        TestKnowledgeRegistrationTiming();
         TestFishSchoolTiming();
         TestRecoveryRules();
         TestCommissionRules();

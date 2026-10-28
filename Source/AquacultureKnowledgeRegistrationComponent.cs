@@ -25,7 +25,7 @@ namespace AquacultureFishing
             if (Current.Game == null) return;
             int now = Find.TickManager?.TicksGame ?? 0;
             if (now < nextAttemptTick) return;
-            nextAttemptTick = now + 60;
+            nextAttemptTick = KnowledgeRegistrationTimingRules.NextRetryTick(now);
             AquacultureKnowledgeAdapter.EnsureRegistration();
         }
     }

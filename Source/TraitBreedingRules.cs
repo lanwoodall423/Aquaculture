@@ -310,6 +310,17 @@ namespace AquacultureFishing
         public static int PruneDueTick(int now) => FishAgeTimingRules.ScheduleAfterTicks(now, 250);
     }
 
+    /// <summary>Pure retry timing for late Knowledge Framework registration.</summary>
+    public static class KnowledgeRegistrationTimingRules
+    {
+        public static int NextRetryTick(int now)
+        {
+            // Preserve 60-tick retries while preventing signed overflow near the
+            // game-tick ceiling from making registration retry on every game tick.
+            return FishAgeTimingRules.ScheduleAfterTicks(now, 60);
+        }
+    }
+
     /// <summary>Pure timing contract for the managed pond ecology simulation.</summary>
     public static class PondEcologyTimingRules
     {
