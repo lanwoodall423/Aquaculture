@@ -146,3 +146,22 @@ dotnet build Source\DeferredRealityProvider\DeferredReality.Aquaculture.csproj -
 beside the provider DLL containing the provider ID, source commit, SHA256,
 semantic API contract, schema, capabilities, DRF save schema, and retention
 policy. The manifest and DLL must be treated as one release artifact.
+
+### AQ-DEP-02 conditional assembly layout
+
+The provider is now built under `1.6/DeferredReality/Assemblies/`; the
+RimWorld 1.6 `LoadFolders.xml` enables that folder only when package
+`lan.deferredreality.framework` is active. `AquacultureFishing.dll` stays in
+`1.6/Assemblies/`. The player-package generator copies the provider only
+from the new folder, as an SHA256-verified DLL/manifest pair, while the
+RimLiaison runtime-package exclude list suppresses old provider files under
+the normal core Assemblies path. The legacy tracked binaries in the original
+source folder have **not** been removed in this task; direct installs of the
+raw repository folder are therefore not yet qualified without a separate
+controlled binary relocation/removal and a clean load-folder test.
+
+This is an **isolation step**, not a dependency-status change: `About.xml`
+still requires DRF, Knowledge Framework, Insight Canvas and VFE. DRF absent,
+DRF present, save/reload, existing DRF save markers, and restored-provider
+scenarios require separate RimLiaison-owned exact-artifact validation before
+DRF becomes optional in player metadata.

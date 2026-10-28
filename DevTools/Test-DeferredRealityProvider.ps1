@@ -4,8 +4,8 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$assembly = Join-Path $RepositoryRoot '1.6\Assemblies\DeferredReality.Aquaculture.dll'
-$manifestPath = Join-Path $RepositoryRoot '1.6\Assemblies\DeferredReality.Aquaculture.manifest.json'
+$assembly = Join-Path $RepositoryRoot '1.6\DeferredReality\Assemblies\DeferredReality.Aquaculture.dll'
+$manifestPath = Join-Path $RepositoryRoot '1.6\DeferredReality\Assemblies\DeferredReality.Aquaculture.manifest.json'
 if (-not (Test-Path -LiteralPath $assembly)) { throw "Provider DLL is missing: $assembly" }
 if (-not (Test-Path -LiteralPath $manifestPath)) { throw "Provider manifest is missing: $manifestPath" }
 

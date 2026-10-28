@@ -18,7 +18,7 @@
     <DeferredRealityAssembly Condition="'$(DeferredRealityAssembly)' == ''">$(DeferredRealityRoot)\1.6\Assemblies\DeferredRealityFramework.dll</DeferredRealityAssembly>
     <HarmonyPath Condition="'$(HarmonyPath)' == '' and '$(DEFERRED_REALITY_HARMONY_PATH)' != '' and Exists('$(DEFERRED_REALITY_HARMONY_PATH)')">$(DEFERRED_REALITY_HARMONY_PATH)</HarmonyPath>
     <HarmonyPath Condition="'$(HarmonyPath)' == ''">$(RimWorldManagedPath)\0Harmony.dll</HarmonyPath>
-    <OutputPath>$(AquacultureRoot)\1.6\Assemblies\</OutputPath>
+    <OutputPath>$(AquacultureRoot)\1.6\DeferredReality\Assemblies\</OutputPath>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="DeferredRealityAquacultureProvider.cs" />

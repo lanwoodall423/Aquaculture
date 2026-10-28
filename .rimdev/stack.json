@@ -27,6 +27,8 @@
       "Source/**",
       "DevTools/**",
       "TestCatalog/**",
+      "1.6/Assemblies/DeferredReality.Aquaculture.dll",
+      "1.6/Assemblies/DeferredReality.Aquaculture.manifest.json",
       "bin/**",
       "obj/**"
     ]

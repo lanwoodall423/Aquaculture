@@ -11,8 +11,8 @@ param(
 
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $project = Join-Path $repositoryRoot 'Source\DeferredRealityProvider\DeferredReality.Aquaculture.csproj'
-$assembly = Join-Path $repositoryRoot '1.6\Assemblies\DeferredReality.Aquaculture.dll'
-$manifest = Join-Path $repositoryRoot '1.6\Assemblies\DeferredReality.Aquaculture.manifest.json'
+$assembly = Join-Path $repositoryRoot '1.6\DeferredReality\Assemblies\DeferredReality.Aquaculture.dll'
+$manifest = Join-Path $repositoryRoot '1.6\DeferredReality\Assemblies\DeferredReality.Aquaculture.manifest.json'
 
 if (-not (Test-Path -LiteralPath $project)) { throw "Provider project not found: $project" }
 if (-not (Test-Path -LiteralPath $HarmonyPath)) { throw "Harmony assembly not found: $HarmonyPath" }

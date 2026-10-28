@@ -39,6 +39,7 @@ namespace AquacultureFishing.Tests
             TestPrompt2Contracts(root);
             TestMetadataAndBuildContract(root);
             TestStandaloneDependencyInventory(root);
+            TestConditionalDeferredRealityPackageContract(root);
             TestSerializedSettingsContract(root);
             TestPresentationContract(root);
             Console.WriteLine(failures == 0 ? "Insight Canvas UI tests: PASS" : "Insight Canvas UI tests: FAIL (" + failures + ")");
@@ -605,6 +606,11 @@ namespace AquacultureFishing.Tests
             if (separateDrfProvider && providerReferencesDrf &&
                 providerUsesPlayerAssemblyDirectory && packageIncludesVersionedAssemblies)
                 blockers.Add("separate DRF provider outputs into a player-packaged assembly folder");
+            bool legacyProviderArtifact = File.Exists(Path.Combine(root, "1.6", "Assemblies",
+                "DeferredReality.Aquaculture.dll")) || File.Exists(Path.Combine(root, "1.6", "Assemblies",
+                "DeferredReality.Aquaculture.manifest.json"));
+            if (legacyProviderArtifact)
+                blockers.Add("legacy provider artifact still exists in the source-tree core Assemblies directory");
 
             Console.WriteLine("AQ-DEP-01 static dependency audit (not runtime/release qualification)");
             Console.WriteLine("  Required mod packages: " + string.Join(", ", requiredPackages));
@@ -617,8 +623,9 @@ namespace AquacultureFishing.Tests
                 explicitAquacultureFishDefs);
             Console.WriteLine("  DRF provider excluded from core: " + separateDrfProvider +
                 "; DRF reference: " + providerReferencesDrf +
-                "; shared package assembly path: " +
-                (providerUsesPlayerAssemblyDirectory && packageIncludesVersionedAssemblies));
+                "; build outputs in core package folder: " +
+                (providerUsesPlayerAssemblyDirectory && packageIncludesVersionedAssemblies) +
+                "; legacy source artifact: " + legacyProviderArtifact);
             foreach (string blocker in blockers)
                 Console.WriteLine("  BLOCKER: " + blocker);
             Console.WriteLine("  Standalone readiness: " +
@@ -647,6 +654,73 @@ namespace AquacultureFishing.Tests
             string[] names = paths.Select(path => Path.GetRelativePath(root, path).Replace('\\', '/'))
                 .OrderBy(name => name, StringComparer.Ordinal).ToArray();
             return names.Length == 0 ? "none" : string.Join(", ", names);
+        }
+
+        private static void TestConditionalDeferredRealityPackageContract(string root)
+        {
+            XDocument folders = XDocument.Load(Path.Combine(root, "LoadFolders.xml"));
+            XElement version = folders.Root?.Element("v1.6");
+            XElement conditional = version?.Elements("li").SingleOrDefault(element =>
+                element.Value.Trim() == "1.6/DeferredReality");
+            Check(version?.Elements("li").Any(element => element.Value.Trim() == "1.6" &&
+                !element.HasAttributes) == true, "core load folder remains unconditional");
+            Check(conditional != null &&
+                (string)conditional.Attribute("IfModActive") == "lan.deferredreality.framework" &&
+                conditional.Attributes().Count() == 1,
+                "optional provider folder is gated exclusively by Deferred Reality activation");
+
+            XDocument provider = XDocument.Load(Path.Combine(root, "Source", "DeferredRealityProvider",
+                "DeferredReality.Aquaculture.csproj"));
+            string providerOutput = provider.Descendants()
+                .FirstOrDefault(element => element.Name.LocalName == "OutputPath")?.Value
+                .Replace('\\', '/') ?? string.Empty;
+            Check(providerOutput.Contains("1.6/DeferredReality/Assemblies/") &&
+                !providerOutput.Contains("1.6/Assemblies/"),
+                "provider output cannot overwrite the ordinary core Assemblies directory");
+
+            string builder = File.ReadAllText(Path.Combine(root, "DevTools", "Build-DeferredRealityProvider.ps1"));
+            string verifier = File.ReadAllText(Path.Combine(root, "DevTools", "Test-DeferredRealityProvider.ps1"));
+            const string folder = @"1.6\DeferredReality\Assemblies\DeferredReality.Aquaculture.";
+            Check(builder.Contains(folder + "dll") && builder.Contains(folder + "manifest.json") &&
+                verifier.Contains(folder + "dll") && verifier.Contains(folder + "manifest.json"),
+                "provider manifest generation and verification agree on conditional folder");
+
+            string packager = File.ReadAllText(Path.Combine(root, "DevTools", "New-PlayerPackage.ps1"));
+            string packageVerifier = File.ReadAllText(Path.Combine(root, "DevTools", "Test-PlayerPackage.ps1"));
+            Check(packager.Contains("Copy-Item -LiteralPath $sourceAssembly") &&
+                packager.Contains("$providerRelative = '1.6\\DeferredReality\\Assemblies'") &&
+                !packager.Contains("foreach ($name in @('AquacultureFishing.dll', 'DeferredReality.Aquaculture.dll'"),
+                "player package copies only the core DLL into unconditional Assemblies");
+            Check(packager.Contains("$hasProviderAssembly -ne $hasProviderManifest") &&
+                packager.Contains("Get-FileHash -LiteralPath $providerAssembly") &&
+                packager.Contains("IfModActive") &&
+                packager.Contains("Copy-Item -LiteralPath $providerManifest"),
+                "optional provider packaging requires a verified paired assembly and manifest");
+            Check(packageVerifier.Contains("Unconditional Assemblies folder must contain only AquacultureFishing.dll.") &&
+                packageVerifier.Contains("unexpectedProviderPaths") &&
+                packageVerifier.Contains("$baseAssemblies.Count -ne 1"),
+                "package verifier rejects any provider assembly in the unconditional core directory");
+            Check(packageVerifier.Contains("Optional DRF provider DLL/manifest pair is incomplete.") &&
+                packageVerifier.Contains("ComputeHash($providerStream)") &&
+                packageVerifier.Contains("IfModActive") &&
+                packageVerifier.Contains("DeferredReality.Aquaculture.manifest.json"),
+                "package verifier enforces conditional path and provider file integrity");
+
+            using (JsonDocument stack = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, ".rimdev", "stack.json"))))
+            {
+                JsonElement rootStack = stack.RootElement;
+                JsonElement runtime = rootStack.GetProperty("runtimePackage");
+                string[] excludes = runtime.GetProperty("exclude").EnumerateArray()
+                    .Select(item => item.GetString()).ToArray();
+                string[] includes = runtime.GetProperty("include").EnumerateArray()
+                    .Select(item => item.GetString()).ToArray();
+                Check(rootStack.GetProperty("deploymentTarget").GetString() ==
+                    "1.6/Assemblies/AquacultureFishing.dll" &&
+                    includes.Contains("1.*/**") &&
+                    excludes.Contains("1.6/Assemblies/DeferredReality.Aquaculture.dll") &&
+                    excludes.Contains("1.6/Assemblies/DeferredReality.Aquaculture.manifest.json"),
+                    "RimTest keeps its core DLL target and excludes both legacy unconditional provider artifacts");
+            }
         }
 
         private static void TestSerializedSettingsContract(string root)

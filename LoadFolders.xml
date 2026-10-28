@@ -2,5 +2,7 @@
 <loadFolders>
   <v1.6>
     <li>1.6</li>
+    <!-- Keep the provider assembly outside the core load folder. -->
+    <li IfModActive="lan.deferredreality.framework">1.6/DeferredReality</li>
   </v1.6>
 </loadFolders>
