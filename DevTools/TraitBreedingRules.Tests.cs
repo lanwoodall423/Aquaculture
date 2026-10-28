@@ -1230,6 +1230,29 @@ static class TraitBreedingRulesTests
             NativeFishingKnowledgeRules.ProgressForExperience(500f, float.NaN, 300f, 700f) == 0f);
     }
 
+    private static void TestFishIdentityMarkerRules()
+    {
+        // All existing positive markers must keep their meaning; the single
+        // additional positive case is an explicit Aquaculture species extension.
+        for (int flags = 0; flags < 8; flags++)
+        {
+            bool recognizedCategory = (flags & 1) != 0;
+            bool aquariumComp = (flags & 2) != 0;
+            bool nativeSpeciesExtension = (flags & 4) != 0;
+            bool expected = recognizedCategory || aquariumComp || nativeSpeciesExtension;
+            Check("fish identity positive-marker truth table " + flags,
+                FishIdentityRules.Recognizes(recognizedCategory, aquariumComp,
+                    nativeSpeciesExtension) == expected);
+        }
+        Check("category-free Aquaculture extension opts a fish into recognition",
+            FishIdentityRules.Recognizes(false, false, true));
+        Check("unmarked non-fish resources are not recognized",
+            !FishIdentityRules.Recognizes(false, false, false));
+        Check("existing category and aquarium detection remains independently valid",
+            FishIdentityRules.Recognizes(true, false, false) &&
+            FishIdentityRules.Recognizes(false, true, false));
+    }
+
     private static void TestFishingRankContract()
     {
         Check("fishing rank ordinal stable",
@@ -1257,6 +1280,7 @@ static class TraitBreedingRulesTests
 
     public static int Main()
     {
+        TestFishIdentityMarkerRules();
         TestFishingRankContract();
         TestNativeFishingKnowledgeFallback();
         TestNativeColonyFishingKnowledgeFallback();

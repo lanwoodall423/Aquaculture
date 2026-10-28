@@ -625,8 +625,15 @@ namespace AquacultureFishing
 
         public static bool IsFish(ThingDef def)
         {
-            if (def?.thingCategories != null && def.thingCategories.Any(c => c.defName == "VCEF_RawFishCategory" || c.defName == "Fish")) return true;
-            return def?.comps != null && def.comps.Any(c => c.compClass?.FullName == "Aquariums.ThingComp_AquariumFish");
+            if (def == null) return false;
+            bool category = def.thingCategories?.Any(c => c != null &&
+                (c.defName == "VCEF_RawFishCategory" || c.defName == "Fish")) == true;
+            bool aquarium = def.comps?.Any(c => c?.compClass?.FullName ==
+                "Aquariums.ThingComp_AquariumFish") == true;
+            // An explicit species extension identifies fish without a VFE
+            // category. Do not infer fish from unrelated resource defs.
+            bool nativeMarker = def.GetModExtension<AquaticSpeciesExtension>() != null;
+            return FishIdentityRules.Recognizes(category, aquarium, nativeMarker);
         }
 
     }

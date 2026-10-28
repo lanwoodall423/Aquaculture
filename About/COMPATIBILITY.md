@@ -137,7 +137,7 @@ release-readiness matrix remains blocked until its own acceptance gates pass.
 - Vanilla Fishing Expanded - Fishing Treasures AddOn: VFE's optional fishing-loot content. Aquaculture has no direct Def, assembly, recipe, species, treasure, or patch dependency on it; when installed, load it after Vanilla Fishing Expanded and before Aquaculture for its own VFE content.
 - Aquariums!: detected without an assembly reference. Compatible fish are recognized through loaded defs and aquarium comps.
 - Odyssey: fishing research is used as the Pondkeeping prerequisite when available.
-- Additional fish packs: fish in the Vanilla Fishing categories are discovered automatically. `AquaticSpeciesExtension` can provide habitat, biome, temperature, season, rarity, density, and suitability metadata; unextended VFE fish reuse VFE water, biome, and commonality metadata.
+- Additional fish packs: VFE/vanilla Fish categories and the Aquariums comp remain recognized; `AquaticSpeciesExtension` can also explicitly identify a fish without those categories and supply habitat, biome, temperature, season, rarity, density, and suitability metadata. Do not attach this marker to non-fish resources. Unextended VFE fish reuse VFE water, biome, and commonality metadata.
 
 ## Load Order
 

@@ -4,6 +4,20 @@ using System.Collections.Generic;
 namespace AquacultureFishing
 {
     /// <summary>
+    /// Positive runtime-fish identity markers. Category-free fish can opt in
+    /// explicitly without broadening recognition of ordinary resource Defs.
+    /// </summary>
+    public static class FishIdentityRules
+    {
+        public static bool Recognizes(bool hasRecognizedFishCategory,
+            bool hasAquariumFishComp, bool hasAquacultureSpeciesExtension)
+        {
+            return hasRecognizedFishCategory || hasAquariumFishComp ||
+                hasAquacultureSpeciesExtension;
+        }
+    }
+
+    /// <summary>
     /// Four stable fishing ranks owned by Aquaculture. This type has no framework
     /// assembly dependency and is not itself a serialized value.
     /// </summary>

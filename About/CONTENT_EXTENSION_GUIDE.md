@@ -1,6 +1,6 @@
 # Aquaculture - Fishing: Content Extension
 
-Aquaculture discovers loaded fish at startup. A `ThingDef` is treated as a fish when it belongs to `VCEF_RawFishCategory` or `Fish`, or has the Aquariums fish comp. No assembly reference is required for ordinary fish packs.
+Aquaculture discovers loaded fish at startup. A `ThingDef` is treated as a fish when it belongs to `VCEF_RawFishCategory` or `Fish`, has the Aquariums fish comp, **or explicitly declares `AquacultureFishing.AquaticSpeciesExtension`**. This extension is a category-independent positive fish marker: fish packs can use it without a VFE fish category. Do not add it to non-fish items, plants, or culture materials; it opts the Def into individual fish lifecycle and comp handling. Ordinary fish-pack Defs need no separate assembly reference.
 
 Every discovered fish automatically appears in Fishing settings with a Novice minimum expertise. Players may raise that requirement without an XML patch; progression and settings remain keyed by the fish `ThingDef.defName`.
 
@@ -25,7 +25,7 @@ Cast is a fixed 180-tick phase. Wait uses the rod's aggregate Wait Time factor, 
 
 ## Species Metadata
 
-Add `AquacultureFishing.AquaticSpeciesExtension` to a fish `ThingDef` when the inferred profile is not appropriate:
+Add `AquacultureFishing.AquaticSpeciesExtension` to a fish `ThingDef` either to identify a category-free fish or to override its inferred ecology profile. Even an otherwise empty extension is a deliberate fish-identity declaration. This example also supplies habitat overrides:
 
 ```xml
 <modExtensions>

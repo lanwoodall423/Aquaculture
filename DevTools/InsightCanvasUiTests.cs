@@ -40,6 +40,7 @@ namespace AquacultureFishing.Tests
             TestMetadataAndBuildContract(root);
             TestStandaloneDependencyInventory(root);
             TestNativeFishingRankBoundary(root);
+            TestExplicitNativeFishIdentityBoundary(root);
             TestNativeKnowledgeBuildSeam(root);
             TestKnowledgeJournalAdapterBoundary(root);
             TestNativeJournalExpertiseFallback(root);
@@ -528,6 +529,40 @@ namespace AquacultureFishing.Tests
             Check(!Directory.GetFiles(uiRoot, "*.cs", SearchOption.AllDirectories)
                 .Select(File.ReadAllText).Any(text => text.Contains("GUI.skin")),
                 "new UI source does not mutate GUI.skin");
+        }
+
+        private static void TestExplicitNativeFishIdentityBoundary(string root)
+        {
+            string core = File.ReadAllText(Path.Combine(root, "Source", "AquacultureCore.cs"));
+            string contracts = File.ReadAllText(Path.Combine(root, "Source", "AquacultureKnowledgeContract.cs"));
+            string guide = File.ReadAllText(Path.Combine(root, "About", "CONTENT_EXTENSION_GUIDE.md"));
+            string recipes = File.ReadAllText(Path.Combine(root, "1.6", "Defs", "RecipeDefs.xml"));
+
+            int start = core.IndexOf("public static bool IsFish(ThingDef def)", StringComparison.Ordinal);
+            int end = start < 0 ? -1 : core.IndexOf("[StaticConstructorOnStartup]", start, StringComparison.Ordinal);
+            string identity = start >= 0 && end > start ? core.Substring(start, end - start) : string.Empty;
+            Check(identity.Contains("if (def == null) return false;") &&
+                identity.Contains("VCEF_RawFishCategory") &&
+                identity.Contains("c.defName == \"Fish\"") &&
+                identity.Contains("Aquariums.ThingComp_AquariumFish") &&
+                identity.Contains("def.GetModExtension<AquaticSpeciesExtension>() != null") &&
+                identity.Contains("FishIdentityRules.Recognizes(category, aquarium, nativeMarker);"),
+                "fish recognition retains VFE, vanilla and Aquariums markers and adds opt-in native extension");
+            Check(core.Contains("DefDatabase<ThingDef>.AllDefs.Where(FishUtility.IsFish).ToList();") &&
+                core.Contains("FishUtility.RegisterRuntimeFish(def);") &&
+                core.Contains("ConfigureRuntimeFishDef(def);") &&
+                core.Contains("ConfigureFishProcessingRecipe(fishDefs);") &&
+                core.Contains("recipe.fixedIngredientFilter.SetAllow(fishDef, true);") &&
+                core.Contains("ingredient.filter.SetAllow(fishDef, true);"),
+                "startup fish registration and owned processing recipe share the recognized fish list");
+            Check(contracts.Contains("public static class FishIdentityRules") &&
+                contracts.Contains("hasRecognizedFishCategory || hasAquariumFishComp ||") &&
+                !contracts.Contains("using RimWorld;") &&
+                !contracts.Contains("using Verse;") &&
+                guide.Contains("category-independent positive fish marker") &&
+                guide.Contains("Do not add it to non-fish items") &&
+                recipes.Contains("VCEF_RawFishCategory"),
+                "native identity contract is pure and explicitly does not remove existing VFE content dependency");
         }
 
         private static void TestNativeFishingRankBoundary(string root)
