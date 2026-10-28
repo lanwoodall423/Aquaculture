@@ -289,6 +289,17 @@ namespace AquacultureFishing
         }
     }
 
+    /// <summary>Pure expiry timing for pond swimming traits and status effects.</summary>
+    public static class PondEffectTimingRules
+    {
+        public static int ExpirationTick(int now, int durationTicks)
+        {
+            // Keep ordinary effect durations, but prevent a fresh effect from
+            // expiring in the past when a game tick approaches int.MaxValue.
+            return FishAgeTimingRules.ScheduleAfterTicks(now, durationTicks);
+        }
+    }
+
     /// <summary>Pure timing contract for the managed pond ecology simulation.</summary>
     public static class PondEcologyTimingRules
     {

@@ -131,9 +131,11 @@ namespace AquacultureFishing
             foreach (KeyValuePair<PondHediffEffect, float> pair in snapshot.effects)
             {
                 effects[pair.Key] = pair.Value;
-                effectExpiresAt[pair.Key] = now + (snapshot.effectDurations.TryGetValue(pair.Key, out int duration) ? duration : snapshot.durationTicks);
+                effectExpiresAt[pair.Key] = PondEffectTimingRules.ExpirationTick(now,
+                    snapshot.effectDurations.TryGetValue(pair.Key, out int duration) ? duration : snapshot.durationTicks);
             }
-            expiresAt = effectExpiresAt.Count > 0 ? effectExpiresAt.Values.Max() : now + snapshot.durationTicks;
+            expiresAt = effectExpiresAt.Count > 0 ? effectExpiresAt.Values.Max() :
+                PondEffectTimingRules.ExpirationTick(now, snapshot.durationTicks);
             Severity = 0.1f;
             stage = BuildStage();
             pawn?.health?.hediffSet?.DirtyCache();

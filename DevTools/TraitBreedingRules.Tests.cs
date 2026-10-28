@@ -296,6 +296,36 @@ static class TraitBreedingRulesTests
             FishAgeTimingRules.ScheduleAfterTicks(int.MaxValue - 100, 625) == int.MaxValue);
     }
 
+    private static void TestPondEffectTiming()
+    {
+        Check("ordinary pond swimming status effect durations retain exact expiry",
+            PondEffectTimingRules.ExpirationTick(100, 30000) == 30100 &&
+            PondEffectTimingRules.ExpirationTick(100, 60000) == 60100);
+        Check("empty-effect fallback retains default expiry period",
+            PondEffectTimingRules.ExpirationTick(100, 30000) == 30100);
+        Check("zero and corrupted negative durations cannot schedule expiry in the past",
+            PondEffectTimingRules.ExpirationTick(100, 0) == 100 &&
+            PondEffectTimingRules.ExpirationTick(100, -30000) == 100);
+        Check("per-effect expiry near game tick limit does not wrap into the past",
+            PondEffectTimingRules.ExpirationTick(int.MaxValue - 100, 30000) == int.MaxValue);
+        Check("empty-effect fallback expiry near game tick limit does not wrap negative",
+            PondEffectTimingRules.ExpirationTick(int.MaxValue - 10, 30000) == int.MaxValue);
+        Check("largest valid duration never wraps or removes a fresh pond effect",
+            PondEffectTimingRules.ExpirationTick(int.MaxValue - 1, int.MaxValue) == int.MaxValue);
+        Check("representable expiry near tick limit remains exact",
+            PondEffectTimingRules.ExpirationTick(int.MaxValue - 30100, 30000) == int.MaxValue - 100);
+        Check("negative saved game tick plus representable duration remains exact",
+            PondEffectTimingRules.ExpirationTick(int.MinValue, int.MaxValue) == -1 &&
+            PondEffectTimingRules.ExpirationTick(int.MinValue + 5, 30000) == int.MinValue + 30005);
+        Check("multi-effect pond expiration uses the latest safe deadline",
+            new[] { 120, 600, 30000 }
+                .Select(duration => PondEffectTimingRules.ExpirationTick(int.MaxValue - 500, duration))
+                .Max() == int.MaxValue &&
+            new[] { 120, 600, 30000 }
+                .Select(duration => PondEffectTimingRules.ExpirationTick(100, duration))
+                .Max() == 30100);
+    }
+
     private static void TestFishSchoolTiming()
     {
         Check("normal school update cadence remains unchanged",
@@ -1039,6 +1069,7 @@ static class TraitBreedingRulesTests
         TestStabilityAndMigration();
         TestFishAgeTiming();
         TestPondEcologyTiming();
+        TestPondEffectTiming();
         TestFishSchoolTiming();
         TestRecoveryRules();
         TestCommissionRules();
