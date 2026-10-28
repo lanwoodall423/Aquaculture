@@ -82,7 +82,7 @@ Unextended VFE fish inherit freshwater/saltwater, allowed biome groups, and comm
 
 ## Fish Processing Yield
 
-The supported dead-fish processing route is `AF_ProcessDeadFish`, used by `ButcherSpot` and `TableButcher`. Its Def supplies five baseline `AF_FishMeat`.
+The supported dead-fish processing route is `AF_ProcessDeadFish`, used by `ButcherSpot` and `TableButcher`. Its Def supplies five baseline `AF_FishMeat`. The recipe starts with an otherwise empty, Aquaculture-owned `AF_RecognizedFishIngredient` category; startup adds **only positively recognized fish** to its ingredient and fixed filters. This removes the recipe's static VFE category reference without broadening eligibility to ordinary raw meat, plants, or fish feed. Living fish remain blocked from this recipe by the existing runtime filter. The fish-meat item uses RimWorld's generic small raw-meat graphic rather than a VFE cod texture.
 
 For a runtime fish, the output is calculated once as:
 

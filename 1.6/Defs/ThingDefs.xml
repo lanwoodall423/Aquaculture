@@ -11,7 +11,7 @@
   </ThingDef>
   <ThingDef ParentName="OrganicProductBase">
     <defName>AF_FishMeat</defName><label>fish meat</label><description>Cleaned meat processed from a dead fish. Processing yield follows the source fish's bounded size factor and existing species/body yield.</description>
-    <graphicData><texPath>Things/Item/Resource/VCEF_Cod</texPath><graphicClass>Graphic_StackCount</graphicClass></graphicData>
+    <graphicData><texPath>Things/Item/Resource/MeatFoodRaw/Meat_Small</texPath><graphicClass>Graphic_StackCount</graphicClass></graphicData>
     <statBases><MarketValue>2</MarketValue><Mass>0.03</Mass><Nutrition>0.05</Nutrition><FoodPoisonChanceFixedHuman>0.02</FoodPoisonChanceFixedHuman></statBases>
     <ingestible><foodType>Meat</foodType><preferability>RawBad</preferability><ingestEffect>EatMeat</ingestEffect><ingestSound>RawMeat_Eat</ingestSound><tasteThought>AteRawFood</tasteThought></ingestible>
     <socialPropernessMatters>true</socialPropernessMatters>

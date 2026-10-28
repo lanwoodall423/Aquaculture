@@ -41,6 +41,7 @@ namespace AquacultureFishing.Tests
             TestStandaloneDependencyInventory(root);
             TestNativeFishingRankBoundary(root);
             TestExplicitNativeFishIdentityBoundary(root);
+            TestSelfContainedFishProcessingDefs(root);
             TestNativeKnowledgeBuildSeam(root);
             TestKnowledgeJournalAdapterBoundary(root);
             TestNativeJournalExpertiseFallback(root);
@@ -561,8 +562,89 @@ namespace AquacultureFishing.Tests
                 !contracts.Contains("using Verse;") &&
                 guide.Contains("category-independent positive fish marker") &&
                 guide.Contains("Do not add it to non-fish items") &&
-                recipes.Contains("VCEF_RawFishCategory"),
-                "native identity contract is pure and explicitly does not remove existing VFE content dependency");
+                recipes.Contains("AF_RecognizedFishIngredient") &&
+                !recipes.Contains("VCEF_RawFishCategory"),
+                "native identity contract is pure and fish processing no longer uses VFE categories");
+        }
+
+        private static void TestSelfContainedFishProcessingDefs(string root)
+        {
+            string defsRoot = Path.Combine(root, "1.6", "Defs");
+            XDocument recipes = XDocument.Load(Path.Combine(defsRoot, "RecipeDefs.xml"));
+            XDocument things = XDocument.Load(Path.Combine(defsRoot, "ThingDefs.xml"));
+            string[] defPaths = Directory.GetFiles(defsRoot, "*.xml", SearchOption.AllDirectories);
+
+            const string ownedCategory = "AF_RecognizedFishIngredient";
+            XElement[] categories = recipes.Root.Elements("ThingCategoryDef")
+                .Where(def => (string)def.Element("defName") == ownedCategory).ToArray();
+            Check(categories.Length == 1 &&
+                (string)categories[0].Element("parent") == "Root",
+                "fish-processing placeholder category exists once and uses only vanilla Root");
+            XElement[] assigned = defPaths.SelectMany(path => XDocument.Load(path).Descendants("ThingDef"))
+                .Where(def => def.Descendants("thingCategories").Elements("li")
+                    .Any(item => item.Value.Trim() == ownedCategory)).ToArray();
+            Check(assigned.Length == 0,
+                "the owned recipe-only ingredient category starts empty, including for all non-fish defs");
+
+            XElement[] processing = recipes.Root.Elements("RecipeDef").Where(def =>
+                (string)def.Element("defName") == "AF_ProcessDeadFish").ToArray();
+            Check(processing.Length == 1, "the existing dead-fish recipe identity is unchanged");
+            if (processing.Length != 1) return;
+            XElement recipe = processing[0];
+            XElement[] ingredientFilters = recipe.Element("ingredients")?.Elements("li")
+                .Select(item => item.Element("filter")).ToArray() ?? Array.Empty<XElement>();
+            XElement fixedFilter = recipe.Element("fixedIngredientFilter");
+            Func<XElement, bool> restrictedToOwnedCategory = filter => filter != null &&
+                filter.Element("categories")?.Elements("li")
+                    .Select(item => item.Value.Trim()).SequenceEqual(new[] { ownedCategory }) == true &&
+                !filter.Elements("thingDefs").Any() &&
+                !filter.Elements("specialFiltersToAllow").Any();
+            Check(ingredientFilters.Length == 1 &&
+                ingredientFilters.All(restrictedToOwnedCategory) &&
+                restrictedToOwnedCategory(fixedFilter) &&
+                recipe.Element("ingredients")?.Element("li")?.Element("count")?.Value == "1",
+                "both processing filters initially admit only the empty owned category, never other meat");
+            Check((string)recipe.Element("products")?.Element("AF_FishMeat") == "5" &&
+                recipe.Element("recipeUsers")?.Elements("li").Select(e => e.Value)
+                    .SequenceEqual(new[] { "ButcherSpot", "TableButcher" }) == true,
+                "processing products, workstations and base yield remain unchanged");
+
+            XElement[] fishMeat = things.Root.Elements("ThingDef").Where(def =>
+                (string)def.Element("defName") == "AF_FishMeat").ToArray();
+            Check(fishMeat.Length == 1, "the existing saved fish-meat ThingDef identity is preserved");
+            if (fishMeat.Length == 1)
+            {
+                XElement meat = fishMeat[0];
+                Check((string)meat.Element("graphicData")?.Element("texPath") ==
+                    "Things/Item/Resource/MeatFoodRaw/Meat_Small" &&
+                    (string)meat.Element("graphicData")?.Element("graphicClass") == "Graphic_StackCount" &&
+                    (string)meat.Element("statBases")?.Element("MarketValue") == "2" &&
+                    (string)meat.Element("statBases")?.Element("Mass") == "0.03" &&
+                    (string)meat.Element("statBases")?.Element("Nutrition") == "0.05" &&
+                    meat.Element("thingCategories")?.Elements("li").Single().Value == "MeatRaw" &&
+                    meat.Element("comps")?.Elements("li").Any(e =>
+                        (string)e.Attribute("Class") == "AquacultureFishing.CompProperties_FishMeatTraits") == true,
+                    "fish meat uses vanilla generic small meat art and retains existing food and save fields");
+            }
+
+            Check(defPaths.All(path => !Regex.IsMatch(File.ReadAllText(path),
+                    @"\bVCEF_[A-Za-z0-9_]+\b|\bVCE_Fishing\b")),
+                "Aquaculture core Def XML contains no statically linked VFE category or texture");
+            string core = File.ReadAllText(Path.Combine(root, "Source", "AquacultureCore.cs"));
+            string lifecycle = File.ReadAllText(Path.Combine(root, "Source", "FishLifeCycle.cs"));
+            Check(core.Contains("DefDatabase<ThingDef>.AllDefs.Where(FishUtility.IsFish).ToList();") &&
+                core.Contains("ConfigureFishProcessingRecipe(fishDefs);") &&
+                core.Contains("recipe.fixedIngredientFilter.SetAllow(fishDef, true);") &&
+                core.Contains("ingredient.filter.SetAllow(fishDef, true);") &&
+                lifecycle.Contains("!FishUtility.IsRuntimeFish(t.def)") &&
+                lifecycle.Contains("CompFishTraits traits = t.TryGetComp<CompFishTraits>();") &&
+                lifecycle.Contains("__result = !traits.IsAlive;"),
+                "recipe runtime population remains fish-only and rejects living specimens");
+
+            XDocument about = XDocument.Load(Path.Combine(root, "About", "About.xml"));
+            Check(about.Descendants("modDependencies").Descendants("packageId")
+                .Any(node => node.Value == "VanillaExpanded.VCEF"),
+                "VFE player dependency remains required until real load/bill/save validation");
         }
 
         private static void TestNativeFishingRankBoundary(string root)

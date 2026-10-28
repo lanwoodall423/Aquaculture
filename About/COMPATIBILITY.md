@@ -149,8 +149,10 @@ Insight Canvas is a normal player dependency for the Prompt 1 settings surface. 
 
 - Only positively identified runtime fish receive the Def-backed `CompFishTraits`, individual stack limit, realtime drawing behavior, missing Beauty/Mass defaults, and Traits tab required by fish lifecycle, rendering, stats, and save compatibility.
 - Explicit compatible Beauty/Mass values are preserved. Nonstandard drawer types are preserved with one diagnostic; stack limit one remains required because fish traits and lifecycle state are individual and serialized.
-- The owned dead-fish recipe receives recognized fish in its ingredient filters. Food provenance is attached to relevant output Things, not every ingestible Def.
+- The owned dead-fish recipe starts with an empty `AF_RecognizedFishIngredient` category (parent `Root`), which is **not assigned** to fish or non-fish ThingDefs. Startup allows only positively recognized fish in both filters, and the existing live-fish veto remains. The fish-meat graphic uses the generic vanilla `Things/Item/Resource/MeatFoodRaw/Meat_Small` path rather than VFE's cod graphic. Food provenance is attached to relevant output Things, not every ingestible Def.
 - Runtime graphics, stat, rotting, deterioration, and integration hooks remain guarded by runtime-fish or relevant-component checks. No storage, trade, or unrelated recipe Def is changed.
+
+AQ-DEP-04B removes static VFE category/graphic references from the core Def XML only. It does **not** make Vanilla Fishing Expanded optional: the required mod metadata remains unchanged, Aquaculture still has no first-party fish ThingDefs, and an actual RimWorld 1.6 load with and without VFE must verify category resolution, the vanilla graphic, the processing bill's allowed fish and refusal of live/non-fish ingredients, the original VFE species behavior, and existing saved bills before any dependency removal or player release.
 
 ## Save And Removal
 
