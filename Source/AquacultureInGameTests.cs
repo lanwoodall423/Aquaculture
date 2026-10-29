@@ -184,6 +184,45 @@ namespace AquacultureFishing
                 return "pond terrain, core ThingDefs, and Pondkeeping research are loaded";
             });
 
+            Check(report, "native-fishing-def-and-provider-contract", () =>
+            {
+                // Read-only runtime registration smoke: no pawn, map topology,
+                // work scheduling, fish spawning, or saved progression changes.
+                JobDef job = DefDatabase<JobDef>.GetNamedSilentFail("AF_NativeFishing");
+                WorkGiverDef giver = DefDatabase<WorkGiverDef>.GetNamedSilentFail("AF_NativeFishing");
+                Require(job != null && job.driverClass == typeof(JobDriver_NativeFishing),
+                    "native fishing JobDef is missing or linked to the wrong driver");
+                Require(giver != null && giver.giverClass == typeof(WorkGiver_NativeFishing),
+                    "native fishing WorkGiverDef is missing or linked to the wrong workgiver");
+                Require(giver.workType?.defName == "Handling",
+                    "native fishing workgiver lost the Handling work type");
+
+                ThingDef minnow = DefDatabase<ThingDef>.GetNamedSilentFail("AF_PondMinnow");
+                Require(minnow != null, "first-party AF_PondMinnow ThingDef is missing");
+                Require(minnow.GetModExtension<AquaticSpeciesExtension>() != null &&
+                    FishUtility.IsFish(minnow) && FishUtility.IsRuntimeFish(minnow),
+                    "native minnow is not extension-identified and registered at startup");
+                Require(minnow.thingCategories?.Any(category => category?.defName == "AF_NativeFish") == true &&
+                    !minnow.thingCategories.Any(category => category?.defName == "VCEF_RawFishCategory"),
+                    "native minnow must use its own fish category without VFE");
+
+                bool vfeActive = ModsConfig.IsActive("VanillaExpanded.VCEF");
+                bool odysseyActive = ModsConfig.IsActive("Ludeon.RimWorld.Odyssey");
+                bool expected = !vfeActive && !odysseyActive;
+                Require(NativeFishingProviderRules.CanProvide(vfeActive, odysseyActive) == expected &&
+                    NativeFishingWork.ProviderAvailable == expected,
+                    "native fishing provider must be off whenever VFE or Odyssey is active");
+                for (int flags = 0; flags < 4; flags++)
+                {
+                    bool vfe = (flags & 1) != 0;
+                    bool odyssey = (flags & 2) != 0;
+                    Require(NativeFishingProviderRules.CanProvide(vfe, odyssey) == (!vfe && !odyssey),
+                        "native fishing fallback provider truth table changed");
+                }
+                return "native Defs linked, first-party fish registered, provider gate=" +
+                    (expected ? "native" : "established-provider");
+            });
+
             Check(report, "fish-def-runtime-configuration", () =>
             {
                 List<ThingDef> fishDefs = FishDefs();

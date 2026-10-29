@@ -5,7 +5,8 @@
       "id": "aquaculture-runtime-smoke",
       "description": "Run the RimTest-managed in-game smoke recipe for the active Aquaculture profile.",
       "recipe": "aquaculture-development-smoke",
-      "tags": ["aquaculture", "in-game", "smoke"],
+      "tags": ["aquaculture", "in-game", "smoke", "native-fishing"],
+      "artifactFreshnessAnchor": true,
       "covers": [
         { "kind": "csharp_type", "name": "AquacultureFishing.AquacultureMod" },
         { "kind": "csharp_type", "name": "AquacultureFishing.FishPondMapComponent" },
@@ -13,7 +14,15 @@
         { "kind": "csharp_type", "name": "AquacultureFishing.MainTabWindow_AquacultureJournal" },
         { "kind": "csharp_type", "name": "AquacultureFishing.FishTraitsTab" },
         { "kind": "csharp_type", "name": "AquacultureFishing.AquacultureJournalWorkspaceDocument" },
-        { "kind": "csharp_type", "name": "AquacultureFishing.AquacultureFishDossierDocument" }
+        { "kind": "csharp_type", "name": "AquacultureFishing.AquacultureFishDossierDocument" },
+        { "kind": "csharp_type", "name": "AquacultureFishing.AquacultureBridgeTestSuite" },
+        { "kind": "csharp_type", "name": "AquacultureFishing.WorkGiver_NativeFishing" },
+        { "kind": "csharp_type", "name": "AquacultureFishing.JobDriver_NativeFishing" },
+        { "kind": "csharp_type", "name": "AquacultureFishing.NativeFishingProviderRules" },
+        { "kind": "csharp_type", "name": "AquacultureFishing.FishingRodWorkflow" },
+        { "kind": "csharp_type", "name": "AquacultureFishing.FishUtility" },
+        { "kind": "def", "name": "AF_NativeFishing" },
+        { "kind": "def", "name": "AF_PondMinnow" }
       ],
       "cost": "medium",
       "isolation": {

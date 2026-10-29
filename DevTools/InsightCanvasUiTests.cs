@@ -45,6 +45,7 @@ namespace AquacultureFishing.Tests
             TestFirstPartyFreshwaterFishPrototype(root);
             TestNativeFishingJobBoundary(root);
             TestNativeFishingReadOnlyRodPreflight(root);
+            TestNativeFishingRuntimeSmokeCoverage(root);
             TestNativeKnowledgeBuildSeam(root);
             TestKnowledgeJournalAdapterBoundary(root);
             TestNativeJournalExpertiseFallback(root);
@@ -883,6 +884,91 @@ namespace AquacultureFishing.Tests
                 code.Contains("FishingRodWorkflow.PreparationToils(this)") &&
                 rods.Contains("if (!TryEnsureSelection(pawn, job, out reason))"),
                 "carried rod does not abort active catch and actual job start remains authoritative");
+        }
+
+        private static void TestNativeFishingRuntimeSmokeCoverage(string root)
+        {
+            string source = File.ReadAllText(Path.Combine(root, "Source", "AquacultureInGameTests.cs"));
+            string bridge = File.ReadAllText(Path.Combine(root, "DevTools", "RimBridgeTools",
+                "AquacultureFishingBridgeTools.cs"));
+            int start = source.IndexOf(
+                "Check(report, \"native-fishing-def-and-provider-contract\", () =>",
+                StringComparison.Ordinal);
+            int end = start < 0 ? -1 : source.IndexOf(
+                "Check(report, \"fish-def-runtime-configuration\", () =>", start,
+                StringComparison.Ordinal);
+            string smoke = start >= 0 && end > start ? source.Substring(start, end - start) : "";
+            Check(source.Contains("#if AQUACULTURE_DEV_TESTS") &&
+                source.Contains("private static AquacultureInGameTestReport Run()") &&
+                source.Contains("return Complete(Run(), runId);") &&
+                bridge.Contains("\"aquaculture/run_baseline\"") &&
+                bridge.Contains("AquacultureBridgeTestSuite.RunBaseline(runId)") &&
+                start >= 0 && end > start,
+                "native fishing smoke is invoked by the existing authorized developer baseline entry point");
+            Check(smoke.Contains("DefDatabase<JobDef>.GetNamedSilentFail(\"AF_NativeFishing\")") &&
+                smoke.Contains("typeof(JobDriver_NativeFishing)") &&
+                smoke.Contains("DefDatabase<WorkGiverDef>.GetNamedSilentFail(\"AF_NativeFishing\")") &&
+                smoke.Contains("typeof(WorkGiver_NativeFishing)") &&
+                smoke.Contains("DefDatabase<ThingDef>.GetNamedSilentFail(\"AF_PondMinnow\")") &&
+                smoke.Contains("minnow.GetModExtension<AquaticSpeciesExtension>()") &&
+                smoke.Contains("FishUtility.IsRuntimeFish(minnow)") &&
+                smoke.Contains("NativeFishingWork.ProviderAvailable") &&
+                smoke.Contains("NativeFishingProviderRules.CanProvide("),
+                "baseline tests native job/workgiver Def links, first-party fish registration and provider isolation");
+            Check(!Regex.IsMatch(smoke,
+                    @"\b(?:GenSpawn\.Spawn|ThingMaker\.MakeThing|JobMaker\.MakeJob|" +
+                    @"BeginAttempt|Complete|TryReserve|TryEnsureSelection|TryStartCarry|" +
+                    @"InitializeForDevTest|GenPlace\.TryPlaceThing)\s*\(") &&
+                !smoke.Contains("ThingMaker.MakeThing(") &&
+                !smoke.Contains("map.listerThings") &&
+                !smoke.Contains("new Pawn("),
+                "baseline native fishing assertions do not mutate map, pawns, populations, rods or saves");
+
+            using (JsonDocument document = JsonDocument.Parse(File.ReadAllText(Path.Combine(
+                root, "TestCatalog", "rimtest.catalog.json"))))
+            {
+                JsonElement catalog = document.RootElement;
+                JsonElement[] tests = catalog.GetProperty("tests").EnumerateArray()
+                    .Where(item => item.GetProperty("id").GetString() == "aquaculture-runtime-smoke")
+                    .ToArray();
+                Check(tests.Length == 1, "RimTest retains one original Aquaculture smoke test identity");
+                if (tests.Length != 1) return;
+                JsonElement test = tests[0];
+                HashSet<string> covers = new HashSet<string>(test.GetProperty("covers")
+                    .EnumerateArray().Select(item => item.GetProperty("kind").GetString() +
+                        ":" + item.GetProperty("name").GetString()), StringComparer.Ordinal);
+                string[] expected =
+                {
+                    "csharp_type:AquacultureFishing.AquacultureBridgeTestSuite",
+                    "csharp_type:AquacultureFishing.WorkGiver_NativeFishing",
+                    "csharp_type:AquacultureFishing.JobDriver_NativeFishing",
+                    "csharp_type:AquacultureFishing.NativeFishingProviderRules",
+                    "csharp_type:AquacultureFishing.FishingRodWorkflow",
+                    "csharp_type:AquacultureFishing.FishUtility",
+                    "def:AF_NativeFishing",
+                    "def:AF_PondMinnow"
+                };
+                Check(expected.All(covers.Contains) &&
+                    covers.Count == test.GetProperty("covers").GetArrayLength(),
+                    "RimTest affected selection covers native driver/giver, rod workflow, rules and owned Defs without duplicates");
+                Check(test.GetProperty("recipe").GetString() == "aquaculture-development-smoke" &&
+                    test.GetProperty("artifactFreshnessAnchor").GetBoolean() &&
+                    test.GetProperty("isolation").GetProperty("mode").GetString() == "SameGenerationSafe" &&
+                    test.GetProperty("isolation").GetProperty("reuseKey").GetString() == "aquaculture-runtime-smoke" &&
+                    catalog.GetProperty("suites").EnumerateArray().Any(suite =>
+                        suite.GetProperty("id").GetString() == "smoke" &&
+                        suite.GetProperty("tests").EnumerateArray().Any(id =>
+                            id.GetString() == "aquaculture-runtime-smoke")),
+                    "RimTest catalog retains its existing bounded smoke recipe and explicitly anchors build freshness");
+            }
+
+            string compatibility = File.ReadAllText(Path.Combine(root, "About", "COMPATIBILITY.md"));
+            Check(compatibility.Contains("AQ-DEP-04F1") &&
+                compatibility.Contains("aquaculture/run_baseline") &&
+                compatibility.Contains("quicktest readiness") &&
+                compatibility.Contains("does not execute") &&
+                compatibility.Contains("RimTest"),
+                "RimTest preparation does not falsely claim that quicktest alone runs baseline assertions");
         }
 
         private static void TestNativeFishingRankBoundary(string root)
