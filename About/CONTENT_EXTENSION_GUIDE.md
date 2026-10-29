@@ -23,6 +23,8 @@ Do not use `<li>` entries for this field; RimWorld 1.6 interprets an `li` entry'
 
 Fishing has four expertise ranks: Novice, Adept, Expert, and Master. Species access requires a present species in the shared natural-water ledger and a rank meeting that species' configured minimum. Animals skill, lure attraction, and species knowledge do not bypass either requirement.
 
+The new developer-only native fishing-job prototype (`AF_NativeFishing`) is gated off when Vanilla Fishing Expanded or Odyssey is active. Without both providers, it requests work only near an eligible player's reachable natural-water shore, based on the prepared population ledger and an available rod. These gameplay paths need an actual RimWorld build and RimTest workgiver/save test before being treated as fully qualified.
+
 Cast is a fixed 180-tick phase. Wait uses the rod's aggregate Wait Time factor, expertise time reduction, and the global fishing-duration setting. Reel uses the aggregate Reel Time factors from every non-Rod tackle slot, expertise time reduction, and the same duration setting. Lure and species knowledge affect attraction weighting and bite chance, not Cast duration or Reel duration. Catch resolution uses species knowledge, expertise, Animals skill, and the rod's Catch Chance factor for bite/escape calculations; Max Fish Mass is a separate eligibility limit.
 
 ## Species Metadata

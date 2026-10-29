@@ -43,6 +43,7 @@ namespace AquacultureFishing.Tests
             TestExplicitNativeFishIdentityBoundary(root);
             TestSelfContainedFishProcessingDefs(root);
             TestFirstPartyFreshwaterFishPrototype(root);
+            TestNativeFishingJobBoundary(root);
             TestNativeKnowledgeBuildSeam(root);
             TestKnowledgeJournalAdapterBoundary(root);
             TestNativeJournalExpertiseFallback(root);
@@ -745,10 +746,97 @@ namespace AquacultureFishing.Tests
             string compatibility = File.ReadAllText(Path.Combine(root, "About", "COMPATIBILITY.md"));
             Check(guide.Contains("AF_PondMinnow") &&
                 compatibility.Contains("provisional generic-meat graphic") &&
-                compatibility.Contains("native fishing-job provider") &&
+                compatibility.Contains("native fishing job prototype") &&
                 compatibility.Contains("RimTest") &&
                 !compatibility.Contains("VFE is now optional"),
                 "developer prototype discloses art, native job and game/save qualification gaps");
+        }
+
+        private static void TestNativeFishingJobBoundary(string root)
+        {
+            XDocument jobs = XDocument.Load(Path.Combine(root, "1.6", "Defs", "PondWorkDefs.xml"));
+            XElement[] jobDefs = jobs.Descendants("JobDef").Where(def =>
+                (string)def.Element("defName") == "AF_NativeFishing").ToArray();
+            XElement[] giverDefs = jobs.Descendants("WorkGiverDef").Where(def =>
+                (string)def.Element("defName") == "AF_NativeFishing").ToArray();
+            Check(jobDefs.Length == 1 && giverDefs.Length == 1 &&
+                (string)jobDefs[0].Element("driverClass") == "AquacultureFishing.JobDriver_NativeFishing" &&
+                (string)giverDefs[0].Element("giverClass") == "AquacultureFishing.WorkGiver_NativeFishing" &&
+                (string)giverDefs[0].Element("workType") == "Handling" &&
+                jobs.Descendants("JobDef").Any(def =>
+                    (string)def.Element("defName") == "AF_HarvestPondFish"),
+                "owned native fishing jobs are declared once without displacing pond harvests");
+
+            string code = File.ReadAllText(Path.Combine(root, "Source", "PondHarvesting.cs"));
+            string progression = File.ReadAllText(Path.Combine(root, "Source", "FishingExpertise.cs"));
+            string rods = File.ReadAllText(Path.Combine(root, "Source", "FishingRods.cs"));
+            string pure = File.ReadAllText(Path.Combine(root, "Source", "AquacultureKnowledgeContract.cs"));
+            Check(code.Contains("class WorkGiver_NativeFishing : WorkGiver_Scanner") &&
+                code.Contains("class JobDriver_NativeFishing : JobDriver") &&
+                code.Contains("NativeFishingProviderRules.CanProvide(") &&
+                code.Contains("ModsConfig.IsActive(\"VanillaExpanded.VCEF\")") &&
+                code.Contains("ModsConfig.IsActive(\"Ludeon.RimWorld.Odyssey\")") &&
+                pure.Contains("public static class NativeFishingProviderRules") &&
+                pure.Contains("return !vanillaFishingExpandedActive && !odysseyFishingActive;"),
+                "native fishing does not compete with enabled VFE or Odyssey providers");
+            Check(code.Contains("GenRadial.RadialCellsAround(pawn.Position, SearchRadius, true)") &&
+                code.Contains("public const float SearchRadius = 14f;") &&
+                code.Contains("GenAdj.CardinalDirections") &&
+                code.Contains("terrain?.IsWater == true && terrain.defName != \"AF_Pond\"") &&
+                !code.Contains("foreach (IntVec3 cell in map.AllCells)") &&
+                code.Contains("candidate.Standable(pawn.Map)") &&
+                code.Contains("pawn.CanReserveAndReach(candidate, PathEndMode.OnCell, Danger.Some,"),
+                "native work scanning stays bounded to natural water with a reachable bank");
+            Check(code.Contains("populations.TryGetPreparedSummary(") &&
+                code.Contains("summary.presentSpecies.Any(fish => FishUtility.IsRuntimeFish(fish)") &&
+                code.Contains("MinimumExpertiseFor(fish)") &&
+                code.Contains("FishingRodWorkflow.TryEnsureSelection(pawn, job, out _) ? job : null") &&
+                code.Contains("!pawn.Downed && !pawn.Drafted") &&
+                code.Contains("!pawn.IsPrisoner && !pawn.IsSlave"),
+                "native jobs require prepared fish, species rank and a selectable rod");
+            Check(code.Contains("pawn.Reserve(job.targetB, job, 1, -1, null, errorOnFailed)") &&
+                code.Contains("FishingRodWorkflow.TryReserve(this, errorOnFailed, out _)") &&
+                code.Contains("FishingRodWorkflow.PreparationToils(this)") &&
+                code.Contains("FishingRodUtility.FishingPhases(") &&
+                code.Contains("FishingAttemptIntegration.NativeFramework") &&
+                rods.Contains("public static IEnumerable<Toil> FishingPhases(object driver, string framework)"),
+                "native driver reuses existing safe rod workflow and cast/wait/reel phases");
+
+            int driverStart = code.IndexOf("public sealed class JobDriver_NativeFishing", StringComparison.Ordinal);
+            int driverEnd = driverStart < 0 ? -1 : code.IndexOf("public static class FishHarvestUtility", driverStart,
+                StringComparison.Ordinal);
+            string driver = driverStart >= 0 && driverEnd > driverStart
+                ? code.Substring(driverStart, driverEnd - driverStart) : string.Empty;
+            int place = driver.IndexOf("GenPlace.TryPlaceThing(", StringComparison.Ordinal);
+            int complete = driver.IndexOf("progression.Complete(caught)", StringComparison.Ordinal);
+            Check(driver.Contains("AddFinishAction(_ => FishingProgressionComponent.Current?") &&
+                driver.Contains(".CancelAttempt(pawn, FishingAttemptIntegration.NativeFramework)") &&
+                driver.Contains("progression.Resolve(pawn,") &&
+                driver.Contains("NativeFishingWork.StillAvailable(pawn, attempt)") &&
+                driver.Contains("caught.ApplyTo(fish);") &&
+                driver.Contains("fish.stackCount = 1;") &&
+                place >= 0 && complete > place &&
+                driver.Contains("else if (!fish.Destroyed) fish.Destroy();"),
+                "native catches consume populations and credit knowledge only after successful placement");
+
+            Check(progression.Contains("public const string NativeFramework = \"AquacultureNative\"") &&
+                progression.Contains("public static FishingAttemptRecord ProgressNative(") &&
+                progression.Contains("populations.TryGetPreparedSummary(cell, out NaturalFishPopulationSummary summary)") &&
+                progression.Contains("if (framework == NativeFramework) return ProgressNative(") &&
+                progression.Contains("if (framework == VfeFramework) return ProgressVfe(") &&
+                progression.Contains("if (framework == OdysseyFramework) return ProgressOdyssey(") &&
+                progression.Contains("public void CancelAttempt(Pawn pawn, string framework)") &&
+                progression.Contains("attempts.RemoveAll(item => item?.pawn == pawn && item.framework == framework)") &&
+                progression.Contains("completedCatchEventIds.Contains(logicalEventId)") &&
+                progression.Contains("\"aquacultureFishingCompletedCatchEvents\"") &&
+                progression.Contains("\"aquacultureFishingAttempts\""),
+                "native completion reuses exactly-once event ledger without changing legacy saved IDs");
+            string compatibility = File.ReadAllText(Path.Combine(root, "About", "COMPATIBILITY.md"));
+            Check(compatibility.Contains("AQ-DEP-04D1") &&
+                compatibility.Contains("native fishing job prototype") &&
+                compatibility.Contains("RimTest") &&
+                compatibility.Contains("not a qualified standalone fishing release"),
+                "native prototype documents live build, job and save validation requirements");
         }
 
         private static void TestNativeFishingRankBoundary(string root)

@@ -243,6 +243,17 @@ namespace AquacultureFishing
             return attempts.LastOrDefault(item => item.pawn == pawn && (framework == null || item.framework == framework));
         }
 
+        /// <summary>
+        /// Discard an interrupted native fishing attempt without writing a catch
+        /// event, knowledge or population changes. Existing provider attempts
+        /// and serialized fields are unaffected.
+        /// </summary>
+        public void CancelAttempt(Pawn pawn, string framework)
+        {
+            if (pawn == null || string.IsNullOrEmpty(framework)) return;
+            attempts.RemoveAll(item => item?.pawn == pawn && item.framework == framework);
+        }
+
         public FishingAttemptRecord BeginAttempt(Pawn pawn, IntVec3 cell, string framework, int waitDuration)
         {
             if (pawn == null || pawn.Map == null) return null;
@@ -363,6 +374,7 @@ namespace AquacultureFishing
     {
         private const string VfeFramework = "VFE";
         private const string OdysseyFramework = "Odyssey";
+        public const string NativeFramework = "AquacultureNative";
         private static readonly FieldInfo DriverPawn = AccessTools.Field(typeof(JobDriver), "pawn");
         private static readonly FieldInfo DriverJob = AccessTools.Field(typeof(JobDriver), "job");
 
@@ -437,6 +449,19 @@ namespace AquacultureFishing
                 OdysseySpecies(pawn, cell), fish => FishingRodUtility.AttractionFor(pawn, fish), elapsedTicks, waitDuration);
         }
 
+        public static FishingAttemptRecord ProgressNative(object driver, int elapsedTicks, int waitDuration)
+        {
+            Pawn pawn = PawnFor(driver);
+            IntVec3 cell = WaterCellFor(driver);
+            NaturalFishPopulationMapComponent populations =
+                pawn?.Map?.GetComponent<NaturalFishPopulationMapComponent>();
+            IEnumerable<ThingDef> available =
+                populations != null && populations.TryGetPreparedSummary(cell, out NaturalFishPopulationSummary summary)
+                    ? summary.presentSpecies : Enumerable.Empty<ThingDef>();
+            return FishingProgressionComponent.Current?.ProgressWait(pawn, NativeFramework, available,
+                fish => FishingRodUtility.AttractionFor(pawn, fish), elapsedTicks, waitDuration);
+        }
+
         public static IEnumerable<ThingDef> OdysseySpecies(Pawn pawn, IntVec3 cell)
         {
             WaterBody body = pawn?.Map == null ? null : FishingUtility.GetWaterBody(cell, pawn.Map);
@@ -471,8 +496,10 @@ namespace AquacultureFishing
 
         public static FishingAttemptRecord ProgressWaitPhase(object driver, string framework, int elapsedTicks, int waitDuration)
         {
-            return framework == VfeFramework ? ProgressVfe(driver, elapsedTicks, waitDuration) :
-                ProgressOdyssey(driver, elapsedTicks, waitDuration);
+            if (framework == VfeFramework) return ProgressVfe(driver, elapsedTicks, waitDuration);
+            if (framework == OdysseyFramework) return ProgressOdyssey(driver, elapsedTicks, waitDuration);
+            if (framework == NativeFramework) return ProgressNative(driver, elapsedTicks, waitDuration);
+            return null;
         }
 
         public static IEnumerable<Toil> VfeMakeNewToilsPostfix(IEnumerable<Toil> __result, object __instance)

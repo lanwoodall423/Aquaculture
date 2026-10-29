@@ -18,6 +18,18 @@ namespace AquacultureFishing
     }
 
     /// <summary>
+    /// A fallback fishing work provider may run only when both established
+    /// fishing providers are absent. This rule has no game API dependency.
+    /// </summary>
+    public static class NativeFishingProviderRules
+    {
+        public static bool CanProvide(bool vanillaFishingExpandedActive, bool odysseyFishingActive)
+        {
+            return !vanillaFishingExpandedActive && !odysseyFishingActive;
+        }
+    }
+
+    /// <summary>
     /// Four stable fishing ranks owned by Aquaculture. This type has no framework
     /// assembly dependency and is not itself a serialized value.
     /// </summary>

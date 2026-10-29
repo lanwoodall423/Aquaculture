@@ -20,6 +20,149 @@ namespace AquacultureFishing
         static AquacultureJobDefOf() { DefOfHelper.EnsureInitializedInCtor(typeof(AquacultureJobDefOf)); }
     }
 
+    // Native fishing is disabled whenever an established provider is active.
+    internal static class NativeFishingWork
+    {
+        public const float SearchRadius = 14f;
+
+        public static bool ProviderAvailable => NativeFishingProviderRules.CanProvide(
+            ModsConfig.IsActive("VanillaExpanded.VCEF"),
+            ModsConfig.IsActive("Ludeon.RimWorld.Odyssey"));
+
+        public static bool CanGive(Pawn pawn) =>
+            ProviderAvailable && pawn?.Map != null && pawn.Faction?.def?.isPlayer == true &&
+            !pawn.Dead && !pawn.Downed && !pawn.Drafted && !pawn.IsPrisoner && !pawn.IsSlave;
+
+        private static bool NaturalWaterAt(Map map, IntVec3 cell)
+        {
+            if (map == null || !cell.InBounds(map)) return false;
+            TerrainDef terrain = cell.GetTerrain(map);
+            return terrain?.IsWater == true && terrain.defName != "AF_Pond";
+        }
+
+        public static IEnumerable<IntVec3> NearbyWaterCells(Pawn pawn)
+        {
+            if (!CanGive(pawn)) yield break;
+            Map map = pawn.Map;
+            var seen = new HashSet<IntVec3>();
+            foreach (IntVec3 shore in GenRadial.RadialCellsAround(pawn.Position, SearchRadius, true))
+            {
+                if (!shore.InBounds(map) || !shore.Standable(map)) continue;
+                foreach (IntVec3 direction in GenAdj.CardinalDirections)
+                {
+                    IntVec3 water = shore + direction;
+                    if (seen.Add(water) && NaturalWaterAt(map, water)) yield return water;
+                }
+            }
+        }
+
+        public static bool HasEligibleFish(Pawn pawn, IntVec3 water)
+        {
+            if (!CanGive(pawn) || !NaturalWaterAt(pawn.Map, water)) return false;
+            NaturalFishPopulationMapComponent populations =
+                pawn.Map.GetComponent<NaturalFishPopulationMapComponent>();
+            if (populations == null || !populations.TryGetPreparedSummary(
+                water, out NaturalFishPopulationSummary summary)) return false;
+            FishingRank rank = FishingProgressionComponent.Current?.ProgressFor(pawn, false)?.ExpertiseLevel
+                ?? FishingRank.Novice;
+            return summary.presentSpecies.Any(fish => FishUtility.IsRuntimeFish(fish) &&
+                (AquacultureMod.Settings?.MinimumExpertiseFor(fish) ?? FishingRank.Novice) <= rank &&
+                populations.Contains(water, fish));
+        }
+
+        public static bool TryFindShore(Pawn pawn, IntVec3 water, bool forced, out IntVec3 shore)
+        {
+            shore = IntVec3.Invalid;
+            if (!HasEligibleFish(pawn, water)) return false;
+            foreach (IntVec3 direction in GenAdj.CardinalDirections)
+            {
+                IntVec3 candidate = water + direction;
+                if (!candidate.InBounds(pawn.Map) || !candidate.Standable(pawn.Map)) continue;
+                if (!pawn.CanReserveAndReach(candidate, PathEndMode.OnCell, Danger.Some,
+                    1, -1, null, forced)) continue;
+                shore = candidate;
+                return true;
+            }
+            return false;
+        }
+
+        public static bool StillAvailable(Pawn pawn, FishingAttemptRecord attempt) =>
+            attempt != null && HasEligibleFish(pawn, attempt.waterCell) &&
+            pawn.Map.GetComponent<NaturalFishPopulationMapComponent>()?
+                .Contains(attempt.waterCell, attempt.FishDef) == true;
+    }
+
+    public sealed class WorkGiver_NativeFishing : WorkGiver_Scanner
+    {
+        public override PathEndMode PathEndMode => PathEndMode.Touch;
+        public override Danger MaxPathDanger(Pawn pawn) => Danger.Some;
+
+        public override bool ShouldSkip(Pawn pawn, bool forced = false) =>
+            !NativeFishingWork.CanGive(pawn) || base.ShouldSkip(pawn, forced);
+
+        public override IEnumerable<IntVec3> PotentialWorkCellsGlobal(Pawn pawn) =>
+            NativeFishingWork.NearbyWaterCells(pawn);
+
+        public override bool HasJobOnCell(Pawn pawn, IntVec3 cell, bool forced = false) =>
+            NativeFishingWork.TryFindShore(pawn, cell, forced, out _);
+
+        public override Job JobOnCell(Pawn pawn, IntVec3 cell, bool forced = false)
+        {
+            if (!NativeFishingWork.TryFindShore(pawn, cell, forced, out IntVec3 shore))
+                return null;
+            JobDef def = DefDatabase<JobDef>.GetNamedSilentFail("AF_NativeFishing");
+            if (def == null) return null;
+            Job job = JobMaker.MakeJob(def, cell, shore);
+            // No work is issued without an eligible equipped, inventory or
+            // map-storage rod selected by the existing shared workflow.
+            return FishingRodWorkflow.TryEnsureSelection(pawn, job, out _) ? job : null;
+        }
+    }
+
+    public sealed class JobDriver_NativeFishing : JobDriver
+    {
+        private IntVec3 WaterCell => job.targetA.Cell;
+
+        public override bool TryMakePreToilReservations(bool errorOnFailed)
+        {
+            return pawn.Reserve(job.targetB, job, 1, -1, null, errorOnFailed) &&
+                FishingRodWorkflow.TryReserve(this, errorOnFailed, out _);
+        }
+
+        protected override IEnumerable<Toil> MakeNewToils()
+        {
+            // Completion and interruption clear only this provider's attempt.
+            AddFinishAction(_ => FishingProgressionComponent.Current?
+                .CancelAttempt(pawn, FishingAttemptIntegration.NativeFramework));
+            this.FailOn(() => !NativeFishingWork.HasEligibleFish(pawn, WaterCell));
+
+            foreach (Toil prep in FishingRodWorkflow.PreparationToils(this)) yield return prep;
+            yield return Toils_Goto.GotoCell(TargetIndex.B, PathEndMode.OnCell);
+            foreach (Toil phase in FishingRodUtility.FishingPhases(
+                this, FishingAttemptIntegration.NativeFramework)) yield return phase;
+
+            Toil resolve = ToilMaker.MakeToil("ResolveNativeFishing");
+            resolve.defaultCompleteMode = ToilCompleteMode.Instant;
+            resolve.initAction = () =>
+            {
+                FishingProgressionComponent progression = FishingProgressionComponent.Current;
+                if (progression == null || !progression.Resolve(pawn,
+                    FishingAttemptIntegration.NativeFramework,
+                    attempt => NativeFishingWork.StillAvailable(pawn, attempt),
+                    out FishingAttemptRecord caught)) return;
+                if (caught?.FishDef == null) return;
+                Thing fish = ThingMaker.MakeThing(caught.FishDef);
+                caught.ApplyTo(fish);
+                fish.stackCount = 1;
+                // Never consume a fish or reward a catch before placement.
+                if (GenPlace.TryPlaceThing(fish, pawn.Position, pawn.Map, ThingPlaceMode.Near))
+                    progression.Complete(caught);
+                else if (!fish.Destroyed) fish.Destroy();
+            };
+            yield return resolve;
+        }
+    }
+
     public static class FishHarvestUtility
     {
         public static void Designate(CompFishTraits fish, bool showMessage = true)

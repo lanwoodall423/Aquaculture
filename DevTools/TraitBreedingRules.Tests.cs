@@ -1230,6 +1230,21 @@ static class TraitBreedingRulesTests
             NativeFishingKnowledgeRules.ProgressForExperience(500f, float.NaN, 300f, 700f) == 0f);
     }
 
+    private static void TestNativeFishingProviderGate()
+    {
+        for (int mask = 0; mask < 4; mask++)
+        {
+            bool vfe = (mask & 1) != 0;
+            bool odyssey = (mask & 2) != 0;
+            Check("native fishing runs only without VFE or Odyssey " + mask,
+                NativeFishingProviderRules.CanProvide(vfe, odyssey) == (!vfe && !odyssey));
+        }
+        Check("native fallback cannot duplicate either existing fishing provider",
+            !NativeFishingProviderRules.CanProvide(true, false) &&
+            !NativeFishingProviderRules.CanProvide(false, true) &&
+            !NativeFishingProviderRules.CanProvide(true, true));
+    }
+
     private static void TestFishIdentityMarkerRules()
     {
         // All existing positive markers must keep their meaning; the single
@@ -1280,6 +1295,7 @@ static class TraitBreedingRulesTests
 
     public static int Main()
     {
+        TestNativeFishingProviderGate();
         TestFishIdentityMarkerRules();
         TestFishingRankContract();
         TestNativeFishingKnowledgeFallback();

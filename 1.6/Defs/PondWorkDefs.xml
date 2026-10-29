@@ -1,5 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Defs>
+  <!-- Native fallback only: the giver suppresses itself when VFE or Odyssey
+       fishing is active and otherwise targets a reachable natural-water shore. -->
+  <JobDef>
+    <defName>AF_NativeFishing</defName>
+    <driverClass>AquacultureFishing.JobDriver_NativeFishing</driverClass>
+    <reportString>fishing at TargetA.</reportString>
+    <allowOpportunisticPrefix>true</allowOpportunisticPrefix>
+  </JobDef>
+
+  <WorkGiverDef>
+    <defName>AF_NativeFishing</defName>
+    <label>fish natural waters</label>
+    <giverClass>AquacultureFishing.WorkGiver_NativeFishing</giverClass>
+    <workType>Handling</workType>
+    <verb>fish</verb>
+    <gerund>fishing natural waters</gerund>
+    <priorityInType>90</priorityInType>
+    <requiredCapacities><li>Manipulation</li></requiredCapacities>
+  </WorkGiverDef>
+
   <DesignationDef>
     <defName>AF_HarvestPondFishDesignation</defName>
     <label>harvest pond fish</label>
