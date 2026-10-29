@@ -9,10 +9,20 @@ using Verse;
 namespace AquacultureFishing
 {
     /// <summary>
+    /// Current Insight Canvas settings provider. A future native view can replace
+    /// this factory without changing the Mod's saved-settings owner.
+    /// </summary>
+    internal static class AquacultureSettingsViewFactory
+    {
+        public static IAquacultureSettingsView Create(AquacultureSettings settings) =>
+            new AquacultureSettingsDocument(settings);
+    }
+
+    /// <summary>
     /// Document-owned Insight Canvas settings UI. It reads immutable catalog snapshots,
     /// binds directly to AquacultureSettings, and never performs map/world work during paint.
     /// </summary>
-    public sealed class AquacultureSettingsDocument
+    public sealed class AquacultureSettingsDocument : IAquacultureSettingsView
     {
         private static readonly FishingRank[] FishingRanks = (FishingRank[])Enum.GetValues(typeof(FishingRank));
         private static readonly string[] FishingRankLabels = FishingRanks.Select(rank => rank.ToString()).ToArray();
@@ -69,6 +79,14 @@ namespace AquacultureFishing
         public void PostClose()
         {
             Host.PostClose();
+        }
+
+        public void OnSettingsWritten()
+        {
+            // Preserve the previous Mod-owned order: release document host state,
+            // then invalidate the bound document before base.WriteSettings().
+            Host.PostClose();
+            Document.Invalidate();
         }
 
         private void BuildCatalog()

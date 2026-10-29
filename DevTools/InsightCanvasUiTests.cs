@@ -54,6 +54,7 @@ namespace AquacultureFishing.Tests
             TestNativeColonyKnowledgeBoundary(root);
             TestConditionalDeferredRealityPackageContract(root);
             TestSerializedSettingsContract(root);
+            TestSettingsRendererProviderBoundary(root);
             TestPresentationContract(root);
             Console.WriteLine(failures == 0 ? "Insight Canvas UI tests: PASS" : "Insight Canvas UI tests: FAIL (" + failures + ")");
             return failures == 0 ? 0 : 1;
@@ -1553,8 +1554,83 @@ namespace AquacultureFishing.Tests
                 "presentationReducedMotion", "presentationSettingsVersion"
             };
             foreach (string key in requiredKeys) Check(settings.Contains("\"" + key + "\""), "serialized key preserved: " + key);
-            Check(settings.Contains("DoSettingsWindowContents") && settings.Contains("AquacultureSettingsDocument"),
-                "settings entry delegates to the Insight Canvas document");
+            Check(settings.Contains("DoSettingsWindowContents") &&
+                settings.Contains("IAquacultureSettingsView") &&
+                settings.Contains("AquacultureSettingsViewFactory.Create(Settings)"),
+                "settings entry delegates through its Aquaculture-owned renderer boundary");
+        }
+
+        private static void TestSettingsRendererProviderBoundary(string root)
+        {
+            string source = File.ReadAllText(Path.Combine(root, "Source", "SettingsAndMasks.cs"));
+            string canvas = File.ReadAllText(Path.Combine(root, "Source", "UI",
+                "AquacultureSettingsDocument.cs"));
+
+            int interfaceStart = source.IndexOf("public interface IAquacultureSettingsView",
+                StringComparison.Ordinal);
+            int modStart = interfaceStart < 0 ? -1 : source.IndexOf(
+                "public sealed class AquacultureMod : Mod", interfaceStart, StringComparison.Ordinal);
+            string contract = interfaceStart >= 0 && modStart > interfaceStart
+                ? source.Substring(interfaceStart, modStart - interfaceStart) : string.Empty;
+            Check(contract.Contains("void Draw(Rect rect);") &&
+                contract.Contains("void OnSettingsWritten();") &&
+                Regex.Matches(contract, @"\bvoid\s+\w+\s*\(").Count == 2 &&
+                !contract.Contains("InsightUi") &&
+                !contract.Contains("InsightTheme") &&
+                !Regex.IsMatch(source, @"(?m)^\s*using\s+InsightCanvas\s*;"),
+                "settings renderer interface contains only Aquaculture-owned drawing and settings-written methods");
+
+            int modEnd = modStart < 0 ? -1 : source.IndexOf(
+                "public sealed class FishTextureVariation", modStart, StringComparison.Ordinal);
+            string mod = modStart >= 0 && modEnd > modStart
+                ? source.Substring(modStart, modEnd - modStart) : string.Empty;
+            Check(mod.Contains("private IAquacultureSettingsView insightSettingsDocument;") &&
+                mod.Contains("insightSettingsDocument = AquacultureSettingsViewFactory.Create(Settings);") &&
+                mod.Contains("if (insightSettingsDocument == null)") &&
+                mod.Contains("insightSettingsDocument.Draw(inRect.ContractedBy(8f));") &&
+                !mod.Contains("AquacultureSettingsDocument") &&
+                !mod.Contains("insightSettingsDocument?.Host") &&
+                !mod.Contains("insightSettingsDocument?.Document"),
+                "AquacultureMod uses only its renderer interface and preserves first draw and settings inset");
+
+            int writeStart = mod.IndexOf("public override void WriteSettings()", StringComparison.Ordinal);
+            string write = writeStart >= 0 ? mod.Substring(writeStart) : string.Empty;
+            int revision = write.IndexOf("Settings.maskRevision++;", StringComparison.Ordinal);
+            int visuals = write.IndexOf("FishVisualCache.Clear();", StringComparison.Ordinal);
+            int pondMenus = write.IndexOf("InvalidatePondMenus();", StringComparison.Ordinal);
+            int presentation = write.IndexOf("insightSettingsDocument?.OnSettingsWritten();",
+                StringComparison.Ordinal);
+            int save = write.IndexOf("base.WriteSettings();", StringComparison.Ordinal);
+            Check(revision >= 0 && revision < visuals && visuals < pondMenus &&
+                pondMenus < presentation && presentation < save &&
+                write.Contains("if (Current.Game?.Maps != null)"),
+                "settings save preserves mask, visual, pond-menu, presentation and base-write order");
+
+            int onWriteStart = canvas.IndexOf("public void OnSettingsWritten()", StringComparison.Ordinal);
+            int onWriteEnd = onWriteStart < 0 ? -1 : canvas.IndexOf(
+                "private void BuildCatalog()", onWriteStart, StringComparison.Ordinal);
+            string onWrite = onWriteStart >= 0 && onWriteEnd > onWriteStart
+                ? canvas.Substring(onWriteStart, onWriteEnd - onWriteStart) : string.Empty;
+            int close = onWrite.IndexOf("Host.PostClose();", StringComparison.Ordinal);
+            int invalidate = onWrite.IndexOf("Document.Invalidate();", StringComparison.Ordinal);
+            Check(canvas.Contains("internal static class AquacultureSettingsViewFactory") &&
+                canvas.Contains("public static IAquacultureSettingsView Create(AquacultureSettings settings) =>") &&
+                canvas.Contains("new AquacultureSettingsDocument(settings);") &&
+                canvas.Contains("public sealed class AquacultureSettingsDocument : IAquacultureSettingsView") &&
+                canvas.Contains("public AquacultureSettingsDocument(AquacultureSettings settings)") &&
+                canvas.Contains("BuildCatalog();") &&
+                canvas.Contains("AquacultureInsightPresentation.Apply(Document, settings);") &&
+                canvas.Contains("Host.Draw(rect, Time.deltaTime);") &&
+                canvas.Contains("public void PostClose()") &&
+                close >= 0 && invalidate > close,
+                "Canvas settings provider retains its existing presentation, catalog, draw and ordered cleanup");
+
+            string compatibility = File.ReadAllText(Path.Combine(root, "About", "COMPATIBILITY.md"));
+            Check(compatibility.Contains("AQ-DEP-05A2") &&
+                compatibility.Contains("IAquacultureSettingsView") &&
+                compatibility.Contains("still requires Insight Canvas") &&
+                compatibility.Contains("RimTest"),
+                "settings renderer seam does not qualify an optional Canvas build or runtime release");
         }
 
         private static void TestPresentationContract(string root)

@@ -321,11 +321,21 @@ namespace AquacultureFishing
         }
     }
 
+    /// <summary>
+    /// Aquaculture-owned settings renderer contract. The Mod owns saved settings,
+    /// while the selected view owns only its presentation and redraw lifecycle.
+    /// </summary>
+    public interface IAquacultureSettingsView
+    {
+        void Draw(Rect rect);
+        void OnSettingsWritten();
+    }
+
     public sealed class AquacultureMod : Mod
     {
         public static readonly HarmonyLib.Harmony Harmony = new HarmonyLib.Harmony("lan.aquaculture.fishing");
         public static AquacultureSettings Settings;
-        private AquacultureSettingsDocument insightSettingsDocument;
+        private IAquacultureSettingsView insightSettingsDocument;
 
         public AquacultureMod(ModContentPack content) : base(content)
         {
@@ -336,7 +346,7 @@ namespace AquacultureFishing
         public override void DoSettingsWindowContents(Rect inRect)
         {
             if (insightSettingsDocument == null)
-                insightSettingsDocument = new AquacultureSettingsDocument(Settings);
+                insightSettingsDocument = AquacultureSettingsViewFactory.Create(Settings);
             insightSettingsDocument.Draw(inRect.ContractedBy(8f));
         }
 
@@ -346,8 +356,7 @@ namespace AquacultureFishing
             FishVisualCache.Clear();
             if (Current.Game?.Maps != null)
                 for (int i = 0; i < Current.Game.Maps.Count; i++) Current.Game.Maps[i].GetComponent<FishPondMapComponent>()?.InvalidatePondMenus();
-            insightSettingsDocument?.Host.PostClose();
-            insightSettingsDocument?.Document.Invalidate();
+            insightSettingsDocument?.OnSettingsWritten();
             base.WriteSettings();
         }
     }
