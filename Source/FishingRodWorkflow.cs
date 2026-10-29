@@ -166,6 +166,21 @@ namespace AquacultureFishing
         private const string RestrictedFallback = "This pawn cannot automatically acquire a fishing rod.";
         private const string NoReachableFallback = "No usable fishing rod is reachable in approved storage.";
 
+        /// <summary>
+        /// Read-only eligibility probe for speculative workgiver scans. This
+        /// checks the same equipped, inventory, or approved reachable stored
+        /// rods as selection, but never creates, replaces, or restores a saved
+        /// FishingRodSession. Actual job reservation selects the rod again.
+        /// </summary>
+        public static bool HasAvailableRod(Pawn pawn)
+        {
+            if (pawn == null) return false;
+            if (FishingRodUtility.EquippedRodThing(pawn) != null) return true;
+            if (FishingRodWorkflowComponent.Current == null || pawn.IsPrisoner || pawn.IsSlave)
+                return false;
+            return BestInventoryRod(pawn) != null || BestStoredRod(pawn) != null;
+        }
+
         public static bool TryEnsureSelection(Pawn pawn, Job job, out string reason)
         {
             reason = null;

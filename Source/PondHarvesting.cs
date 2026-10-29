@@ -29,9 +29,14 @@ namespace AquacultureFishing
             ModsConfig.IsActive("VanillaExpanded.VCEF"),
             ModsConfig.IsActive("Ludeon.RimWorld.Odyssey"));
 
-        public static bool CanGive(Pawn pawn) =>
+        // Workgiver offers need a real rod, but active jobs must not fail while
+        // an approved stored rod is briefly in the pawn's carry tracker.
+        private static bool CanContinue(Pawn pawn) =>
             ProviderAvailable && pawn?.Map != null && pawn.Faction?.def?.isPlayer == true &&
             !pawn.Dead && !pawn.Downed && !pawn.Drafted && !pawn.IsPrisoner && !pawn.IsSlave;
+
+        public static bool CanGive(Pawn pawn) =>
+            CanContinue(pawn) && FishingRodWorkflow.HasAvailableRod(pawn);
 
         private static bool NaturalWaterAt(Map map, IntVec3 cell)
         {
@@ -58,7 +63,7 @@ namespace AquacultureFishing
 
         public static bool HasEligibleFish(Pawn pawn, IntVec3 water)
         {
-            if (!CanGive(pawn) || !NaturalWaterAt(pawn.Map, water)) return false;
+            if (!CanContinue(pawn) || !NaturalWaterAt(pawn.Map, water)) return false;
             NaturalFishPopulationMapComponent populations =
                 pawn.Map.GetComponent<NaturalFishPopulationMapComponent>();
             if (populations == null || !populations.TryGetPreparedSummary(
@@ -73,7 +78,7 @@ namespace AquacultureFishing
         public static bool TryFindShore(Pawn pawn, IntVec3 water, bool forced, out IntVec3 shore)
         {
             shore = IntVec3.Invalid;
-            if (!HasEligibleFish(pawn, water)) return false;
+            if (!CanGive(pawn) || !HasEligibleFish(pawn, water)) return false;
             foreach (IntVec3 direction in GenAdj.CardinalDirections)
             {
                 IntVec3 candidate = water + direction;
@@ -112,10 +117,9 @@ namespace AquacultureFishing
                 return null;
             JobDef def = DefDatabase<JobDef>.GetNamedSilentFail("AF_NativeFishing");
             if (def == null) return null;
-            Job job = JobMaker.MakeJob(def, cell, shore);
-            // No work is issued without an eligible equipped, inventory or
-            // map-storage rod selected by the existing shared workflow.
-            return FishingRodWorkflow.TryEnsureSelection(pawn, job, out _) ? job : null;
+            // Speculative work scanning must not create a saved rod session.
+            // TryReserve/PreparationToils select and reserve after job assignment.
+            return JobMaker.MakeJob(def, cell, shore);
         }
     }
 

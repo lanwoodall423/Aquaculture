@@ -44,6 +44,7 @@ namespace AquacultureFishing.Tests
             TestSelfContainedFishProcessingDefs(root);
             TestFirstPartyFreshwaterFishPrototype(root);
             TestNativeFishingJobBoundary(root);
+            TestNativeFishingReadOnlyRodPreflight(root);
             TestNativeKnowledgeBuildSeam(root);
             TestKnowledgeJournalAdapterBoundary(root);
             TestNativeJournalExpertiseFallback(root);
@@ -790,7 +791,7 @@ namespace AquacultureFishing.Tests
             Check(code.Contains("populations.TryGetPreparedSummary(") &&
                 code.Contains("summary.presentSpecies.Any(fish => FishUtility.IsRuntimeFish(fish)") &&
                 code.Contains("MinimumExpertiseFor(fish)") &&
-                code.Contains("FishingRodWorkflow.TryEnsureSelection(pawn, job, out _) ? job : null") &&
+                code.Contains("CanContinue(pawn) && FishingRodWorkflow.HasAvailableRod(pawn)") &&
                 code.Contains("!pawn.Downed && !pawn.Drafted") &&
                 code.Contains("!pawn.IsPrisoner && !pawn.IsSlave"),
                 "native jobs require prepared fish, species rank and a selectable rod");
@@ -837,6 +838,51 @@ namespace AquacultureFishing.Tests
                 compatibility.Contains("RimTest") &&
                 compatibility.Contains("not a qualified standalone fishing release"),
                 "native prototype documents live build, job and save validation requirements");
+        }
+
+        private static void TestNativeFishingReadOnlyRodPreflight(string root)
+        {
+            string rods = File.ReadAllText(Path.Combine(root, "Source", "FishingRodWorkflow.cs"));
+            int probeStart = rods.IndexOf("public static bool HasAvailableRod(Pawn pawn)",
+                StringComparison.Ordinal);
+            int probeEnd = probeStart < 0 ? -1 : rods.IndexOf(
+                "public static bool TryEnsureSelection(Pawn pawn, Job job, out string reason)",
+                probeStart, StringComparison.Ordinal);
+            string probe = probeStart >= 0 && probeEnd > probeStart
+                ? rods.Substring(probeStart, probeEnd - probeStart) : string.Empty;
+            Check(probe.Contains("FishingRodUtility.EquippedRodThing(pawn) != null") &&
+                probe.Contains("FishingRodWorkflowComponent.Current == null") &&
+                probe.Contains("pawn.IsPrisoner || pawn.IsSlave") &&
+                probe.Contains("BestInventoryRod(pawn) != null || BestStoredRod(pawn) != null"),
+                "speculative native fishing rod eligibility checks equipped, inventory and approved storage paths");
+            Check(!Regex.IsMatch(probe,
+                    @"\b(?:TryEnsureSelection|NewSession|RestoreStaleSession|AddEquipment|TryReserve|" +
+                    @"PrepareToil|Reserve|TryStartCarry|TryTransferEquipmentToContainer)\s*\(") &&
+                !probe.Contains("component.Add(") && !probe.Contains("component.Remove(") &&
+                !probe.Contains("FishingRodWorkflowComponent.Current?.Find("),
+                "read-only rod probe cannot reserve, equip, restore or create saved fishing-rod sessions");
+
+            string code = File.ReadAllText(Path.Combine(root, "Source", "PondHarvesting.cs"));
+            int giverStart = code.IndexOf("public sealed class WorkGiver_NativeFishing",
+                StringComparison.Ordinal);
+            int driverStart = giverStart < 0 ? -1 : code.IndexOf(
+                "public sealed class JobDriver_NativeFishing", giverStart, StringComparison.Ordinal);
+            string giver = giverStart >= 0 && driverStart > giverStart
+                ? code.Substring(giverStart, driverStart - giverStart) : string.Empty;
+            Check(code.Contains("CanContinue(pawn) && FishingRodWorkflow.HasAvailableRod(pawn)") &&
+                code.Contains("if (!CanGive(pawn) || !HasEligibleFish(pawn, water)) return false;") &&
+                giver.Contains("NativeFishingWork.CanGive(pawn)") &&
+                giver.Contains("NativeFishingWork.TryFindShore(pawn, cell, forced, out") &&
+                giver.Contains("return JobMaker.MakeJob(def, cell, shore);") &&
+                !giver.Contains("TryEnsureSelection(") &&
+                !giver.Contains("FishingRodWorkflowComponent.") &&
+                !giver.Contains("FishingRodWorkflow.TryReserve("),
+                "native workgiver may offer jobs but never mutate rod sessions before assignment");
+            Check(code.Contains("if (!CanContinue(pawn) || !NaturalWaterAt(pawn.Map, water)) return false;") &&
+                code.Contains("FishingRodWorkflow.TryReserve(this, errorOnFailed, out _)") &&
+                code.Contains("FishingRodWorkflow.PreparationToils(this)") &&
+                rods.Contains("if (!TryEnsureSelection(pawn, job, out reason))"),
+                "carried rod does not abort active catch and actual job start remains authoritative");
         }
 
         private static void TestNativeFishingRankBoundary(string root)
