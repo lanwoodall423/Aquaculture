@@ -9,10 +9,19 @@ using Verse;
 namespace AquacultureFishing
 {
     /// <summary>
+    /// The default Insight Canvas provider boundary. A future native provider
+    /// can replace this factory without changing the Journal main window.
+    /// </summary>
+    internal static class AquacultureJournalWorkspaceFactory
+    {
+        public static IAquacultureJournalWorkspace Create() => new AquacultureJournalWorkspaceDocument();
+    }
+
+    /// <summary>
     /// The Journal main tab's document-owned workspace. Gameplay components remain the authority;
     /// this class captures their display data before Host.Draw and keeps Paint map-free.
     /// </summary>
-    public sealed class AquacultureJournalWorkspaceDocument
+    public sealed class AquacultureJournalWorkspaceDocument : IAquacultureJournalWorkspace
     {
         private readonly InsightUiDocument document;
         private readonly AquacultureUiSnapshotCache uiCache = new AquacultureUiSnapshotCache();

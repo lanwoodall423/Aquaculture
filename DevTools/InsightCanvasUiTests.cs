@@ -48,6 +48,7 @@ namespace AquacultureFishing.Tests
             TestNativeFishingRuntimeSmokeCoverage(root);
             TestNativeKnowledgeBuildSeam(root);
             TestKnowledgeJournalAdapterBoundary(root);
+            TestJournalWorkspaceProviderBoundary(root);
             TestNativeJournalExpertiseFallback(root);
             TestNativeKnowledgeFallbackBoundary(root);
             TestNativeColonyKnowledgeBoundary(root);
@@ -1153,6 +1154,60 @@ namespace AquacultureFishing.Tests
                 .OrderBy(path => path, StringComparer.Ordinal).ToArray();
             Check(imports.SequenceEqual(new[] { "Source/AquacultureKnowledgeAdapter.cs" }),
                 "only the existing isolated adapter source imports KnowledgeFramework");
+        }
+
+        private static void TestJournalWorkspaceProviderBoundary(string root)
+        {
+            string core = File.ReadAllText(Path.Combine(root, "Source", "AquacultureJournal.cs"));
+            string canvas = File.ReadAllText(Path.Combine(root, "Source", "UI",
+                "AquacultureJournalWorkspaceDocument.cs"));
+
+            int contractStart = core.IndexOf("public interface IAquacultureJournalWorkspace",
+                StringComparison.Ordinal);
+            int contractEnd = contractStart < 0 ? -1 : core.IndexOf(
+                "public sealed class MainTabWindow_AquacultureJournal", contractStart,
+                StringComparison.Ordinal);
+            string contract = contractStart >= 0 && contractEnd > contractStart
+                ? core.Substring(contractStart, contractEnd - contractStart) : string.Empty;
+            Check(contract.Contains("void Draw(Rect rect);") &&
+                contract.Contains("void PostClose();") &&
+                contract.Contains("void SelectPage(string page);") &&
+                contract.Contains("void SelectSpecies(string defName);") &&
+                !contract.Contains("InsightUi") &&
+                !contract.Contains("InsightTheme") &&
+                !Regex.IsMatch(core, @"(?m)^\s*using\s+InsightCanvas\s*;"),
+                "Journal presentation interface uses only Aquaculture-owned methods and Unity Rect");
+
+            string window = contractEnd >= 0 ? core.Substring(contractEnd) : string.Empty;
+            Check(window.Contains("private IAquacultureJournalWorkspace insightWorkspaceDocument;") &&
+                window.Contains("if (firstWorkspaceDraw) insightWorkspaceDocument = AquacultureJournalWorkspaceFactory.Create();") &&
+                !window.Contains("AquacultureJournalWorkspaceDocument") &&
+                window.Contains("journal.insightWorkspaceDocument?.SelectSpecies(fishDef?.defName);") &&
+                window.Contains("insightWorkspaceDocument.SelectPage(page == JournalPage.Ponds ? \"ponds\" :") &&
+                window.Contains("insightWorkspaceDocument.Draw(inRect);") &&
+                window.Contains("journal.insightWorkspaceDocument?.PostClose();") &&
+                window.Contains("insightWorkspaceDocument.PostClose();") &&
+                window.Contains("public override void PostClose()"),
+                "native Journal window preserves workspace construction, selection, draw, close, and expertise navigation");
+
+            Check(canvas.Contains("internal static class AquacultureJournalWorkspaceFactory") &&
+                canvas.Contains("public static IAquacultureJournalWorkspace Create() => new AquacultureJournalWorkspaceDocument();") &&
+                canvas.Contains("public sealed class AquacultureJournalWorkspaceDocument : IAquacultureJournalWorkspace") &&
+                canvas.Contains("document = new InsightUiDocument(") &&
+                canvas.Contains("AquacultureInsightPresentation.Apply(document);") &&
+                canvas.Contains("Host.Draw(rect, Time.deltaTime);") &&
+                canvas.Contains("Host.PostClose();") &&
+                canvas.Contains("public void SelectPage(string page)") &&
+                canvas.Contains("public void SelectSpecies(string defName)") &&
+                canvas.Contains("document.Invalidate();"),
+                "default Canvas renderer remains identical behind the Aquaculture-owned Journal factory");
+
+            string compatibility = File.ReadAllText(Path.Combine(root, "About", "COMPATIBILITY.md"));
+            Check(compatibility.Contains("AQ-DEP-05A1") &&
+                compatibility.Contains("IAquacultureJournalWorkspace") &&
+                compatibility.Contains("still requires Insight Canvas") &&
+                compatibility.Contains("RimTest"),
+                "provider boundary remains explicitly unqualified for a native UI replacement");
         }
 
         private static void TestNativeJournalExpertiseFallback(string root)

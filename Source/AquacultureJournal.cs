@@ -585,6 +585,19 @@ namespace AquacultureFishing
         internal void CancelForUi() => Close();
     }
 
+    /// <summary>
+    /// Aquaculture-owned Journal presentation boundary. The game window owns
+    /// selection and lifecycle; the renderer owns only its local display state.
+    /// No Insight Canvas types cross this contract.
+    /// </summary>
+    public interface IAquacultureJournalWorkspace
+    {
+        void Draw(Rect rect);
+        void PostClose();
+        void SelectPage(string page);
+        void SelectSpecies(string defName);
+    }
+
     public sealed class MainTabWindow_AquacultureJournal : MainTabWindow
     {
         private enum JournalPage { Species, Waters, Ponds, Expertise, Breeds, Anglers, Records }
@@ -594,7 +607,7 @@ namespace AquacultureFishing
         private readonly AquacultureKnowledgeAdapter.ExpertiseMenu expertiseMenu =
             new AquacultureKnowledgeAdapter.ExpertiseMenu();
         private readonly NativeExpertiseMenu nativeExpertiseMenu = new NativeExpertiseMenu();
-        private AquacultureJournalWorkspaceDocument insightWorkspaceDocument;
+        private IAquacultureJournalWorkspace insightWorkspaceDocument;
 
         public override Vector2 InitialSize => new Vector2(Mathf.Min(1180f, UI.screenWidth * 0.96f), Mathf.Min(720f, UI.screenHeight * 0.90f));
 
@@ -641,7 +654,7 @@ namespace AquacultureFishing
             if (page != JournalPage.Expertise)
             {
                 bool firstWorkspaceDraw = insightWorkspaceDocument == null;
-                if (firstWorkspaceDraw) insightWorkspaceDocument = new AquacultureJournalWorkspaceDocument();
+                if (firstWorkspaceDraw) insightWorkspaceDocument = AquacultureJournalWorkspaceFactory.Create();
                 if (firstWorkspaceDraw)
                 {
                     if (!selectedSpecies.NullOrEmpty())
