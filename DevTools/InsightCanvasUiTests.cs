@@ -49,6 +49,7 @@ namespace AquacultureFishing.Tests
             TestNativeKnowledgeBuildSeam(root);
             TestKnowledgeJournalAdapterBoundary(root);
             TestJournalWorkspaceProviderBoundary(root);
+            TestNativeJournalOverviewSpeciesPrototype(root);
             TestStockingPlannerRendererBoundary(root);
             TestNativeStockingPlannerRendererPrototype(root);
             TestBreedRegistrationRendererBoundary(root);
@@ -1220,6 +1221,85 @@ namespace AquacultureFishing.Tests
                 compatibility.Contains("still requires Insight Canvas") &&
                 compatibility.Contains("RimTest"),
                 "provider boundary remains explicitly unqualified for a native UI replacement");
+        }
+
+        private static void TestNativeJournalOverviewSpeciesPrototype(string root)
+        {
+            string source = File.ReadAllText(Path.Combine(root, "Source", "AquacultureJournal.cs"));
+            string canvas = File.ReadAllText(Path.Combine(root, "Source", "UI",
+                "AquacultureJournalWorkspaceDocument.cs"));
+            int start = source.IndexOf(
+                "public sealed class NativeAquacultureJournalWorkspaceView : IAquacultureJournalWorkspace",
+                StringComparison.Ordinal);
+            int end = start < 0 ? -1 : source.IndexOf(
+                "public sealed class MainTabWindow_AquacultureJournal", start, StringComparison.Ordinal);
+            string native = start >= 0 && end > start
+                ? source.Substring(start, end - start) : string.Empty;
+
+            Check(native.Contains("public void Draw(Rect rect)") &&
+                native.Contains("public void PostClose()") &&
+                native.Contains("public void SelectPage(string page)") &&
+                native.Contains("public void SelectSpecies(string defName)") &&
+                !Regex.IsMatch(source, @"(?m)^\s*using\s+InsightCanvas\s*;") &&
+                !native.Contains("InsightUi") &&
+                !native.Contains("InsightCanvas") &&
+                !native.Contains("AquacultureJournalWorkspaceDocument"),
+                "native Journal implements the existing four-method contract without Canvas symbols");
+
+            Check(native.Contains("AquacultureSnapshotCache.Journal(null, true)") &&
+                native.Contains("journal?.species") &&
+                native.Contains("item.identityKnown && item.fishDef != null") &&
+                native.Contains("SafeSpeciesLabel(item).IndexOf(speciesSearch,") &&
+                native.Contains("item.identityKnown ? 0 : 1") &&
+                native.Contains("ThenBy(item => SafeSpeciesLabel(item), StringComparer.OrdinalIgnoreCase)") &&
+                native.Contains("AquacultureFishing.WorkspaceUnknownSpecies") &&
+                !native.Contains("item.fishDef.defName.IndexOf(speciesSearch") &&
+                !native.Contains("item.fishDef.label.IndexOf(speciesSearch") &&
+                !native.Contains("GetNamedSilentFail(selectedSpeciesDefName)") &&
+                !native.Contains("RecordFor("),
+                "native Journal searches masked snapshot labels without resolving hidden identities");
+
+            Check(native.Contains("private AquacultureSpeciesViewSnapshot FindKnownSpecies(") &&
+                native.Contains("item.identityKnown && item.fishDef != null &&") &&
+                native.Contains("item.fishDef.defName == selectedSpeciesDefName") &&
+                native.Contains("if (selected == null || !selected.identityKnown)") &&
+                native.Contains("selected.knownFacets == null || selected.knownFacets.Count == 0") &&
+                native.Contains("selected.knownFacets.ToArray()") &&
+                native.Contains("selected.confidence.ToStringPercent()") &&
+                native.Contains("SelectedFacetsLine(selected)") &&
+                native.Contains("SelectedKnowledgeLine(selected)") &&
+                !native.Contains("TraitValue(") &&
+                !native.Contains("Scribe_"),
+                "native Journal only displays known-species stage, confidence and facets");
+
+            Check(native.Contains("activePage = page == \"species\" ? \"species\" : \"overview\";") &&
+                native.Contains("selectedSpeciesDefName = defName.NullOrEmpty() ? null : defName;") &&
+                native.Contains("selectedSpeciesDefName = null;") &&
+                native.Contains("speciesSearch = string.Empty;") &&
+                native.Contains("scrollPosition = Vector2.zero;") &&
+                native.Contains("Widgets.BeginScrollView(viewport, ref scrollPosition, view);") &&
+                native.Contains("Widgets.EndScrollView();") &&
+                native.Contains("Text.Font = previousFont;") &&
+                native.Contains("SpeciesContentHeight(species, filtered, viewWidth)") &&
+                native.Contains("MainTabWindow_AquacultureJournal.OpenExpertise(null)") &&
+                native.Contains("AquacultureFishing.WorkspaceKnowledgeBody"),
+                "native Journal resets transient state, scrolls content and delegates Expertise navigation");
+
+            Check(source.Contains("private IAquacultureJournalWorkspace insightWorkspaceDocument;") &&
+                source.Contains("insightWorkspaceDocument = AquacultureJournalWorkspaceFactory.Create();") &&
+                source.Contains("insightWorkspaceDocument.Draw(inRect);") &&
+                canvas.Contains("public static IAquacultureJournalWorkspace Create() => new AquacultureJournalWorkspaceDocument();") &&
+                canvas.Contains("Host.Draw(rect, Time.deltaTime);") &&
+                canvas.Contains("Host.PostClose();"),
+                "native Journal prototype leaves the Canvas provider as the default");
+
+            string compatibility = File.ReadAllText(Path.Combine(root, "About", "COMPATIBILITY.md"));
+            Check(compatibility.Contains("AQ-DEP-05B6B1") &&
+                compatibility.Contains("NativeAquacultureJournalWorkspaceView") &&
+                compatibility.Contains("Overview and Species") &&
+                compatibility.Contains("still requires Insight Canvas") &&
+                compatibility.Contains("RimTest"),
+                "partial native Journal documentation retains dependency and gameplay qualification blockers");
         }
 
         private static void TestStockingPlannerRendererBoundary(string root)

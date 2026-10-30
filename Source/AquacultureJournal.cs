@@ -608,6 +608,270 @@ namespace AquacultureFishing
         void SelectSpecies(string defName);
     }
 
+    /// <summary>
+    /// First native Journal workspace prototype: overview and species only.
+    /// Not selected by the current player factory. Uses colony-authoritative,
+    /// knowledge-gated snapshots; no gameplay or journal record writes.
+    /// </summary>
+    public sealed class NativeAquacultureJournalWorkspaceView : IAquacultureJournalWorkspace
+    {
+        private string activePage = "overview";
+        private string selectedSpeciesDefName;
+        private string speciesSearch = string.Empty;
+        private Vector2 scrollPosition;
+
+        public void SelectPage(string page)
+        {
+            activePage = page == "species" ? "species" : "overview";
+            speciesSearch = string.Empty;
+            scrollPosition = Vector2.zero;
+        }
+
+        public void SelectSpecies(string defName)
+        {
+            selectedSpeciesDefName = defName.NullOrEmpty() ? null : defName;
+            activePage = "species";
+            speciesSearch = string.Empty;
+            scrollPosition = Vector2.zero;
+        }
+
+        public void PostClose()
+        {
+            activePage = "overview";
+            selectedSpeciesDefName = null;
+            speciesSearch = string.Empty;
+            scrollPosition = Vector2.zero;
+        }
+
+        public void Draw(Rect rect)
+        {
+            Widgets.DrawMenuSection(rect);
+            Rect padded = rect.ContractedBy(8f);
+            if (padded.width <= 30f || padded.height <= 110f) return;
+
+            AquacultureJournalViewSnapshot journal = AquacultureSnapshotCache.Journal(null, true);
+            IReadOnlyList<AquacultureSpeciesViewSnapshot> species = journal?.species ??
+                Array.Empty<AquacultureSpeciesViewSnapshot>();
+            // Filter against the masked label, never hidden Def names or labels.
+            List<AquacultureSpeciesViewSnapshot> filtered = species
+                .Where(item => item != null &&
+                    (string.IsNullOrEmpty(speciesSearch) ||
+                     SafeSpeciesLabel(item).IndexOf(speciesSearch,
+                         StringComparison.OrdinalIgnoreCase) >= 0))
+                .OrderBy(item => item.identityKnown ? 0 : 1)
+                .ThenBy(item => SafeSpeciesLabel(item), StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            GameFont previousFont = Text.Font;
+            try
+            {
+                Text.Font = GameFont.Medium;
+                Widgets.Label(new Rect(padded.x, padded.y, padded.width, 32f),
+                    L("AquacultureFishing.WorkspaceTitle"));
+                Text.Font = GameFont.Small;
+
+                float navWidth = Mathf.Max(10f, (padded.width - 16f) / 3f);
+                float navY = padded.y + 36f;
+                if (Widgets.ButtonText(new Rect(padded.x, navY, navWidth, 32f),
+                    L("AquacultureFishing.WorkspaceOverview")))
+                {
+                    SelectPage("overview");
+                    return;
+                }
+                if (Widgets.ButtonText(new Rect(padded.x + navWidth + 8f, navY,
+                    navWidth, 32f), L("AquacultureFishing.WorkspaceSpecies")))
+                {
+                    SelectPage("species");
+                    return;
+                }
+                if (Widgets.ButtonText(new Rect(padded.x + 2f * (navWidth + 8f), navY,
+                    navWidth, 32f), L("AquacultureFishing.WorkspaceOpenKnowledge")))
+                {
+                    MainTabWindow_AquacultureJournal.OpenExpertise(null);
+                    return;
+                }
+
+                Rect viewport = new Rect(padded.x, padded.y + 76f, padded.width,
+                    Mathf.Max(0f, padded.height - 76f));
+                if (viewport.width <= 0f || viewport.height <= 0f) return;
+                float viewWidth = Mathf.Max(20f, viewport.width - 18f);
+                float contentHeight = activePage == "species"
+                    ? SpeciesContentHeight(species, filtered, viewWidth)
+                    : OverviewContentHeight(viewWidth);
+                Rect view = new Rect(0f, 0f, viewWidth,
+                    Mathf.Max(viewport.height, contentHeight));
+                scrollPosition.y = Mathf.Clamp(scrollPosition.y, 0f,
+                    Mathf.Max(0f, view.height - viewport.height));
+
+                Widgets.BeginScrollView(viewport, ref scrollPosition, view);
+                try
+                {
+                    float y = 8f;
+                    if (activePage == "species")
+                        DrawSpecies(ref y, viewWidth, viewport.height, species, filtered);
+                    else
+                        DrawOverview(ref y, viewWidth, species);
+                }
+                finally
+                {
+                    Widgets.EndScrollView();
+                }
+            }
+            finally
+            {
+                Text.Font = previousFont;
+            }
+        }
+
+        private static string SafeSpeciesLabel(AquacultureSpeciesViewSnapshot item)
+        {
+            return item != null && item.identityKnown && item.fishDef != null
+                ? item.fishDef.LabelCap.ToString()
+                : L("AquacultureFishing.WorkspaceUnknownSpecies");
+        }
+
+        private static float LabelHeight(string value, float width)
+        {
+            return Mathf.Max(24f, Text.CalcHeight(value ?? string.Empty, Mathf.Max(20f, width)));
+        }
+
+        private static void Line(ref float y, float width, string value)
+        {
+            float height = LabelHeight(value, width);
+            Widgets.Label(new Rect(6f, y, Mathf.Max(20f, width), height), value ?? string.Empty);
+            y += height + 8f;
+        }
+
+        private static void Heading(ref float y, float width, string value)
+        {
+            Text.Font = GameFont.Medium;
+            float height = Mathf.Max(32f, Text.CalcHeight(value, Mathf.Max(20f, width)));
+            Widgets.Label(new Rect(6f, y, Mathf.Max(20f, width), height), value);
+            y += height + 10f;
+            Text.Font = GameFont.Small;
+        }
+
+        private static float SpeciesRowHeight(AquacultureSpeciesViewSnapshot item, float width)
+        {
+            return Mathf.Max(58f, LabelHeight(SafeSpeciesLabel(item), width - 12f) + 28f);
+        }
+
+        private static float OverviewContentHeight(float width)
+        {
+            return 130f +
+                LabelHeight(L("AquacultureFishing.WorkspaceOverviewSubtitle"), width) +
+                LabelHeight(L("AquacultureFishing.WorkspaceKnowledgeBody"), width) +
+                LabelHeight(L("AquacultureFishing.WorkspaceDiscovered"), width);
+        }
+
+        private AquacultureSpeciesViewSnapshot FindKnownSpecies(
+            IReadOnlyList<AquacultureSpeciesViewSnapshot> species)
+        {
+            return selectedSpeciesDefName.NullOrEmpty() ? null : species.FirstOrDefault(
+                item => item != null && item.identityKnown && item.fishDef != null &&
+                    item.fishDef.defName == selectedSpeciesDefName);
+        }
+
+        private static string SelectedKnowledgeLine(AquacultureSpeciesViewSnapshot selected)
+        {
+            if (selected == null || !selected.identityKnown)
+                return L("AquacultureFishing.WorkspaceKnowledgeHidden");
+            return L("AquacultureFishing.WorkspaceKnowledgeStage") + ": " +
+                (selected.stageId ?? string.Empty) + "  •  " +
+                L("AquacultureFishing.WorkspaceConfidence") + ": " +
+                selected.confidence.ToStringPercent();
+        }
+
+        private static string SelectedFacetsLine(AquacultureSpeciesViewSnapshot selected)
+        {
+            if (selected == null || !selected.identityKnown)
+                return L("AquacultureFishing.WorkspaceKnowledgeHidden");
+            if (selected.knownFacets == null || selected.knownFacets.Count == 0)
+                return L("AquacultureFishing.WorkspaceNoKnownFacets");
+            return L("AquacultureFishing.WorkspaceKnownFacets") + ": " +
+                string.Join(", ", selected.knownFacets.ToArray());
+        }
+
+        private float SpeciesContentHeight(IReadOnlyList<AquacultureSpeciesViewSnapshot> species,
+            List<AquacultureSpeciesViewSnapshot> filtered, float width)
+        {
+            AquacultureSpeciesViewSnapshot selected = FindKnownSpecies(species);
+            return 260f + LabelHeight(SelectedKnowledgeLine(selected), width) +
+                LabelHeight(SelectedFacetsLine(selected), width) +
+                filtered.Sum(item => SpeciesRowHeight(item, width) + 6f);
+        }
+
+        private void DrawOverview(ref float y, float width,
+            IReadOnlyList<AquacultureSpeciesViewSnapshot> species)
+        {
+            Heading(ref y, width, L("AquacultureFishing.WorkspaceOverview"));
+            Line(ref y, width, L("AquacultureFishing.WorkspaceOverviewSubtitle"));
+            int known = species.Count(item => item != null && item.identityKnown);
+            Line(ref y, width, L("AquacultureFishing.WorkspaceDiscovered") + ": " + known);
+            Heading(ref y, width, L("AquacultureFishing.WorkspaceKnowledgeTitle"));
+            Line(ref y, width, L("AquacultureFishing.WorkspaceKnowledgeBody"));
+        }
+
+        private void DrawSpecies(ref float y, float width, float viewportHeight,
+            IReadOnlyList<AquacultureSpeciesViewSnapshot> species,
+            List<AquacultureSpeciesViewSnapshot> filtered)
+        {
+            Heading(ref y, width, L("AquacultureFishing.WorkspaceSpecies"));
+            Line(ref y, width, L("AquacultureFishing.WorkspaceSpeciesSubtitle"));
+            Line(ref y, width, L("AquacultureFishing.WorkspaceSearchSpecies"));
+            string nextSearch = Widgets.TextField(new Rect(6f, y,
+                Mathf.Max(20f, width - 12f), 30f), speciesSearch);
+            if (!string.Equals(nextSearch, speciesSearch, StringComparison.Ordinal))
+            {
+                speciesSearch = nextSearch ?? string.Empty;
+                scrollPosition = Vector2.zero;
+            }
+            y += 42f;
+
+            if (filtered.Count == 0)
+                Line(ref y, width, L("AquacultureFishing.WorkspaceNoMatchingSpecies"));
+            foreach (AquacultureSpeciesViewSnapshot item in filtered)
+            {
+                float height = SpeciesRowHeight(item, width);
+                if (y + height >= scrollPosition.y &&
+                    y <= scrollPosition.y + viewportHeight)
+                {
+                    if (Widgets.ButtonText(new Rect(6f, y, Mathf.Max(20f, width - 12f),
+                        height - 26f), SafeSpeciesLabel(item)))
+                    {
+                        // Never derive a player-facing selection from hidden identity.
+                        selectedSpeciesDefName = item.identityKnown
+                            ? item.fishDef?.defName : null;
+                        scrollPosition = Vector2.zero;
+                        return;
+                    }
+                    Widgets.Label(new Rect(6f, y + height - 25f,
+                        Mathf.Max(20f, width - 12f), 24f),
+                        L(item.identityKnown
+                            ? "AquacultureFishing.WorkspaceIdentityKnown"
+                            : "AquacultureFishing.WorkspaceKnowledgeHidden"));
+                }
+                y += height + 6f;
+            }
+
+            y += 10f;
+            Heading(ref y, width, L("AquacultureFishing.WorkspaceSpeciesDetail"));
+            AquacultureSpeciesViewSnapshot selected = FindKnownSpecies(species);
+            if (selected == null)
+            {
+                Line(ref y, width, L("AquacultureFishing.WorkspaceSelectSpecies"));
+            }
+            else
+            {
+                Line(ref y, width, SafeSpeciesLabel(selected));
+                Line(ref y, width, SelectedKnowledgeLine(selected));
+                Line(ref y, width, SelectedFacetsLine(selected));
+            }
+        }
+
+        private static string L(string key) => key.Translate().ToString();
+    }
+
     public sealed class MainTabWindow_AquacultureJournal : MainTabWindow
     {
         private enum JournalPage { Species, Waters, Ponds, Expertise, Breeds, Anglers, Records }
