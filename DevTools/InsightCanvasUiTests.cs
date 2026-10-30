@@ -53,6 +53,7 @@ namespace AquacultureFishing.Tests
             TestBreedRegistrationRendererBoundary(root);
             TestCommissionDeliveryRendererBoundary(root);
             TestFishDossierRendererBoundary(root);
+            TestNativeFishDossierRendererPrototype(root);
             TestNativeJournalExpertiseFallback(root);
             TestNativeKnowledgeFallbackBoundary(root);
             TestNativeColonyKnowledgeBoundary(root);
@@ -1535,6 +1536,63 @@ namespace AquacultureFishing.Tests
                 compatibility.Contains("still requires Insight Canvas") &&
                 compatibility.Contains("RimTest"),
                 "fish dossier isolation is not a native renderer or release qualification");
+        }
+
+        private static void TestNativeFishDossierRendererPrototype(string root)
+        {
+            string source = File.ReadAllText(Path.Combine(root, "Source", "FishTraitsTab.cs"));
+            string canvas = File.ReadAllText(Path.Combine(root, "Source", "UI",
+                "AquacultureFishDossierDocument.cs"));
+            int start = source.IndexOf("public sealed class NativeAquacultureFishDossierView",
+                StringComparison.Ordinal);
+            string native = start < 0 ? string.Empty : source.Substring(start);
+            Check(native.Contains(": IAquacultureFishDossierView") &&
+                native.Contains("public void Draw(Rect rect, CompFishTraits comp)") &&
+                native.Contains("public void PostClose()") &&
+                !source.Contains("using InsightCanvas;") &&
+                !native.Contains("InsightUi") &&
+                !native.Contains("AquacultureFishDossierDocument"),
+                "native dossier uses only Aquaculture and RimWorld UI types");
+            Check(native.Contains("AquacultureKnowledgeAdapter.SpeciesView(") &&
+                native.Contains("AquacultureUiDisclosure.ForFish(") &&
+                native.Contains("AquacultureUiDisclosure.CaptureCapabilities()") &&
+                native.Contains("HasFacet(knowledge, \"traits\")") &&
+                native.Contains("HasFacet(knowledge, \"size\")") &&
+                native.Contains("HasFacet(knowledge, \"health\")") &&
+                native.Contains("HasFacet(knowledge, \"breeding\")") &&
+                native.Contains("disclosure.SpeciesIdentityVisible") &&
+                native.Contains("disclosure.HealthClassificationVisible") &&
+                native.Contains("disclosure.ExactHealthMetricsVisible") &&
+                native.Contains("disclosure.ExpectedMeatYieldVisible") &&
+                native.Contains("disclosure.BreedVisible") &&
+                native.Contains("disclosure.GenerationVisible") &&
+                native.Contains("disclosure.SterilizationVisible"),
+                "native dossier honors knowledge, research and breed disclosure");
+            Check(native.Contains("if (disclosure.TraitsVisible)") &&
+                native.Contains("AquacultureKnowledgeAdapter.IsPlayerReadableTrait(trait.defName)") &&
+                native.Contains("trait.LabelCap") &&
+                !native.Contains("TraitValue(") &&
+                !native.Contains("FishTraitUtility.EffectLine(") &&
+                !native.Contains("trait.description"),
+                "native dossier only displays known trait labels, not hidden numerics");
+            Check(native.Contains("if (comp == null)") &&
+                native.Contains("if (!ReferenceEquals(selectedComp, comp))") &&
+                native.Contains("scrollPosition = Vector2.zero;") &&
+                native.Contains("Widgets.BeginScrollView(") &&
+                native.Contains("Widgets.EndScrollView();") &&
+                native.Contains("disclosure.KnowledgeVisible && parent?.def != null") &&
+                native.Contains("MainTabWindow_AquacultureJournal.OpenSpecies(parent.def)"),
+                "native dossier resets selection and gates its Journal link");
+            Check(canvas.Contains(
+                "public static IAquacultureFishDossierView Create() => new AquacultureFishDossierDocument();") &&
+                source.Contains("insightDossier = AquacultureFishDossierViewFactory.Create();"),
+                "native prototype does not switch the default Canvas provider");
+            string compatibility = File.ReadAllText(Path.Combine(root, "About", "COMPATIBILITY.md"));
+            Check(compatibility.Contains("AQ-DEP-05B1") &&
+                compatibility.Contains("NativeAquacultureFishDossierView") &&
+                compatibility.Contains("still requires Insight Canvas") &&
+                compatibility.Contains("RimTest"),
+                "native dossier prototype is documented without standalone claims");
         }
 
         private static void TestNativeJournalExpertiseFallback(string root)

@@ -159,4 +159,171 @@ namespace AquacultureFishing
             TooltipHandler.TipRegion(rect, trait.description);
         }
     }
+
+    /// <summary>
+    /// First native, read-only dossier provider prototype. The existing Canvas
+    /// factory remains the default until a separately qualified optional build.
+    /// </summary>
+    public sealed class NativeAquacultureFishDossierView : IAquacultureFishDossierView
+    {
+        private CompFishTraits selectedComp;
+        private Vector2 scrollPosition;
+
+        public void PostClose()
+        {
+            selectedComp = null;
+            scrollPosition = Vector2.zero;
+        }
+
+        public void Draw(Rect rect, CompFishTraits comp)
+        {
+            if (comp == null)
+            {
+                PostClose();
+                return;
+            }
+            if (!ReferenceEquals(selectedComp, comp))
+            {
+                selectedComp = comp;
+                scrollPosition = Vector2.zero;
+            }
+
+            Thing parent = comp.parent;
+            AquacultureKnowledgeView knowledge = parent?.def == null
+                ? new AquacultureKnowledgeView(string.Empty, string.Empty, 0f, 0f, false, new string[0])
+                : AquacultureKnowledgeAdapter.SpeciesView(parent.def, null, true);
+            AquacultureFishDossierDisclosure disclosure = AquacultureUiDisclosure.ForFish(
+                AquacultureUiDisclosure.CaptureCapabilities(), comp.initialized, knowledge.identityKnown,
+                HasFacet(knowledge, "traits"), HasFacet(knowledge, "size"),
+                HasFacet(knowledge, "health"), HasFacet(knowledge, "breeding"),
+                !comp.BreedName.NullOrEmpty(), comp.sterilized);
+
+            List<string> rows = new List<string>
+            {
+                L("AquacultureFishing.WorkspaceFishDossier"),
+                disclosure.SpeciesIdentityVisible
+                    ? parent?.def?.LabelCap.ToString() ?? L("AquacultureFishing.WorkspaceUnknownSpecies")
+                    : L("AquacultureFishing.WorkspaceUnknownSpecies")
+            };
+            if (disclosure.SexVisible)
+                rows.Add(L("AquacultureFishing.WorkspaceSex") + ": " +
+                    L(comp.IsFemale ? "AquacultureFishing.WorkspaceFemale" : "AquacultureFishing.WorkspaceMale"));
+            if (disclosure.LifeStageVisible)
+                rows.Add(L("AquacultureFishing.WorkspaceLifeStage") + ": " + LifeStage(comp));
+
+            if (disclosure.HealthClassificationVisible)
+            {
+                AquacultureDossierHealthState state = AquacultureDossierHealthRules.Classify(
+                    comp.IsAlive, comp.foodReserve, comp.habitatFit, comp.starvationProgress);
+                rows.Add(HealthLabel(state));
+            }
+            if (disclosure.ExactHealthMetricsVisible)
+            {
+                rows.Add(L("AquacultureFishing.WorkspaceFoodReserve") + ": " +
+                    comp.foodReserve.ToStringPercent());
+                rows.Add(L("AquacultureFishing.WorkspaceHabitatFit") + ": " +
+                    comp.habitatFit.ToStringPercent());
+                if (comp.starvationProgress > 0f)
+                    rows.Add(L("AquacultureFishing.WorkspaceStarvation") + ": " +
+                        comp.starvationProgress.ToStringPercent());
+            }
+            if (disclosure.BreedVisible)
+                rows.Add(L("AquacultureFishing.WorkspaceBreed") + ": " + comp.BreedName);
+            if (disclosure.GenerationVisible)
+                rows.Add(L("AquacultureFishing.WorkspaceGeneration") + ": " + comp.breedGeneration);
+            if (disclosure.ExpectedMeatYieldVisible)
+                rows.Add(L("AquacultureFishing.WorkspaceMeatYield") + ": " +
+                    FishProcessingYield.ExpectedMeatCount(comp));
+            if (disclosure.SterilizationVisible)
+                rows.Add(L("AquacultureFishing.WorkspaceSterilized") + ": " +
+                    L(comp.sterilized ? "AquacultureFishing.WorkspaceYes" : "AquacultureFishing.WorkspaceNo"));
+
+            if (disclosure.TraitsVisible)
+            {
+                rows.Add(L("AquacultureFishing.WorkspaceTraits"));
+                List<FishTraitDef> traits = (comp.ActiveTraits ?? new List<FishTraitDef>())
+                    .Where(trait => trait != null &&
+                        AquacultureKnowledgeAdapter.IsPlayerReadableTrait(trait.defName))
+                    .OrderBy(trait => trait.label, System.StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(trait => trait.defName, System.StringComparer.Ordinal).ToList();
+                if (traits.Count == 0) rows.Add(L("AquacultureFishing.PondNoTraits"));
+                // Learned trait identity never discloses internal numeric values or effects.
+                foreach (FishTraitDef trait in traits) rows.Add("• " + trait.LabelCap);
+            }
+
+            if (disclosure.KnowledgeVisible)
+                rows.Add(L("AquacultureFishing.WorkspaceKnowledgeTitle") + ": " +
+                    (knowledge.stageId ?? string.Empty) + "  •  " + knowledge.confidence.ToStringPercent());
+
+            Widgets.DrawMenuSection(rect);
+            Rect viewport = rect.ContractedBy(8f);
+            float viewWidth = Mathf.Max(20f, viewport.width - 18f);
+            GameFont previousFont = Text.Font;
+            Text.Font = GameFont.Small;
+            float contentHeight = 8f;
+            foreach (string row in rows)
+                contentHeight += Mathf.Max(24f, Text.CalcHeight(row, viewWidth - 12f)) + 6f;
+            bool canOpenKnowledge = disclosure.KnowledgeVisible && parent?.def != null;
+            if (canOpenKnowledge) contentHeight += 34f;
+            Rect view = new Rect(0f, 0f, viewWidth, Mathf.Max(viewport.height, contentHeight));
+            Widgets.BeginScrollView(viewport, ref scrollPosition, view);
+            try
+            {
+                float y = 8f;
+                foreach (string row in rows)
+                {
+                    float height = Mathf.Max(24f, Text.CalcHeight(row, viewWidth - 12f));
+                    Widgets.Label(new Rect(6f, y, viewWidth - 12f, height), row);
+                    y += height + 6f;
+                }
+                if (canOpenKnowledge && Widgets.ButtonText(
+                    new Rect(6f, y, viewWidth - 12f, 28f),
+                    L("AquacultureFishing.WorkspaceOpenKnowledge")))
+                    MainTabWindow_AquacultureJournal.OpenSpecies(parent.def);
+            }
+            finally
+            {
+                Widgets.EndScrollView();
+                Text.Font = previousFont;
+            }
+        }
+
+        private static bool HasFacet(AquacultureKnowledgeView knowledge, string facet)
+        {
+            return knowledge.knownFacets != null &&
+                knowledge.knownFacets.Contains(facet, System.StringComparer.Ordinal);
+        }
+
+        private static string LifeStage(CompFishTraits comp)
+        {
+            if (comp.traitDefNames?.Contains(FishTraitUtility.Fry) == true)
+                return L("AquacultureFishing.WorkspaceLifeStageFry");
+            if (comp.traitDefNames?.Contains(FishTraitUtility.Juvenile) == true)
+                return L("AquacultureFishing.WorkspaceLifeStageJuvenile");
+            if (comp.traitDefNames?.Contains(FishTraitUtility.Elder) == true)
+                return L("AquacultureFishing.WorkspaceLifeStageElder");
+            return L(comp.IsAdult
+                ? "AquacultureFishing.WorkspaceLifeStageAdult"
+                : "AquacultureFishing.WorkspaceUnknown");
+        }
+
+        private static string HealthLabel(AquacultureDossierHealthState state)
+        {
+            switch (state)
+            {
+                case AquacultureDossierHealthState.Healthy:
+                    return L("AquacultureFishing.WorkspaceDossierHealthHealthy");
+                case AquacultureDossierHealthState.Attention:
+                    return L("AquacultureFishing.WorkspaceDossierHealthAttention");
+                case AquacultureDossierHealthState.Critical:
+                    return L("AquacultureFishing.WorkspaceDossierHealthCritical");
+                case AquacultureDossierHealthState.Dead:
+                    return L("AquacultureFishing.WorkspaceDossierHealthDead");
+                default:
+                    return L("AquacultureFishing.WorkspaceDossierHealthUnknown");
+            }
+        }
+
+        private static string L(string key) => key.Translate().ToString();
+    }
 }
