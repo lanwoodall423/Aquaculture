@@ -694,11 +694,21 @@ namespace AquacultureFishing
         }
     }
 
+    /// <summary>
+    /// Aquaculture-owned commission delivery presentation boundary. The native
+    /// dialog retains eligibility checks, delivery authority, pause, and close.
+    /// </summary>
+    public interface IAquacultureCommissionDeliveryView
+    {
+        void Draw(Rect rect);
+        void PostClose();
+    }
+
     public sealed class Dialog_DeliverAquacultureCommission : Window
     {
         private readonly AquacultureCommissionComponent component;
         private readonly AquacultureCommissionRecord commission;
-        private AquacultureCommissionDeliveryDocument insightDocument;
+        private IAquacultureCommissionDeliveryView insightDocument;
 
         public Dialog_DeliverAquacultureCommission(AquacultureCommissionComponent component,
             AquacultureCommissionRecord commission)
@@ -712,7 +722,7 @@ namespace AquacultureFishing
             resizeable = false;
             draggable = true;
             layer = WindowLayer.Dialog;
-            insightDocument = new AquacultureCommissionDeliveryDocument(this);
+            insightDocument = AquacultureCommissionDeliveryViewFactory.Create(this);
         }
 
         public override Vector2 InitialSize => new Vector2(

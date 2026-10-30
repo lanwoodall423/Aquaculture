@@ -24,10 +24,20 @@ namespace AquacultureFishing
     }
 
     /// <summary>
+    /// Existing default Insight Canvas provider. A future native renderer can
+    /// replace this factory without changing authoritative commission delivery.
+    /// </summary>
+    internal static class AquacultureCommissionDeliveryViewFactory
+    {
+        public static IAquacultureCommissionDeliveryView Create(Dialog_DeliverAquacultureCommission owner) =>
+            new AquacultureCommissionDeliveryDocument(owner);
+    }
+
+    /// <summary>
     /// Insight Canvas content embedded in the native commission Window. The native owner keeps
     /// pause/close and delivery authority; this document owns only copied presentation state.
     /// </summary>
-    public sealed class AquacultureCommissionDeliveryDocument
+    public sealed class AquacultureCommissionDeliveryDocument : IAquacultureCommissionDeliveryView
     {
         private readonly Dialog_DeliverAquacultureCommission owner;
         private readonly InsightUiDocument document;

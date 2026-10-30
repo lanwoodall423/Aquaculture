@@ -51,6 +51,7 @@ namespace AquacultureFishing.Tests
             TestJournalWorkspaceProviderBoundary(root);
             TestStockingPlannerRendererBoundary(root);
             TestBreedRegistrationRendererBoundary(root);
+            TestCommissionDeliveryRendererBoundary(root);
             TestNativeJournalExpertiseFallback(root);
             TestNativeKnowledgeFallbackBoundary(root);
             TestNativeColonyKnowledgeBoundary(root);
@@ -445,9 +446,10 @@ namespace AquacultureFishing.Tests
                 !journal.Contains("listScroll") && !journal.Contains("detailScroll"),
                 "obsolete Journal renderer and scroll state are removed");
             string commissions = File.ReadAllText(Path.Combine(root, "Source", "AquacultureCommissions.cs"));
-            Check(commissions.Contains("AquacultureCommissionDeliveryDocument") &&
+            Check(commissions.Contains("IAquacultureCommissionDeliveryView") &&
+                commissions.Contains("AquacultureCommissionDeliveryViewFactory.Create(this)") &&
                 commissions.Contains("TryDeliverForUi") && commissions.Contains("TryDeliver("),
-                "commission delivery remains owner-authoritative with an embedded document");
+                "commission delivery remains owner-authoritative behind an Aquaculture-owned view");
             Check(planner.Contains("CalculateForecast") && planner.Contains("ForecastSnapshot") &&
                 planner.Contains("SetStockingBlueprint"),
                 "planner retains authoritative forecast and blueprint persistence");
@@ -1361,6 +1363,101 @@ namespace AquacultureFishing.Tests
                 compatibility.Contains("still requires Insight Canvas") &&
                 compatibility.Contains("RimTest"),
                 "breed registration renderer isolation is not a qualified optional UI build");
+        }
+
+        private static void TestCommissionDeliveryRendererBoundary(string root)
+        {
+            string source = File.ReadAllText(Path.Combine(root, "Source", "AquacultureCommissions.cs"));
+            string canvas = File.ReadAllText(Path.Combine(root, "Source", "UI",
+                "AquacultureCommissionDeliveryDocument.cs"));
+
+            int contractStart = source.IndexOf("public interface IAquacultureCommissionDeliveryView",
+                StringComparison.Ordinal);
+            int dialogStart = contractStart < 0 ? -1 : source.IndexOf(
+                "public sealed class Dialog_DeliverAquacultureCommission", contractStart,
+                StringComparison.Ordinal);
+            string contract = contractStart >= 0 && dialogStart > contractStart
+                ? source.Substring(contractStart, dialogStart - contractStart) : string.Empty;
+            Check(contract.Contains("void Draw(Rect rect);") &&
+                contract.Contains("void PostClose();") &&
+                Regex.Matches(contract, @"\bvoid\s+\w+\s*\(").Count == 2 &&
+                !contract.Contains("InsightUi") &&
+                !Regex.IsMatch(source, @"(?m)^\s*using\s+InsightCanvas\s*;"),
+                "commission delivery view contract uses only Aquaculture and Unity rectangle types");
+
+            int dialogEnd = dialogStart < 0 ? -1 : source.IndexOf(
+                "public static class AquacultureCommissionUi", dialogStart,
+                StringComparison.Ordinal);
+            string dialog = dialogStart >= 0 && dialogEnd > dialogStart
+                ? source.Substring(dialogStart, dialogEnd - dialogStart) : string.Empty;
+            int flags = dialog.IndexOf("layer = WindowLayer.Dialog;", StringComparison.Ordinal);
+            int factory = dialog.IndexOf(
+                "insightDocument = AquacultureCommissionDeliveryViewFactory.Create(this);",
+                StringComparison.Ordinal);
+            Check(dialog.Contains("private IAquacultureCommissionDeliveryView insightDocument;") &&
+                !dialog.Contains("AquacultureCommissionDeliveryDocument") &&
+                dialog.Contains("forcePause = true;") &&
+                dialog.Contains("absorbInputAroundWindow = true;") &&
+                dialog.Contains("doCloseX = true;") &&
+                dialog.Contains("closeOnAccept = false;") &&
+                dialog.Contains("resizeable = false;") &&
+                dialog.Contains("draggable = true;") &&
+                flags >= 0 && factory > flags &&
+                dialog.Contains("insightDocument.Draw(inRect);") &&
+                dialog.Contains("insightDocument?.PostClose();") &&
+                dialog.Contains("base.PostClose();"),
+                "native commission dialog retains window flags, first renderer construction and cleanup");
+
+            Check(dialog.Contains("internal string RequirementsForUi =>") &&
+                dialog.Contains("internal string PreviewForUi =>") &&
+                dialog.Contains("internal string EligibleCountForUi =>") &&
+                dialog.Contains("internal IReadOnlyList<AquacultureCommissionDeliverySnapshot> CaptureSpecimensForUi()") &&
+                dialog.Contains("component?.RefreshEligibleSpecimens();") &&
+                dialog.Contains("component?.EligibleSpecimens(commission)") &&
+                dialog.Contains("!specimen.Destroyed && specimen.Spawned") &&
+                dialog.Contains(".OrderBy(specimen => specimen.thingIDNumber)") &&
+                dialog.Contains("AquacultureUiStableIds.For(\"commission.specimen\"") &&
+                dialog.Contains("internal bool TryDeliverForUi(int thingId, out string reason)") &&
+                dialog.Contains("return component.TryDeliver(specimen, out reason);") &&
+                dialog.Contains("internal void CloseForUi()") &&
+                dialog.Contains("Close();"),
+                "commission eligibility snapshot and delivery authority remain native and unchanged");
+
+            int drawStart = canvas.IndexOf("public void Draw(UnityEngine.Rect rect)",
+                StringComparison.Ordinal);
+            int drawEnd = drawStart < 0 ? -1 : canvas.IndexOf(
+                "public void PostClose()", drawStart, StringComparison.Ordinal);
+            string draw = drawStart >= 0 && drawEnd > drawStart
+                ? canvas.Substring(drawStart, drawEnd - drawStart) : string.Empty;
+            int capture = draw.IndexOf("CaptureSnapshot();", StringComparison.Ordinal);
+            int render = draw.IndexOf("Host.Draw(rect, UnityEngine.Time.deltaTime);",
+                StringComparison.Ordinal);
+            Check(canvas.Contains("internal static class AquacultureCommissionDeliveryViewFactory") &&
+                canvas.Contains("public static IAquacultureCommissionDeliveryView Create(Dialog_DeliverAquacultureCommission owner) =>") &&
+                canvas.Contains("new AquacultureCommissionDeliveryDocument(owner);") &&
+                canvas.Contains("public sealed class AquacultureCommissionDeliveryDocument : IAquacultureCommissionDeliveryView") &&
+                canvas.Contains("public AquacultureCommissionDeliveryDocument(Dialog_DeliverAquacultureCommission owner)") &&
+                canvas.Contains("document = new InsightUiDocument(") &&
+                canvas.Contains("AquacultureInsightPresentation.Apply(document);") &&
+                capture >= 0 && render > capture &&
+                canvas.Contains("Host.PostClose();") &&
+                canvas.Contains("owner.CaptureSpecimensForUi();") &&
+                canvas.Contains("owner.RequirementsForUi") &&
+                canvas.Contains("owner.PreviewForUi") &&
+                canvas.Contains("owner.EligibleCountForUi") &&
+                canvas.Contains("owner.TryDeliverForUi(thingId, out string reason)") &&
+                canvas.Contains("owner.CloseForUi();") &&
+                canvas.Contains("InsightToastSeverity.Success") &&
+                canvas.Contains("InsightToastSeverity.Error") &&
+                canvas.Contains("document.Invalidate();"),
+                "Canvas renderer still refreshes copied specimens before draw, invokes owner delivery and preserves toasts/cleanup");
+
+            string compatibility = File.ReadAllText(Path.Combine(root, "About", "COMPATIBILITY.md"));
+            Check(compatibility.Contains("AQ-DEP-05A5") &&
+                compatibility.Contains("IAquacultureCommissionDeliveryView") &&
+                compatibility.Contains("still requires Insight Canvas") &&
+                compatibility.Contains("RimTest"),
+                "commission renderer seam remains explicitly unqualified for optional UI or release");
         }
 
         private static void TestNativeJournalExpertiseFallback(string root)
