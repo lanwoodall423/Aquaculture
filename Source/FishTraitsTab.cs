@@ -6,6 +6,16 @@ using Verse;
 
 namespace AquacultureFishing
 {
+    /// <summary>
+    /// Aquaculture-owned fish dossier presentation contract. The RimWorld tab
+    /// retains selection, visibility, and its existing native fallback.
+    /// </summary>
+    public interface IAquacultureFishDossierView
+    {
+        void Draw(Rect rect, CompFishTraits comp);
+        void PostClose();
+    }
+
     public sealed class ITab_FishTraits : ITab
     {
         private Vector2 scrollPosition;
@@ -15,7 +25,7 @@ namespace AquacultureFishing
         private readonly List<FishTraitDef> cachedTraits = new List<FishTraitDef>();
         private readonly List<float> cachedHeights = new List<float>();
         private float cachedTotalHeight;
-        private AquacultureFishDossierDocument insightDossier;
+        private IAquacultureFishDossierView insightDossier;
 
         public ITab_FishTraits()
         {
@@ -51,7 +61,7 @@ namespace AquacultureFishing
             CompFishTraits selected = SelThing?.TryGetComp<CompFishTraits>();
             if (selected != null)
             {
-                if (insightDossier == null) insightDossier = new AquacultureFishDossierDocument();
+                if (insightDossier == null) insightDossier = AquacultureFishDossierViewFactory.Create();
                 insightDossier.Draw(rect, selected);
                 return;
             }

@@ -52,6 +52,7 @@ namespace AquacultureFishing.Tests
             TestStockingPlannerRendererBoundary(root);
             TestBreedRegistrationRendererBoundary(root);
             TestCommissionDeliveryRendererBoundary(root);
+            TestFishDossierRendererBoundary(root);
             TestNativeJournalExpertiseFallback(root);
             TestNativeKnowledgeFallbackBoundary(root);
             TestNativeColonyKnowledgeBoundary(root);
@@ -1458,6 +1459,82 @@ namespace AquacultureFishing.Tests
                 compatibility.Contains("still requires Insight Canvas") &&
                 compatibility.Contains("RimTest"),
                 "commission renderer seam remains explicitly unqualified for optional UI or release");
+        }
+
+        private static void TestFishDossierRendererBoundary(string root)
+        {
+            string owner = File.ReadAllText(Path.Combine(root, "Source", "FishTraitsTab.cs"));
+            string canvas = File.ReadAllText(Path.Combine(root, "Source", "UI",
+                "AquacultureFishDossierDocument.cs"));
+
+            int contractStart = owner.IndexOf("public interface IAquacultureFishDossierView",
+                StringComparison.Ordinal);
+            int tabStart = contractStart < 0 ? -1 : owner.IndexOf(
+                "public sealed class ITab_FishTraits : ITab", contractStart,
+                StringComparison.Ordinal);
+            string contract = contractStart >= 0 && tabStart > contractStart
+                ? owner.Substring(contractStart, tabStart - contractStart) : string.Empty;
+            Check(contract.Contains("void Draw(Rect rect, CompFishTraits comp);") &&
+                contract.Contains("void PostClose();") &&
+                Regex.Matches(contract, @"\bvoid\s+\w+\s*\(").Count == 2 &&
+                !contract.Contains("InsightUi") &&
+                !Regex.IsMatch(owner, @"(?m)^\s*using\s+InsightCanvas\s*;"),
+                "fish dossier view contract owns only drawing and cleanup, without Canvas types");
+
+            string tab = tabStart >= 0 ? owner.Substring(tabStart) : string.Empty;
+            int rect = tab.IndexOf("Rect rect = new Rect(0f, 0f, size.x, size.y).ContractedBy(12f);",
+                StringComparison.Ordinal);
+            int selected = tab.IndexOf("CompFishTraits selected = SelThing?.TryGetComp<CompFishTraits>();",
+                StringComparison.Ordinal);
+            int factory = tab.IndexOf(
+                "if (insightDossier == null) insightDossier = AquacultureFishDossierViewFactory.Create();",
+                StringComparison.Ordinal);
+            int draw = tab.IndexOf("insightDossier.Draw(rect, selected);", StringComparison.Ordinal);
+            int close = tab.IndexOf("insightDossier?.PostClose();", StringComparison.Ordinal);
+            Check(tab.Contains("private IAquacultureFishDossierView insightDossier;") &&
+                !tab.Contains("AquacultureFishDossierDocument") &&
+                tab.Contains("public override bool IsVisible => SelThing?.TryGetComp<CompFishTraits>() != null;") &&
+                tab.Contains("size = new Vector2(520f, 484f);") &&
+                tab.Contains("labelKey = \"AF_TraitsTab\";") &&
+                tab.Contains("if (selected != null)") &&
+                rect >= 0 && selected > rect && factory > selected && draw > factory &&
+                close > draw &&
+                tab.Contains("Widgets.Label(new Rect(rect.x, rect.y, rect.width, 34f)") &&
+                tab.Contains("RefreshSnapshot(viewWidth);") &&
+                tab.Contains("DrawTrait(new Rect("),
+                "fish trait tab preserves selection, first-create, inset, native fallback and cleanup");
+
+            int drawStart = canvas.IndexOf("public void Draw(Rect rect, CompFishTraits comp)",
+                StringComparison.Ordinal);
+            int drawEnd = drawStart < 0 ? -1 : canvas.IndexOf(
+                "public void PostClose()", drawStart, StringComparison.Ordinal);
+            string drawBody = drawStart >= 0 && drawEnd > drawStart
+                ? canvas.Substring(drawStart, drawEnd - drawStart) : string.Empty;
+            int capture = drawBody.IndexOf("Capture(comp);", StringComparison.Ordinal);
+            int render = drawBody.IndexOf("Host.Draw(rect, Time.deltaTime);",
+                StringComparison.Ordinal);
+            Check(canvas.Contains("internal static class AquacultureFishDossierViewFactory") &&
+                canvas.Contains("public static IAquacultureFishDossierView Create() => new AquacultureFishDossierDocument();") &&
+                canvas.Contains("public sealed class AquacultureFishDossierDocument : IAquacultureFishDossierView") &&
+                canvas.Contains("public AquacultureFishDossierDocument()") &&
+                canvas.Contains("document = new InsightUiDocument(") &&
+                canvas.Contains("AquacultureInsightPresentation.Apply(document);") &&
+                capture >= 0 && render > capture &&
+                canvas.Contains("Host.PostClose();") &&
+                canvas.Contains("if (capturedComp != null && !ReferenceEquals(comp, capturedComp)) PostClose();") &&
+                canvas.Contains("AquacultureKnowledgeAdapter.SpeciesView(") &&
+                canvas.Contains("AquacultureUiDisclosure.ForFish(") &&
+                canvas.Contains("AquacultureKnowledgeAdapter.IsPlayerReadableTrait(") &&
+                canvas.Contains("ReferenceEquals(comp, capturedComp) && snapshot != null") &&
+                canvas.Contains("AquacultureFishDossierSnapshot("),
+                "Canvas fish dossier retains its original snapshot, disclosure, capture, draw and selection cleanup");
+
+            string compatibility = File.ReadAllText(Path.Combine(root, "About", "COMPATIBILITY.md"));
+            Check(compatibility.Contains("AQ-DEP-05A6") &&
+                compatibility.Contains("IAquacultureFishDossierView") &&
+                compatibility.Contains("still requires Insight Canvas") &&
+                compatibility.Contains("RimTest"),
+                "fish dossier isolation is not a native renderer or release qualification");
         }
 
         private static void TestNativeJournalExpertiseFallback(string root)

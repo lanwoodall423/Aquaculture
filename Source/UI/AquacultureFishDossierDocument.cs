@@ -9,8 +9,17 @@ using Verse;
 
 namespace AquacultureFishing
 {
+    /// <summary>
+    /// Existing default Insight Canvas provider. A native dossier can replace
+    /// this factory without changing the authoritative RimWorld fish trait tab.
+    /// </summary>
+    internal static class AquacultureFishDossierViewFactory
+    {
+        public static IAquacultureFishDossierView Create() => new AquacultureFishDossierDocument();
+    }
+
     /// <summary>Insight Canvas dossier embedded in the native ITab_FishTraits shell.</summary>
-    public sealed class AquacultureFishDossierDocument
+    public sealed class AquacultureFishDossierDocument : IAquacultureFishDossierView
     {
         private readonly InsightUiDocument document;
         private readonly List<string> traitRows = new List<string>();
