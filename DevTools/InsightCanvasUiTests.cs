@@ -64,6 +64,7 @@ namespace AquacultureFishing.Tests
             TestSerializedSettingsContract(root);
             TestSettingsRendererProviderBoundary(root);
             TestNativeGeneralSettingsRendererPrototype(root);
+            TestNativeSpecializedSettingsRendererPrototype(root);
             TestPresentationContract(root);
             Console.WriteLine(failures == 0 ? "Insight Canvas UI tests: PASS" : "Insight Canvas UI tests: FAIL (" + failures + ")");
             return failures == 0 ? 0 : 1;
@@ -2293,15 +2294,15 @@ namespace AquacultureFishing.Tests
                 native.Contains("new FloatMenuOption(L(\"AquacultureFishing.SettingsEcology\")") &&
                 native.Contains("new FloatMenuOption(L(\"AquacultureFishing.SettingsBreeding\")") &&
                 native.Contains("new FloatMenuOption(L(\"AquacultureFishing.SettingsAppearance\")") &&
-                !native.Contains("new FloatMenuOption(L(\"AquacultureFishing.SettingsFishing\")") &&
-                !native.Contains("new FloatMenuOption(L(\"AquacultureFishing.SettingsAdvanced\")") &&
+                native.Contains("new FloatMenuOption(L(\"AquacultureFishing.SettingsFishing\")") &&
+                native.Contains("new FloatMenuOption(L(\"AquacultureFishing.SettingsAdvanced\")") &&
                 native.Contains("private void SelectPage(string selected)") &&
                 native.Contains("scrollPosition = Vector2.zero;") &&
                 native.Contains("Widgets.BeginScrollView(viewport, ref scrollPosition, content);") &&
                 native.Contains("Widgets.EndScrollView();") &&
                 native.Contains("Text.Font = previousFont;") &&
                 native.Contains("TooltipHandler.TipRegion(row, L(tooltipKey))"),
-                "partial native settings has four discoverable pages with scrolling and local cleanup");
+                "native settings has six discoverable pages with scrolling and local cleanup");
 
             Check(native.Contains("ref settings.enableResearchProgression") &&
                 native.Contains("ref settings.showPondAlerts") &&
@@ -2376,6 +2377,107 @@ namespace AquacultureFishing.Tests
                 compatibility.Contains("still requires Insight Canvas") &&
                 compatibility.Contains("RimTest"),
                 "partial Settings prototype explicitly documents missing pages and runtime qualification");
+        }
+
+        private static void TestNativeSpecializedSettingsRendererPrototype(string root)
+        {
+            string source = File.ReadAllText(Path.Combine(root, "Source", "SettingsAndMasks.cs"));
+            string canvas = File.ReadAllText(Path.Combine(root, "Source", "UI",
+                "AquacultureSettingsDocument.cs"));
+            int start = source.IndexOf(
+                "public sealed class NativeAquacultureSettingsView : IAquacultureSettingsView",
+                StringComparison.Ordinal);
+            int end = start < 0 ? -1 : source.IndexOf(
+                "public sealed class FishTextureVariation", start, StringComparison.Ordinal);
+            string native = start >= 0 && end > start
+                ? source.Substring(start, end - start) : string.Empty;
+
+            Check(native.Contains("case \"fishing\": DrawFishing(ref y, viewWidth); break;") &&
+                native.Contains("case \"advanced\": DrawAdvanced(ref y, viewWidth); break;") &&
+                native.Contains("case \"fishing\": return L(\"AquacultureFishing.SettingsFishing\");") &&
+                native.Contains("case \"advanced\": return L(\"AquacultureFishing.SettingsAdvanced\");") &&
+                native.Contains("private void DrawFishing(ref float y, float width)") &&
+                native.Contains("private void DrawAdvanced(ref float y, float width)") &&
+                native.Contains("private float FishingContentHeight(float width)") &&
+                native.Contains("private float AdvancedContentHeight(float width)"),
+                "native Settings exposes both catalog pages with content-sized scrolling");
+
+            Check(native.Contains("DefDatabase<ThingDef>.AllDefsListForReading") &&
+                native.Contains("FishUtility.IsFish(def)") &&
+                native.Contains("DefDatabase<FishTraitDef>.AllDefsListForReading") &&
+                native.Contains("def.mutationEligible") &&
+                native.Contains("!FishTraitUtility.IsDemographicOrEcology(def.defName)") &&
+                native.Contains("def.label.IndexOf(fishSearch,") &&
+                native.Contains("def.defName.IndexOf(fishSearch,") &&
+                native.Contains("trait.label.IndexOf(traitSearch,") &&
+                native.Contains("trait.defName.IndexOf(traitSearch,") &&
+                native.Contains("scroll = Vector2.zero;") &&
+                native.Contains("visibleHeight = viewport.height;") &&
+                native.Contains("IsVisible(y, height)") &&
+                native.Contains("fishSearch = string.Empty;") &&
+                native.Contains("traitSearch = string.Empty;"),
+                "native Settings preserves original catalogs and filters with scroll cleanup");
+
+            Check(native.Contains("settings.MinimumExpertiseFor(definition)") &&
+                native.Contains("ChooseFishingRank(definition);") &&
+                native.Contains("foreach (FishingRank rank in (FishingRank[])Enum.GetValues(typeof(FishingRank)))") &&
+                native.Contains("settings.GetFishExpertiseSetting(fish).minimumFishingExpertise = selected") &&
+                native.Contains("AquacultureFishing.SettingsExpertiseTip") &&
+                !native.Contains("KnowledgeMenuUI") &&
+                !native.Contains("InsightUi") &&
+                !native.Contains("KnowledgeFramework."),
+                "native Fishing uses only first-party FishingRank and explicit user selection");
+
+            Check(native.Contains("settings.PresentationPreferences.DensityIndex") &&
+                native.Contains("AquaculturePresentationPreferences.FromSerializedValues(") &&
+                native.Contains("settings.SetPresentationPreferences(") &&
+                native.Contains("new FloatMenuOption(L(\"AquacultureFishing.SettingsDensityComfortable\")") &&
+                native.Contains("new FloatMenuOption(L(\"AquacultureFishing.SettingsDensityNormal\")") &&
+                native.Contains("new FloatMenuOption(L(\"AquacultureFishing.SettingsDensityCompact\")") &&
+                native.Contains("current.HighContrast") &&
+                native.Contains("current.ReducedMotion") &&
+                native.Contains("AquacultureFishing.SettingsMigrationBoundaryBody"),
+                "native Advanced preserves presentation density and accessibility options");
+
+            Check(native.Contains("ref settings.wildExceptionalTraitChance, 0f, 1f") &&
+                native.Contains("ref settings.parentalTraitInheritanceChance, 0f, 1f") &&
+                native.Contains("ref settings.maxInheritedTraits, 0, 8") &&
+                native.Contains("ref settings.offspringMutationChance, 0f, 1f") &&
+                native.Contains("ref settings.maxOffspringMutations, 0, 8") &&
+                native.Contains("ref settings.registeredBreedDefiningTraitReliability, 0f, 1f") &&
+                native.Contains("settings.wildExceptionalTraitChance = AquacultureSettings.DefaultWildExceptionalTraitChance;") &&
+                native.Contains("settings.maxInheritedTraits = AquacultureSettings.DefaultMaximumInheritedTraits;") &&
+                native.Contains("AquacultureSettings.DefaultRegisteredBreedDefiningTraitReliability;") &&
+                native.Contains("ResetButton(ref y, width, \"AquacultureFishing.SettingsResetTraitRules\", ResetTraitRules);"),
+                "native Advanced matches original breeding ranges and reset defaults");
+
+            Check(native.Contains("settings.GetTraitSetting(trait, false)?.enabled ?? true") &&
+                native.Contains("settings.GetTraitSetting(trait).enabled = toggled") &&
+                native.Contains("settings.GetTraitSetting(trait, false)?.weight ??") &&
+                native.Contains("trait.DefaultWeight;") &&
+                native.Contains("Mathf.Clamp(savedWeight, 0f, 5f)") &&
+                native.Contains("weight, 0f, 5f, true") &&
+                native.Contains("settings.GetTraitSetting(trait).weight = changed") &&
+                native.Contains("FishTraitUtility.EffectLine(trait)") &&
+                native.Contains("TooltipHandler.TipRegion(row,") &&
+                !native.Contains("Scribe_") &&
+                !native.Contains("Settings.Write("),
+                "trait rows use non-mutating reads and only write on explicit checkbox or slider changes");
+
+            Check(source.Contains("insightSettingsDocument = AquacultureSettingsViewFactory.Create(Settings);") &&
+                source.Contains("insightSettingsDocument?.OnSettingsWritten();") &&
+                canvas.Contains("new AquacultureSettingsDocument(settings);") &&
+                canvas.Contains("Host.Draw(rect, Time.deltaTime);") &&
+                !native.Contains("InsightCanvas"),
+                "six-page native Settings prototype retains Canvas as the player default");
+
+            string compatibility = File.ReadAllText(Path.Combine(root, "About", "COMPATIBILITY.md"));
+            Check(compatibility.Contains("AQ-DEP-05B5B") &&
+                compatibility.Contains("NativeAquacultureSettingsView") &&
+                compatibility.Contains("all six") &&
+                compatibility.Contains("still requires Insight Canvas") &&
+                compatibility.Contains("RimTest"),
+                "complete native Settings source prototype is not a runtime-qualified standalone release");
         }
 
         private static void TestPresentationContract(string root)

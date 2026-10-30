@@ -363,24 +363,43 @@ namespace AquacultureFishing
 
 
     /// <summary>
-    /// Source-only native settings prototype for general settings pages.
-    /// Fishing-specific expertise and Advanced trait controls remain for B5B.
-    /// This view is deliberately not selected by the current factory.
+    /// Source-only native settings prototype for six settings pages.
+    /// The existing Canvas factory remains the player default pending actual
+    /// RimWorld validation; all field ownership stays in AquacultureSettings.
     /// </summary>
     public sealed class NativeAquacultureSettingsView : IAquacultureSettingsView
     {
         private readonly AquacultureSettings settings;
+        private readonly List<ThingDef> fishCatalog;
+        private readonly List<FishTraitDef> traitCatalog;
         private Vector2 scrollPosition;
+        private float visibleHeight;
         private string page = "gameplay";
+        private string fishSearch = string.Empty;
+        private string traitSearch = string.Empty;
 
         public NativeAquacultureSettingsView(AquacultureSettings settings)
         {
             this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
+            // Exactly the same editable catalog visibility as the Canvas
+            // settings document. Never create settings records on paint.
+            fishCatalog = DefDatabase<ThingDef>.AllDefsListForReading
+                .Where(def => def != null && FishUtility.IsFish(def))
+                .OrderBy(def => def.label, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(def => def.defName, StringComparer.Ordinal).ToList();
+            traitCatalog = DefDatabase<FishTraitDef>.AllDefsListForReading
+                .Where(def => def != null && def.mutationEligible &&
+                    !FishTraitUtility.IsDemographicOrEcology(def.defName))
+                .OrderBy(def => def.kind)
+                .ThenBy(def => def.label, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(def => def.defName, StringComparer.Ordinal).ToList();
         }
 
         public void OnSettingsWritten()
         {
             scrollPosition = Vector2.zero;
+            fishSearch = string.Empty;
+            traitSearch = string.Empty;
         }
 
         public void Draw(Rect rect)
@@ -407,24 +426,28 @@ namespace AquacultureFishing
                 if (viewport.width <= 0f || viewport.height <= 0f) return;
                 float viewWidth = Mathf.Max(80f, viewport.width - 18f);
 
-                // B5A deliberately covers four general pages. The other
-                // settings pages are not silently omitted from a live build:
-                // this prototype is not selected until B5B completes them.
-                float pageHeight = page == "ecology" ? 1100f :
-                    page == "appearance" ? 800f : page == "breeding" ? 720f : 500f;
+                // Catalog pages compute their scroll height from visible
+                // rows. General-page sizing stays unchanged from B5A.
+                float pageHeight = page == "fishing" ? FishingContentHeight(viewWidth) :
+                    page == "advanced" ? AdvancedContentHeight(viewWidth) :
+                    page == "ecology" ? 1100f : page == "appearance" ? 800f :
+                    page == "breeding" ? 720f : 500f;
                 Rect content = new Rect(0f, 0f, viewWidth,
                     Mathf.Max(viewport.height, pageHeight));
                 scrollPosition.y = Mathf.Clamp(scrollPosition.y, 0f,
                     Mathf.Max(0f, content.height - viewport.height));
+                visibleHeight = viewport.height;
                 Widgets.BeginScrollView(viewport, ref scrollPosition, content);
                 try
                 {
                     float y = 8f;
                     switch (page)
                     {
+                        case "fishing": DrawFishing(ref y, viewWidth); break;
                         case "ecology": DrawEcology(ref y, viewWidth); break;
                         case "breeding": DrawBreeding(ref y, viewWidth); break;
                         case "appearance": DrawAppearance(ref y, viewWidth); break;
+                        case "advanced": DrawAdvanced(ref y, viewWidth); break;
                         default: DrawGameplay(ref y, viewWidth); break;
                     }
                 }
@@ -443,9 +466,11 @@ namespace AquacultureFishing
         {
             switch (page)
             {
+                case "fishing": return L("AquacultureFishing.SettingsFishing");
                 case "ecology": return L("AquacultureFishing.SettingsEcology");
                 case "breeding": return L("AquacultureFishing.SettingsBreeding");
                 case "appearance": return L("AquacultureFishing.SettingsAppearance");
+                case "advanced": return L("AquacultureFishing.SettingsAdvanced");
                 default: return L("AquacultureFishing.SettingsGameplay");
             }
         }
@@ -455,9 +480,11 @@ namespace AquacultureFishing
             List<FloatMenuOption> options = new List<FloatMenuOption>
             {
                 new FloatMenuOption(L("AquacultureFishing.SettingsGameplay"), () => SelectPage("gameplay")),
+                new FloatMenuOption(L("AquacultureFishing.SettingsFishing"), () => SelectPage("fishing")),
                 new FloatMenuOption(L("AquacultureFishing.SettingsEcology"), () => SelectPage("ecology")),
                 new FloatMenuOption(L("AquacultureFishing.SettingsBreeding"), () => SelectPage("breeding")),
-                new FloatMenuOption(L("AquacultureFishing.SettingsAppearance"), () => SelectPage("appearance"))
+                new FloatMenuOption(L("AquacultureFishing.SettingsAppearance"), () => SelectPage("appearance")),
+                new FloatMenuOption(L("AquacultureFishing.SettingsAdvanced"), () => SelectPage("advanced"))
             };
             Find.WindowStack.Add(new FloatMenu(options));
         }
@@ -485,6 +512,110 @@ namespace AquacultureFishing
                 ref settings.animaFishPerTree, 1, 100);
             Note(ref y, width, L("AquacultureFishing.SettingsGameplayScopeBody"));
             ResetButton(ref y, width, "AquacultureFishing.SettingsResetGameplay", ResetGameplay);
+        }
+
+        // Native Fishing and Advanced page helpers follow.
+        private List<ThingDef> FilterFishCatalog()
+        {
+            return fishCatalog.Where(def => def != null &&
+                (string.IsNullOrEmpty(fishSearch) ||
+                def.label.IndexOf(fishSearch, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                def.defName.IndexOf(fishSearch, StringComparison.OrdinalIgnoreCase) >= 0)).ToList();
+        }
+
+        private List<FishTraitDef> FilterTraitCatalog()
+        {
+            return traitCatalog.Where(trait => trait != null &&
+                (string.IsNullOrEmpty(traitSearch) ||
+                trait.label.IndexOf(traitSearch, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                trait.defName.IndexOf(traitSearch, StringComparison.OrdinalIgnoreCase) >= 0)).ToList();
+        }
+
+        private static float FishRowHeight(string label, float width)
+        {
+            return Mathf.Max(78f, Text.CalcHeight(label ?? string.Empty,
+                Mathf.Max(20f, width - 12f)) + 46f);
+        }
+
+        private static float TraitRowHeight(string label, float width)
+        {
+            return Mathf.Max(136f, Text.CalcHeight(label ?? string.Empty,
+                Mathf.Max(20f, width - 12f)) + 104f);
+        }
+
+        private float FishingContentHeight(float width)
+        {
+            return 260f + FilterFishCatalog().Sum(def =>
+                FishRowHeight(def.LabelCap.ToString(), width) + 6f);
+        }
+
+        private float AdvancedContentHeight(float width)
+        {
+            return 1400f + FilterTraitCatalog().Sum(trait =>
+                TraitRowHeight(trait.LabelCap.ToString(), width) + 6f);
+        }
+
+        private bool IsVisible(float y, float height)
+        {
+            return y + height >= scrollPosition.y && y <= scrollPosition.y + visibleHeight;
+        }
+
+        private static void SearchField(ref float y, float width, string labelKey,
+            ref string filter, ref Vector2 scroll)
+        {
+            Widgets.Label(new Rect(6f, y, Mathf.Max(20f, width - 12f), 24f), L(labelKey));
+            y += 26f;
+            string updated = Widgets.TextField(
+                new Rect(6f, y, Mathf.Max(20f, width - 12f), 30f), filter);
+            if (!string.Equals(updated, filter, StringComparison.Ordinal))
+            {
+                filter = updated ?? string.Empty;
+                scroll = Vector2.zero;
+            }
+            y += 42f;
+        }
+
+        private void DrawFishing(ref float y, float width)
+        {
+            Section(ref y, width, "AquacultureFishing.SettingsFishing",
+                "AquacultureFishing.SettingsFishingExplanation");
+            SearchField(ref y, width, "AquacultureFishing.SettingsSearchFish",
+                ref fishSearch, ref scrollPosition);
+            List<ThingDef> fish = FilterFishCatalog();
+            if (fish.Count == 0)
+                Note(ref y, width, L("AquacultureFishing.PondPlannerNoAvailableSpecies"));
+            foreach (ThingDef definition in fish)
+            {
+                float height = FishRowHeight(definition.LabelCap.ToString(), width);
+                if (IsVisible(y, height))
+                {
+                    Widgets.Label(new Rect(6f, y + 3f, Mathf.Max(20f, width - 12f),
+                        height - 44f), definition.LabelCap);
+                    Rect button = new Rect(6f, y + height - 38f,
+                        Mathf.Max(20f, width - 12f), 32f);
+                    if (Widgets.ButtonText(button,
+                        L("AquacultureFishing.SettingsExpertise") + ": " +
+                        settings.MinimumExpertiseFor(definition)))
+                    {
+                        ChooseFishingRank(definition);
+                        return;
+                    }
+                    TooltipHandler.TipRegion(button, L("AquacultureFishing.SettingsExpertiseTip"));
+                }
+                y += height + 6f;
+            }
+        }
+
+        private void ChooseFishingRank(ThingDef fish)
+        {
+            List<FloatMenuOption> options = new List<FloatMenuOption>();
+            foreach (FishingRank rank in (FishingRank[])Enum.GetValues(typeof(FishingRank)))
+            {
+                FishingRank selected = rank;
+                options.Add(new FloatMenuOption(selected.ToString(), () =>
+                    settings.GetFishExpertiseSetting(fish).minimumFishingExpertise = selected));
+            }
+            Find.WindowStack.Add(new FloatMenu(options));
         }
 
         private void DrawEcology(ref float y, float width)
@@ -611,6 +742,123 @@ namespace AquacultureFishing
                 Find.WindowStack.Add(new Dialog_FishMaskPainter());
         }
 
+        private void DrawAdvanced(ref float y, float width)
+        {
+            Section(ref y, width, "AquacultureFishing.SettingsAdvanced",
+                "AquacultureFishing.SettingsAdvancedSubtitle");
+            Section(ref y, width, "AquacultureFishing.SettingsPresentation",
+                "AquacultureFishing.SettingsPresentationSubtitle");
+
+            if (Widgets.ButtonText(new Rect(6f, y, Mathf.Max(20f, width - 12f), 34f),
+                L("AquacultureFishing.SettingsPresentation") + ": " +
+                DensityLabel(settings.PresentationPreferences.DensityIndex)))
+            {
+                ChooseDensity();
+                return;
+            }
+            y += 42f;
+            AquaculturePresentationPreferences current = settings.PresentationPreferences;
+            bool highContrast = current.HighContrast;
+            Toggle(ref y, width, "AquacultureFishing.SettingsHighContrast",
+                "AquacultureFishing.SettingsHighContrastTip", ref highContrast);
+            if (highContrast != current.HighContrast)
+                settings.SetPresentationPreferences(AquaculturePresentationPreferences.FromSerializedValues(
+                    current.DensityIndex, highContrast, current.ReducedMotion));
+
+            current = settings.PresentationPreferences;
+            bool reducedMotion = current.ReducedMotion;
+            Toggle(ref y, width, "AquacultureFishing.SettingsReducedMotion",
+                "AquacultureFishing.SettingsReducedMotionTip", ref reducedMotion);
+            if (reducedMotion != current.ReducedMotion)
+                settings.SetPresentationPreferences(AquaculturePresentationPreferences.FromSerializedValues(
+                    current.DensityIndex, current.HighContrast, reducedMotion));
+
+            Note(ref y, width, L("AquacultureFishing.SettingsMigrationBoundaryBody"));
+            Slider(ref y, width, "AquacultureFishing.TraitWildExceptionalChance",
+                "AquacultureFishing.SettingsWildExceptionalTip",
+                ref settings.wildExceptionalTraitChance, 0f, 1f);
+            Slider(ref y, width, "AquacultureFishing.TraitParentalInheritanceChance",
+                "AquacultureFishing.SettingsParentalInheritanceTip",
+                ref settings.parentalTraitInheritanceChance, 0f, 1f);
+            IntSlider(ref y, width, "AquacultureFishing.TraitMaximumInherited",
+                "AquacultureFishing.SettingsMaximumInheritedTip",
+                ref settings.maxInheritedTraits, 0, 8);
+            Slider(ref y, width, "AquacultureFishing.TraitOffspringMutationChance",
+                "AquacultureFishing.SettingsOffspringMutationTip",
+                ref settings.offspringMutationChance, 0f, 1f);
+            IntSlider(ref y, width, "AquacultureFishing.TraitMaximumOffspringMutations",
+                "AquacultureFishing.SettingsMaximumMutationsTip",
+                ref settings.maxOffspringMutations, 0, 8);
+            Slider(ref y, width, "AquacultureFishing.TraitRegisteredBreedReliability",
+                "AquacultureFishing.SettingsBreedReliabilityTip",
+                ref settings.registeredBreedDefiningTraitReliability, 0f, 1f);
+
+            Note(ref y, width, L("AquacultureFishing.TraitSettingsExplanation"));
+            SearchField(ref y, width, "AquacultureFishing.SettingsSearchTraits",
+                ref traitSearch, ref scrollPosition);
+            List<FishTraitDef> traits = FilterTraitCatalog();
+            if (traits.Count == 0) Note(ref y, width, L("AquacultureFishing.PondNoTraits"));
+            foreach (FishTraitDef trait in traits) DrawTraitRow(ref y, width, trait);
+            ResetButton(ref y, width, "AquacultureFishing.SettingsResetTraitRules", ResetTraitRules);
+        }
+
+        private void DrawTraitRow(ref float y, float width, FishTraitDef trait)
+        {
+            float height = TraitRowHeight(trait.LabelCap.ToString(), width);
+            if (IsVisible(y, height))
+            {
+                Rect row = new Rect(6f, y + 4f, Mathf.Max(20f, width - 12f), height - 8f);
+                bool enabled = settings.GetTraitSetting(trait, false)?.enabled ?? true;
+                bool toggled = enabled;
+                Widgets.CheckboxLabeled(new Rect(row.x, row.y, row.width, height - 76f),
+                    trait.LabelCap.ToString(), ref toggled);
+                if (toggled != enabled)
+                    settings.GetTraitSetting(trait).enabled = toggled;
+
+                float savedWeight = settings.GetTraitSetting(trait, false)?.weight ??
+                    trait.DefaultWeight;
+                float weight = Mathf.Clamp(savedWeight, 0f, 5f);
+                Widgets.Label(new Rect(row.x, y + height - 70f, row.width, 24f),
+                    L("AquacultureFishing.SettingsTraitWeight") + ": " + weight.ToString("0.00"));
+                float changed = Widgets.HorizontalSlider(
+                    new Rect(row.x, y + height - 41f, row.width, 20f),
+                    weight, 0f, 5f, true);
+                if (!Mathf.Approximately(changed, weight))
+                    settings.GetTraitSetting(trait).weight = changed;
+                TooltipHandler.TipRegion(row,
+                    (trait.description ?? string.Empty) + "\n" + FishTraitUtility.EffectLine(trait));
+            }
+            y += height + 6f;
+        }
+
+        private static string DensityLabel(int index)
+        {
+            switch (index)
+            {
+                case 0: return L("AquacultureFishing.SettingsDensityComfortable");
+                case 2: return L("AquacultureFishing.SettingsDensityCompact");
+                default: return L("AquacultureFishing.SettingsDensityNormal");
+            }
+        }
+
+        private void ChooseDensity()
+        {
+            List<FloatMenuOption> options = new List<FloatMenuOption>
+            {
+                new FloatMenuOption(L("AquacultureFishing.SettingsDensityComfortable"), () => SetDensity(0)),
+                new FloatMenuOption(L("AquacultureFishing.SettingsDensityNormal"), () => SetDensity(1)),
+                new FloatMenuOption(L("AquacultureFishing.SettingsDensityCompact"), () => SetDensity(2))
+            };
+            Find.WindowStack.Add(new FloatMenu(options));
+        }
+
+        private void SetDensity(int index)
+        {
+            AquaculturePresentationPreferences current = settings.PresentationPreferences;
+            settings.SetPresentationPreferences(AquaculturePresentationPreferences.FromSerializedValues(
+                index, current.HighContrast, current.ReducedMotion));
+        }
+
         private static void Section(ref float y, float width, string titleKey, string subtitleKey)
         {
             Text.Font = GameFont.Medium;
@@ -707,6 +955,19 @@ namespace AquacultureFishing
             settings.minimumLifespanDays = 48;
             settings.maximumLifespanDays = 72;
             ResetNotice("AquacultureFishing.SettingsBreeding");
+        }
+
+        private void ResetTraitRules()
+        {
+            settings.wildExceptionalTraitChance = AquacultureSettings.DefaultWildExceptionalTraitChance;
+            settings.parentalTraitInheritanceChance =
+                AquacultureSettings.DefaultParentalTraitInheritanceChance;
+            settings.maxInheritedTraits = AquacultureSettings.DefaultMaximumInheritedTraits;
+            settings.offspringMutationChance = AquacultureSettings.DefaultOffspringMutationChance;
+            settings.maxOffspringMutations = AquacultureSettings.DefaultMaximumOffspringMutations;
+            settings.registeredBreedDefiningTraitReliability =
+                AquacultureSettings.DefaultRegisteredBreedDefiningTraitReliability;
+            ResetNotice("AquacultureFishing.SettingsAdvanced");
         }
 
         private static void ResetNotice(string section)
