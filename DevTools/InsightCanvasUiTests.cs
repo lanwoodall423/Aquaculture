@@ -50,6 +50,7 @@ namespace AquacultureFishing.Tests
             TestKnowledgeJournalAdapterBoundary(root);
             TestJournalWorkspaceProviderBoundary(root);
             TestStockingPlannerRendererBoundary(root);
+            TestNativeStockingPlannerRendererPrototype(root);
             TestBreedRegistrationRendererBoundary(root);
             TestNativeBreedRegistrationRendererPrototype(root);
             TestCommissionDeliveryRendererBoundary(root);
@@ -1288,6 +1289,105 @@ namespace AquacultureFishing.Tests
                 compatibility.Contains("still requires Insight Canvas") &&
                 compatibility.Contains("RimTest"),
                 "planner renderer isolation is not an optional Canvas release qualification");
+        }
+
+        private static void TestNativeStockingPlannerRendererPrototype(string root)
+        {
+            string ownerSource = File.ReadAllText(Path.Combine(root, "Source", "PondStockingPlanner.cs"));
+            string canvas = File.ReadAllText(Path.Combine(root, "Source", "UI",
+                "AquacultureStockingPlannerDocument.cs"));
+            int start = ownerSource.IndexOf(
+                "public sealed class NativeAquacultureStockingPlannerView : IAquacultureStockingPlannerView",
+                StringComparison.Ordinal);
+            string native = start < 0 ? string.Empty : ownerSource.Substring(start);
+
+            Check(start >= 0 &&
+                native.Contains("NativeAquacultureStockingPlannerView(Dialog_PondStockingPlanner owner)") &&
+                native.Contains("public void Draw(Rect rect)") &&
+                native.Contains("public void PostClose()") &&
+                !Regex.IsMatch(ownerSource, @"(?m)^\s*using\s+InsightCanvas\s*;") &&
+                !native.Contains("InsightUi") &&
+                !native.Contains("InsightTheme") &&
+                !native.Contains("AquacultureStockingPlannerDocument"),
+                "native stocking planner implements the core provider interface without Canvas types");
+
+            int catalog = native.IndexOf("owner.SpeciesCatalog", StringComparison.Ordinal);
+            int search = native.IndexOf("Widgets.TextField(", StringComparison.Ordinal);
+            int filtered = native.IndexOf("def.label.IndexOf(search,", StringComparison.Ordinal);
+            int add = native.IndexOf("owner.ChangeCountForUi(def, 1);", StringComparison.Ordinal);
+            int planned = native.IndexOf("owner.PlanEntries", StringComparison.Ordinal);
+            int remove = native.IndexOf("owner.ChangeCountForUi(pair.Key, -1);", StringComparison.Ordinal);
+            int addPlanned = native.IndexOf("owner.ChangeCountForUi(pair.Key, 1);", StringComparison.Ordinal);
+            Check(search >= 0 && catalog > search && filtered > catalog &&
+                add > filtered && planned > filtered &&
+                remove > planned && addPlanned > remove &&
+                native.Contains("def.defName.IndexOf(search,") &&
+                native.Contains("AquacultureFishing.PondPlannerNoAvailableSpecies") &&
+                native.Contains("AquacultureFishing.PondPlannerEmpty") &&
+                native.Contains("AquacultureFishing.PondPlannerTotals") &&
+                !native.Contains("DefDatabase<ThingDef>") &&
+                !native.Contains("AquacultureKnowledgeAdapter.SpeciesView("),
+                "native planner filters owner-disclosed species and edits counts only through owner callbacks");
+
+            Check(native.Contains("new FloatMenuOption(WaterLabel(PondWaterKind.Freshwater)") &&
+                native.Contains("new FloatMenuOption(WaterLabel(PondWaterKind.Saltwater)") &&
+                native.Contains("new FloatMenuOption(WaterLabel(PondWaterKind.Brackishwater)") &&
+                native.Contains("owner.SetPlannedWater(PondWaterKind.Freshwater)") &&
+                native.Contains("owner.SetPlannedWater(PondWaterKind.Saltwater)") &&
+                native.Contains("owner.SetPlannedWater(PondWaterKind.Brackishwater)") &&
+                native.Contains("owner.PlannedWaterValue") &&
+                native.Contains("owner.LoadCurrentForUi();") &&
+                native.Contains("owner.LoadBlueprintForUi();") &&
+                native.Contains("owner.ClearPlanForUi();") &&
+                native.Contains("owner.SavePlanForUi();") &&
+                !native.Contains("component.SetStockingBlueprint(") &&
+                !native.Contains("LoadCurrentStock(") &&
+                !native.Contains("LoadBlueprint("),
+                "native planner delegates water, load, clear and save decisions to original dialog");
+
+            Check(native.Contains("AquaculturePlannerForecastSnapshot forecast = owner.ForecastSnapshot;") &&
+                native.Contains("forecast.Danger") &&
+                native.Contains("forecast.Warnings.Count") &&
+                native.Contains("forecast.TotalFish") &&
+                native.Contains("forecast.PhysicalCapacity") &&
+                native.Contains("forecast.SustainableCapacity") &&
+                native.Contains("forecast.IndustrialCapacity") &&
+                native.Contains("forecast.DailyDemand") &&
+                native.Contains("forecast.FeedNeeded") &&
+                native.Contains("forecast.PredationRisk") &&
+                native.Contains("Mathf.Clamp01((float)count / Mathf.Max(1, capacity))") &&
+                native.Contains("AquacultureFishing.PondPlannerWarnings") &&
+                !native.Contains("CalculateForecast(") &&
+                !native.Contains("AquaculturePlannerCacheContract.Key("),
+                "native forecast only displays the core snapshot, including warnings and capacity limits");
+
+            Check(native.Contains("Widgets.DrawMenuSection(rect);") &&
+                native.Contains("Widgets.BeginScrollView(viewport, ref scrollPosition, view);") &&
+                native.Contains("Widgets.EndScrollView();") &&
+                native.Contains("float subtitleHeight = LabelHeight(subtitle, padded.width);") &&
+                native.Contains("scrollPosition.y = Mathf.Clamp(scrollPosition.y") &&
+                native.Contains("search = string.Empty;") &&
+                native.Contains("scrollPosition = Vector2.zero;") &&
+                native.Contains("Text.Font = previousFont;") &&
+                native.Contains("if (Visible(y, height, viewport.height))") &&
+                !native.Contains("Scribe_"),
+                "native stocking layout is scrollable, content-sized and cleans up local state");
+
+            Check(ownerSource.Contains(
+                    "insightDocument = AquacultureStockingPlannerViewFactory.Create(this);") &&
+                canvas.Contains("new AquacultureStockingPlannerDocument(owner);") &&
+                canvas.Contains("Host.Draw(rect, Time.deltaTime);") &&
+                canvas.Contains("Host.PostClose();") &&
+                ownerSource.Contains("private IAquacultureStockingPlannerView insightDocument;") &&
+                ownerSource.Contains("if (!LoadBlueprint()) LoadCurrentStock();"),
+                "native stocking prototype preserves owner lifecycle and the default Canvas renderer");
+
+            string compatibility = File.ReadAllText(Path.Combine(root, "About", "COMPATIBILITY.md"));
+            Check(compatibility.Contains("AQ-DEP-05B4") &&
+                compatibility.Contains("NativeAquacultureStockingPlannerView") &&
+                compatibility.Contains("still requires Insight Canvas") &&
+                compatibility.Contains("RimTest"),
+                "native stocking prototype does not claim optional dependency or live qualification");
         }
 
         private static void TestBreedRegistrationRendererBoundary(string root)

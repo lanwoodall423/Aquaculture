@@ -314,4 +314,314 @@ namespace AquacultureFishing
             public readonly List<string> warnings = new List<string>();
         }
     }
+
+    /// <summary>
+    /// Native Widgets-only stocking planner prototype. The owner remains the
+    /// authority for learned species, forecasting and persisted blueprints.
+    /// The default enhanced renderer remains selected by its existing factory.
+    /// </summary>
+    public sealed class NativeAquacultureStockingPlannerView : IAquacultureStockingPlannerView
+    {
+        private readonly Dialog_PondStockingPlanner owner;
+        private Vector2 scrollPosition;
+        private string search = string.Empty;
+
+        public NativeAquacultureStockingPlannerView(Dialog_PondStockingPlanner owner)
+        {
+            this.owner = owner ?? throw new ArgumentNullException(nameof(owner));
+        }
+
+        public void PostClose()
+        {
+            scrollPosition = Vector2.zero;
+            search = string.Empty;
+        }
+
+        public void Draw(Rect rect)
+        {
+            Widgets.DrawMenuSection(rect);
+            Rect padded = rect.ContractedBy(8f);
+            if (padded.width <= 0f || padded.height <= 0f) return;
+
+            GameFont previousFont = Text.Font;
+            try
+            {
+                Text.Font = GameFont.Medium;
+                Widgets.Label(new Rect(padded.x, padded.y, padded.width, 32f),
+                    L("AquacultureFishing.PondPlannerTitle"));
+                Text.Font = GameFont.Small;
+
+                float yTop = padded.y + 36f;
+                string subtitle = L("AquacultureFishing.PondPlannerSubtitle");
+                float subtitleHeight = LabelHeight(subtitle, padded.width);
+                Widgets.Label(new Rect(padded.x, yTop, padded.width, subtitleHeight), subtitle);
+                yTop += subtitleHeight + 8f;
+                Widgets.Label(new Rect(padded.x, yTop, padded.width, 24f),
+                    L("AquacultureFishing.PondPlannerSearch"));
+                yTop += 26f;
+
+                string entered = Widgets.TextField(new Rect(padded.x, yTop, padded.width, 30f), search);
+                if (!string.Equals(search, entered, StringComparison.Ordinal))
+                {
+                    search = entered ?? string.Empty;
+                    scrollPosition = Vector2.zero;
+                }
+                yTop += 36f;
+
+                Rect viewport = new Rect(padded.x, yTop, padded.width,
+                    Mathf.Max(0f, padded.yMax - yTop));
+                if (viewport.width <= 0f || viewport.height <= 0f) return;
+
+                // The catalog already excludes species whose feeding, habitat
+                // or pond-compatibility knowledge is not known to the colony.
+                IReadOnlyList<ThingDef> catalog = owner.SpeciesCatalog ?? new ThingDef[0];
+                List<ThingDef> available = catalog
+                    .Where(def => def != null && (search.NullOrEmpty() ||
+                        def.label.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        def.defName.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0))
+                    .OrderBy(def => def.label, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(def => def.defName, StringComparer.Ordinal).ToList();
+                List<KeyValuePair<ThingDef, int>> planned = (owner.PlanEntries ??
+                    Enumerable.Empty<KeyValuePair<ThingDef, int>>())
+                    .Where(pair => pair.Key != null && pair.Value > 0)
+                    .OrderBy(pair => pair.Key.label, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(pair => pair.Key.defName, StringComparer.Ordinal).ToList();
+                AquaculturePlannerForecastSnapshot forecast = owner.ForecastSnapshot;
+
+                string waterTip = L("AquacultureFishing.PondPlannerWaterTip");
+                string saveTip = L("AquacultureFishing.PondPlannerSaveTip");
+                string state = forecast == null
+                    ? L("AquacultureFishing.PondPlannerUnavailable")
+                    : forecast.Danger ? L("AquacultureFishing.PondPlannerUnsafe")
+                    : forecast.Warnings.Count > 0 ? L("AquacultureFishing.PondPlannerNeedsSupport")
+                    : L("AquacultureFishing.PondPlannerStable");
+                string food = forecast == null ? string.Empty : string.Format(
+                    L("AquacultureFishing.PondPlannerFoodDetails"),
+                    forecast.DailyDemand.ToString("0.000"), forecast.FeedNeeded.ToString("0.000"));
+                string risk = forecast == null ? string.Empty : L(forecast.PredationRisk
+                    ? "AquacultureFishing.PondPlannerPredationRisk"
+                    : "AquacultureFishing.PondPlannerNoPredation");
+                List<string> warnings = forecast?.Warnings?.Where(item => !string.IsNullOrEmpty(item))
+                    .ToList() ?? new List<string>();
+                if (warnings.Count == 0)
+                    warnings.Add(L("AquacultureFishing.PondPlannerCompatible"));
+
+                float viewWidth = Mathf.Max(24f, viewport.width - 18f);
+                float lineWidth = Mathf.Max(20f, viewWidth - 12f);
+                float availableLabelWidth = Mathf.Max(20f, viewWidth - 65f);
+
+                float contentHeight = 30f + 16f;
+                if (available.Count == 0)
+                    contentHeight += LabelHeight(L("AquacultureFishing.PondPlannerNoAvailableSpecies"),
+                        lineWidth) + 6f;
+                foreach (ThingDef def in available)
+                    contentHeight += SpeciesRowHeight(def.LabelCap.ToString(), availableLabelWidth) + 6f;
+                contentHeight += 30f + 40f + LabelHeight(waterTip, lineWidth) + 12f;
+                if (planned.Count == 0)
+                    contentHeight += LabelHeight(L("AquacultureFishing.PondPlannerEmpty"), lineWidth) + 6f;
+                foreach (KeyValuePair<ThingDef, int> pair in planned)
+                    contentHeight += SpeciesRowHeight(pair.Key.LabelCap.ToString(), lineWidth) + 6f;
+                contentHeight += 28f + 46f + 46f + LabelHeight(saveTip, lineWidth) + 24f;
+                contentHeight += 30f + LabelHeight(state, lineWidth) + 6f + 3f * 56f;
+                contentHeight += LabelHeight(food, lineWidth) + LabelHeight(risk, lineWidth) + 14f;
+                contentHeight += 30f;
+                foreach (string warning in warnings)
+                    contentHeight += LabelHeight(warning, lineWidth) + 6f;
+                contentHeight += 36f;
+
+                Rect view = new Rect(0f, 0f, viewWidth, Mathf.Max(viewport.height, contentHeight));
+                scrollPosition.y = Mathf.Clamp(scrollPosition.y, 0f,
+                    Mathf.Max(0f, view.height - viewport.height));
+                Widgets.BeginScrollView(viewport, ref scrollPosition, view);
+                try
+                {
+                    float y = 8f;
+                    Section(ref y, viewWidth, L("AquacultureFishing.PondPlannerAvailableSpecies"));
+                    if (available.Count == 0)
+                        Line(ref y, lineWidth,
+                            L("AquacultureFishing.PondPlannerNoAvailableSpecies"));
+                    foreach (ThingDef def in available)
+                    {
+                        float height = SpeciesRowHeight(def.LabelCap.ToString(), availableLabelWidth);
+                        if (Visible(y, height, viewport.height))
+                        {
+                            Widgets.Label(new Rect(6f, y + 4f, availableLabelWidth, height - 8f),
+                                def.LabelCap);
+                            if (Widgets.ButtonText(new Rect(viewWidth - 45f, y + 5f, 36f, 32f), "+"))
+                            {
+                                owner.ChangeCountForUi(def, 1);
+                                return;
+                            }
+                        }
+                        y += height + 6f;
+                    }
+
+                    y += 8f;
+                    Section(ref y, viewWidth, L("AquacultureFishing.PondPlannerPlannedStock"));
+                    if (Widgets.ButtonText(new Rect(6f, y, lineWidth, 34f),
+                        L("AquacultureFishing.PondPlannerPlannedWater") + ": " +
+                            WaterLabel(owner.PlannedWaterValue)))
+                    {
+                        ChooseWater();
+                        return;
+                    }
+                    y += 40f;
+                    Line(ref y, lineWidth, waterTip);
+                    y += 6f;
+
+                    if (planned.Count == 0)
+                        Line(ref y, lineWidth, L("AquacultureFishing.PondPlannerEmpty"));
+                    foreach (KeyValuePair<ThingDef, int> pair in planned)
+                    {
+                        float height = SpeciesRowHeight(pair.Key.LabelCap.ToString(), lineWidth);
+                        if (Visible(y, height, viewport.height))
+                        {
+                            Widgets.Label(new Rect(6f, y + 2f, lineWidth,
+                                Mathf.Max(24f, height - 40f)), pair.Key.LabelCap);
+                            float controls = y + height - 35f;
+                            if (Widgets.ButtonText(new Rect(6f, controls, 34f, 30f), "-"))
+                            {
+                                owner.ChangeCountForUi(pair.Key, -1);
+                                return;
+                            }
+                            Widgets.Label(new Rect(46f, controls + 3f, 66f, 25f),
+                                pair.Value.ToString());
+                            if (Widgets.ButtonText(new Rect(116f, controls, 34f, 30f), "+"))
+                            {
+                                owner.ChangeCountForUi(pair.Key, 1);
+                                return;
+                            }
+                        }
+                        y += height + 6f;
+                    }
+
+                    Line(ref y, lineWidth, string.Format(
+                        L("AquacultureFishing.PondPlannerTotals"),
+                        planned.Count, planned.Sum(pair => pair.Value)));
+                    float actionWidth = Mathf.Max(20f, (lineWidth - 12f) / 3f);
+                    if (Widgets.ButtonText(new Rect(6f, y, actionWidth, 34f),
+                        L("AquacultureFishing.PondPlannerCurrent")))
+                    {
+                        owner.LoadCurrentForUi();
+                        return;
+                    }
+                    if (Widgets.ButtonText(new Rect(12f + actionWidth, y, actionWidth, 34f),
+                        L("AquacultureFishing.PondPlannerBlueprint")))
+                    {
+                        owner.LoadBlueprintForUi();
+                        return;
+                    }
+                    if (Widgets.ButtonText(new Rect(18f + 2f * actionWidth, y, actionWidth, 34f),
+                        L("AquacultureFishing.PondPlannerClear")))
+                    {
+                        owner.ClearPlanForUi();
+                        return;
+                    }
+                    y += 46f;
+                    if (Widgets.ButtonText(new Rect(6f, y, lineWidth, 34f),
+                        L("AquacultureFishing.PondPlannerSave")))
+                    {
+                        owner.SavePlanForUi();
+                        return;
+                    }
+                    y += 46f;
+                    Line(ref y, lineWidth, saveTip);
+                    y += 14f;
+
+                    Section(ref y, viewWidth, L("AquacultureFishing.PondPlannerForecast"));
+                    Line(ref y, lineWidth, state);
+                    if (forecast != null)
+                    {
+                        Meter(ref y, lineWidth, L("AquacultureFishing.PondPlannerPhysical"),
+                            forecast.TotalFish, forecast.PhysicalCapacity);
+                        Meter(ref y, lineWidth, L("AquacultureFishing.PondPlannerSustainable"),
+                            forecast.TotalFish, forecast.SustainableCapacity);
+                        Meter(ref y, lineWidth, L("AquacultureFishing.PondPlannerIndustrial"),
+                            forecast.TotalFish, forecast.IndustrialCapacity);
+                    }
+                    Line(ref y, lineWidth, food);
+                    Line(ref y, lineWidth, risk);
+                    y += 8f;
+                    Section(ref y, viewWidth, L("AquacultureFishing.PondPlannerWarnings"));
+                    foreach (string warning in warnings) Line(ref y, lineWidth, warning);
+                }
+                finally
+                {
+                    Widgets.EndScrollView();
+                }
+            }
+            finally
+            {
+                Text.Font = previousFont;
+            }
+        }
+
+        private void ChooseWater()
+        {
+            List<FloatMenuOption> options = new List<FloatMenuOption>
+            {
+                new FloatMenuOption(WaterLabel(PondWaterKind.Freshwater),
+                    () => owner.SetPlannedWater(PondWaterKind.Freshwater)),
+                new FloatMenuOption(WaterLabel(PondWaterKind.Saltwater),
+                    () => owner.SetPlannedWater(PondWaterKind.Saltwater)),
+                new FloatMenuOption(WaterLabel(PondWaterKind.Brackishwater),
+                    () => owner.SetPlannedWater(PondWaterKind.Brackishwater))
+            };
+            Find.WindowStack.Add(new FloatMenu(options));
+        }
+
+        private bool Visible(float y, float height, float viewportHeight)
+        {
+            return y + height >= scrollPosition.y && y <= scrollPosition.y + viewportHeight;
+        }
+
+        private static void Section(ref float y, float width, string value)
+        {
+            Text.Font = GameFont.Medium;
+            Widgets.Label(new Rect(6f, y, Mathf.Max(24f, width - 12f), 28f), value);
+            Text.Font = GameFont.Small;
+            y += 30f;
+        }
+
+        private static void Line(ref float y, float width, string value)
+        {
+            float height = LabelHeight(value, width);
+            Widgets.Label(new Rect(6f, y, width, height), value ?? string.Empty);
+            y += height + 6f;
+        }
+
+        private static void Meter(ref float y, float width, string label, int count, int capacity)
+        {
+            Widgets.Label(new Rect(6f, y, width, 25f),
+                label + ": " + count + " / " + capacity);
+            Widgets.FillableBar(new Rect(6f, y + 27f, width, 12f),
+                Mathf.Clamp01((float)count / Mathf.Max(1, capacity)));
+            y += 56f;
+        }
+
+        private static float LabelHeight(string value, float width)
+        {
+            return Mathf.Max(24f, Text.CalcHeight(value ?? string.Empty, Mathf.Max(20f, width)));
+        }
+
+        private static float SpeciesRowHeight(string label, float width)
+        {
+            return Mathf.Max(64f, LabelHeight(label, width) + 40f);
+        }
+
+        private static string WaterLabel(PondWaterKind kind)
+        {
+            switch (kind)
+            {
+                case PondWaterKind.Saltwater:
+                    return L("AquacultureFishing.WorkspaceWaterSaltwater");
+                case PondWaterKind.Brackishwater:
+                    return L("AquacultureFishing.WorkspaceWaterBrackishwater");
+                default:
+                    return L("AquacultureFishing.WorkspaceWaterFreshwater");
+            }
+        }
+
+        private static string L(string key) => key.Translate().ToString();
+    }
 }
