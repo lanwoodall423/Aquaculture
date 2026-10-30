@@ -51,6 +51,7 @@ namespace AquacultureFishing.Tests
             TestJournalWorkspaceProviderBoundary(root);
             TestStockingPlannerRendererBoundary(root);
             TestBreedRegistrationRendererBoundary(root);
+            TestNativeBreedRegistrationRendererPrototype(root);
             TestCommissionDeliveryRendererBoundary(root);
             TestFishDossierRendererBoundary(root);
             TestNativeFishDossierRendererPrototype(root);
@@ -1365,6 +1366,72 @@ namespace AquacultureFishing.Tests
                 compatibility.Contains("still requires Insight Canvas") &&
                 compatibility.Contains("RimTest"),
                 "breed registration renderer isolation is not a qualified optional UI build");
+        }
+
+        private static void TestNativeBreedRegistrationRendererPrototype(string root)
+        {
+            string owner = File.ReadAllText(Path.Combine(root, "Source", "AquacultureJournal.cs"));
+            string canvas = File.ReadAllText(Path.Combine(root, "Source", "UI",
+                "AquacultureBreedRegistrationDocument.cs"));
+            int start = owner.IndexOf(
+                "public sealed class NativeAquacultureBreedRegistrationView : IAquacultureBreedRegistrationView",
+                StringComparison.Ordinal);
+            string native = start < 0 ? string.Empty : owner.Substring(start);
+            Check(start >= 0 &&
+                native.Contains("public NativeAquacultureBreedRegistrationView(Dialog_RegisterFishBreed owner)") &&
+                native.Contains("public void Draw(Rect rect)") &&
+                native.Contains("public void PostClose()") &&
+                !native.Contains("InsightUi") &&
+                !native.Contains("InsightCanvas") &&
+                !native.Contains("AquacultureBreedRegistrationDocument") &&
+                !Regex.IsMatch(owner, @"(?m)^\s*using\s+InsightCanvas\s*;"),
+                "native breed registration implements only the native owner interface without Canvas types");
+
+            int initialValidation = native.IndexOf("owner.RefreshValidationForUi();", StringComparison.Ordinal);
+            int textField = native.IndexOf("Widgets.TextField(", StringComparison.Ordinal);
+            int updatedName = native.IndexOf("owner.SetBreedNameForUi(enteredName);", StringComparison.Ordinal);
+            int refreshedValidation = native.IndexOf("owner.RefreshValidationForUi();",
+                initialValidation + 1, StringComparison.Ordinal);
+            int disabledRegister = native.IndexOf(
+                "GUI.enabled = previousEnabled && owner.CanAcceptForUi;", StringComparison.Ordinal);
+            int accept = native.IndexOf("owner.AcceptForUi();", StringComparison.Ordinal);
+            Check(native.Contains("owner.BreedNameForUi") &&
+                native.Contains("owner.ValidationMessageForUi") &&
+                initialValidation >= 0 && textField > initialValidation &&
+                updatedName > textField && refreshedValidation > updatedName &&
+                disabledRegister > refreshedValidation && accept > disabledRegister &&
+                native.Contains("owner.CancelForUi();") &&
+                native.Contains("GUI.enabled = previousEnabled;") &&
+                !native.Contains("RegisterBreed(") &&
+                !native.Contains("CanRegisterBreed(") &&
+                !native.Contains("Scribe_"),
+                "native breed UI delegates name changes, validation, disabled accept and cancel to owner");
+
+            Check(native.Contains("Widgets.DrawMenuSection(rect);") &&
+                native.Contains("Widgets.BeginScrollView(viewport, ref scrollPosition, view);") &&
+                native.Contains("Widgets.EndScrollView();") &&
+                native.Contains("scrollPosition = Vector2.zero;") &&
+                native.Contains("Text.Font = previousFont;") &&
+                native.Contains("AquacultureFishing.BreedRegistrationTitle") &&
+                native.Contains("AquacultureFishing.BreedRegistrationSubtitle") &&
+                native.Contains("AquacultureFishing.BreedRegistrationName") &&
+                native.Contains("AquacultureFishing.BreedRegistrationCancel") &&
+                native.Contains("AquacultureFishing.BreedRegistrationRegister"),
+                "native breed UI uses translated text, bounded scrolling and cleanup");
+
+            Check(owner.Contains("insightDocument = AquacultureBreedRegistrationViewFactory.Create(this);") &&
+                owner.Contains("Event.current.keyCode == KeyCode.Return") &&
+                owner.Contains("Event.current.keyCode == KeyCode.KeypadEnter") &&
+                canvas.Contains("new AquacultureBreedRegistrationDocument(owner);") &&
+                canvas.Contains("registerButton.Enabled = owner.CanAcceptForUi;"),
+                "prototype preserves default Canvas renderer and owner keyboard semantics");
+
+            string compatibility = File.ReadAllText(Path.Combine(root, "About", "COMPATIBILITY.md"));
+            Check(compatibility.Contains("AQ-DEP-05B2") &&
+                compatibility.Contains("NativeAquacultureBreedRegistrationView") &&
+                compatibility.Contains("still requires Insight Canvas") &&
+                compatibility.Contains("RimTest"),
+                "native breed prototype is documented without claiming a standalone release");
         }
 
         private static void TestCommissionDeliveryRendererBoundary(string root)

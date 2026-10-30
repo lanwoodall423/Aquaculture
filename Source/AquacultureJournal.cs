@@ -829,4 +829,106 @@ namespace AquacultureFishing
             base.PostClose();
         }
     }
+
+    /// <summary>
+    /// Native Widgets-only breed registration presentation prototype. The
+    /// owning dialog retains every registration and validation decision.
+    /// The default renderer is still the existing Insight Canvas document.
+    /// </summary>
+    public sealed class NativeAquacultureBreedRegistrationView : IAquacultureBreedRegistrationView
+    {
+        private readonly Dialog_RegisterFishBreed owner;
+        private Vector2 scrollPosition;
+
+        public NativeAquacultureBreedRegistrationView(Dialog_RegisterFishBreed owner)
+        {
+            this.owner = owner ?? throw new ArgumentNullException(nameof(owner));
+        }
+
+        public void PostClose()
+        {
+            scrollPosition = Vector2.zero;
+        }
+
+        public void Draw(Rect rect)
+        {
+            owner.RefreshValidationForUi();
+
+            Widgets.DrawMenuSection(rect);
+            Rect viewport = rect.ContractedBy(8f);
+            float viewWidth = Mathf.Max(80f, viewport.width - 18f);
+            GameFont previousFont = Text.Font;
+            Text.Font = GameFont.Small;
+
+            string subtitle = L("AquacultureFishing.BreedRegistrationSubtitle");
+            float subtitleHeight = Mathf.Max(24f, Text.CalcHeight(subtitle, viewWidth - 12f));
+            float validationHeight = Mathf.Max(26f,
+                Text.CalcHeight(owner.ValidationMessageForUi, viewWidth - 12f));
+            Rect view = new Rect(0f, 0f, viewWidth,
+                Mathf.Max(viewport.height, 172f + subtitleHeight + validationHeight));
+
+            Widgets.BeginScrollView(viewport, ref scrollPosition, view);
+            try
+            {
+                float y = 8f;
+                Text.Font = GameFont.Medium;
+                Widgets.Label(new Rect(6f, y, viewWidth - 12f, 32f),
+                    L("AquacultureFishing.BreedRegistrationTitle"));
+                y += 38f;
+
+                Text.Font = GameFont.Small;
+                Widgets.Label(new Rect(6f, y, viewWidth - 12f, subtitleHeight), subtitle);
+                y += subtitleHeight + 10f;
+                Widgets.Label(new Rect(6f, y, viewWidth - 12f, 24f),
+                    L("AquacultureFishing.BreedRegistrationName"));
+                y += 28f;
+
+                string originalName = owner.BreedNameForUi;
+                string enteredName = Widgets.TextField(new Rect(6f, y, viewWidth - 12f, 30f),
+                    originalName);
+                if (!string.Equals(originalName, enteredName, StringComparison.Ordinal))
+                {
+                    owner.SetBreedNameForUi(enteredName);
+                    owner.RefreshValidationForUi();
+                }
+                y += 38f;
+
+                validationHeight = Mathf.Max(26f,
+                    Text.CalcHeight(owner.ValidationMessageForUi, viewWidth - 12f));
+                Widgets.Label(new Rect(6f, y, viewWidth - 12f, validationHeight),
+                    owner.ValidationMessageForUi);
+                y += validationHeight + 10f;
+
+                float buttonWidth = Mathf.Min(150f, Mathf.Max(0f, (viewWidth - 24f) / 2f));
+                if (Widgets.ButtonText(new Rect(6f, y, buttonWidth, 32f),
+                    L("AquacultureFishing.BreedRegistrationCancel")))
+                {
+                    owner.CancelForUi();
+                    return;
+                }
+
+                // Preserve disabled registration semantics without changing
+                // the dialog's Enter/KeypadEnter or validation authority.
+                bool previousEnabled = GUI.enabled;
+                try
+                {
+                    GUI.enabled = previousEnabled && owner.CanAcceptForUi;
+                    if (Widgets.ButtonText(new Rect(viewWidth - buttonWidth - 6f, y,
+                        buttonWidth, 32f), L("AquacultureFishing.BreedRegistrationRegister")))
+                        owner.AcceptForUi();
+                }
+                finally
+                {
+                    GUI.enabled = previousEnabled;
+                }
+            }
+            finally
+            {
+                Widgets.EndScrollView();
+                Text.Font = previousFont;
+            }
+        }
+
+        private static string L(string key) => key.Translate().ToString();
+    }
 }
