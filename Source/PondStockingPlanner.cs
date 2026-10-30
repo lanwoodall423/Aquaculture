@@ -7,6 +7,16 @@ using Verse;
 
 namespace AquacultureFishing
 {
+    /// <summary>
+    /// Aquaculture-owned stocking planner presentation contract. The native
+    /// dialog remains the owner of blueprint, forecast, and window lifecycle.
+    /// </summary>
+    public interface IAquacultureStockingPlannerView
+    {
+        void Draw(Rect rect);
+        void PostClose();
+    }
+
     public sealed class Dialog_PondStockingPlanner : Window
     {
         private readonly PondProxyThing pond;
@@ -14,7 +24,7 @@ namespace AquacultureFishing
         private readonly List<ThingDef> species;
         private readonly Dictionary<ThingDef, int> plan = new Dictionary<ThingDef, int>();
         private PondWaterKind plannedWater;
-        private AquacultureStockingPlannerDocument insightDocument;
+        private IAquacultureStockingPlannerView insightDocument;
         private string cachedForecastKey;
         private AquaculturePlannerForecastSnapshot cachedForecastSnapshot;
 
@@ -38,7 +48,7 @@ namespace AquacultureFishing
                 .ThenBy(def => def.defName)
                 .ToList();
             if (!LoadBlueprint()) LoadCurrentStock();
-            insightDocument = new AquacultureStockingPlannerDocument(this);
+            insightDocument = AquacultureStockingPlannerViewFactory.Create(this);
         }
 
         public override void DoWindowContents(Rect inRect)

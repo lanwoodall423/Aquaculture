@@ -49,6 +49,7 @@ namespace AquacultureFishing.Tests
             TestNativeKnowledgeBuildSeam(root);
             TestKnowledgeJournalAdapterBoundary(root);
             TestJournalWorkspaceProviderBoundary(root);
+            TestStockingPlannerRendererBoundary(root);
             TestNativeJournalExpertiseFallback(root);
             TestNativeKnowledgeFallbackBoundary(root);
             TestNativeColonyKnowledgeBoundary(root);
@@ -1209,6 +1210,77 @@ namespace AquacultureFishing.Tests
                 compatibility.Contains("still requires Insight Canvas") &&
                 compatibility.Contains("RimTest"),
                 "provider boundary remains explicitly unqualified for a native UI replacement");
+        }
+
+        private static void TestStockingPlannerRendererBoundary(string root)
+        {
+            string ownerSource = File.ReadAllText(Path.Combine(root, "Source", "PondStockingPlanner.cs"));
+            string canvas = File.ReadAllText(Path.Combine(root, "Source", "UI",
+                "AquacultureStockingPlannerDocument.cs"));
+
+            int contractStart = ownerSource.IndexOf("public interface IAquacultureStockingPlannerView",
+                StringComparison.Ordinal);
+            int windowStart = contractStart < 0 ? -1 : ownerSource.IndexOf(
+                "public sealed class Dialog_PondStockingPlanner", contractStart,
+                StringComparison.Ordinal);
+            string contract = contractStart >= 0 && windowStart > contractStart
+                ? ownerSource.Substring(contractStart, windowStart - contractStart) : string.Empty;
+            Check(contract.Contains("void Draw(Rect rect);") &&
+                contract.Contains("void PostClose();") &&
+                Regex.Matches(contract, @"\bvoid\s+\w+\s*\(").Count == 2 &&
+                !contract.Contains("InsightUi") &&
+                !contract.Contains("InsightTheme") &&
+                !Regex.IsMatch(ownerSource, @"(?m)^\s*using\s+InsightCanvas\s*;"),
+                "stocking planner has a two-operation Aquaculture-owned renderer interface");
+
+            string window = windowStart >= 0 ? ownerSource.Substring(windowStart) : string.Empty;
+            int initialized = window.IndexOf("if (!LoadBlueprint()) LoadCurrentStock();",
+                StringComparison.Ordinal);
+            int factory = window.IndexOf(
+                "insightDocument = AquacultureStockingPlannerViewFactory.Create(this);",
+                StringComparison.Ordinal);
+            Check(window.Contains("private IAquacultureStockingPlannerView insightDocument;") &&
+                !window.Contains("AquacultureStockingPlannerDocument") &&
+                initialized >= 0 && factory > initialized &&
+                window.Contains("doCloseX = true;") &&
+                window.Contains("closeOnClickedOutside = false;") &&
+                window.Contains("absorbInputAroundWindow = true;") &&
+                window.Contains("forcePause = false;"),
+                "stocking planner keeps the native dialog owner and constructs its provider after blueprint loading");
+
+            Check(window.Contains("if (pond?.Spawned != true || component == null)") &&
+                window.Contains("AquacultureFishing.PondPlannerUnavailable") &&
+                window.Contains("insightDocument.Draw(inRect);") &&
+                window.Contains("insightDocument?.PostClose();") &&
+                window.Contains("base.PostClose();") &&
+                window.Contains("internal IReadOnlyList<ThingDef> SpeciesCatalog => species;") &&
+                window.Contains("internal IEnumerable<KeyValuePair<ThingDef, int>> PlanEntries => plan") &&
+                window.Contains("internal AquaculturePlannerForecastSnapshot ForecastSnapshot") &&
+                window.Contains("component.SetStockingBlueprint(") &&
+                window.Contains("AquaculturePlannerCacheContract.Key("),
+                "native planner keeps unavailable guard, forecast/blueprint authority and cleanup");
+
+            Check(canvas.Contains("internal static class AquacultureStockingPlannerViewFactory") &&
+                canvas.Contains("public static IAquacultureStockingPlannerView Create(Dialog_PondStockingPlanner owner) =>") &&
+                canvas.Contains("new AquacultureStockingPlannerDocument(owner);") &&
+                canvas.Contains("public sealed class AquacultureStockingPlannerDocument : IAquacultureStockingPlannerView") &&
+                canvas.Contains("public AquacultureStockingPlannerDocument(Dialog_PondStockingPlanner owner)") &&
+                canvas.Contains("document = new InsightUiDocument(") &&
+                canvas.Contains("AquacultureInsightPresentation.Apply(document);") &&
+                canvas.Contains("RefreshSnapshot();") &&
+                canvas.Contains("Host.Draw(rect, Time.deltaTime);") &&
+                canvas.Contains("Host.PostClose();") &&
+                canvas.Contains("owner.SpeciesCatalog") &&
+                canvas.Contains("owner.PlanEntries") &&
+                canvas.Contains("owner.ForecastSnapshot"),
+                "default Canvas planner retains its original snapshot, draw, theme and owner bindings");
+
+            string compatibility = File.ReadAllText(Path.Combine(root, "About", "COMPATIBILITY.md"));
+            Check(compatibility.Contains("AQ-DEP-05A3") &&
+                compatibility.Contains("IAquacultureStockingPlannerView") &&
+                compatibility.Contains("still requires Insight Canvas") &&
+                compatibility.Contains("RimTest"),
+                "planner renderer isolation is not an optional Canvas release qualification");
         }
 
         private static void TestNativeJournalExpertiseFallback(string root)

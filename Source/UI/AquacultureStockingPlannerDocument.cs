@@ -8,8 +8,18 @@ using Verse;
 
 namespace AquacultureFishing
 {
+    /// <summary>
+    /// Existing default Insight Canvas renderer. A future native view can
+    /// replace the provider without rewriting the authoritative planner dialog.
+    /// </summary>
+    internal static class AquacultureStockingPlannerViewFactory
+    {
+        public static IAquacultureStockingPlannerView Create(Dialog_PondStockingPlanner owner) =>
+            new AquacultureStockingPlannerDocument(owner);
+    }
+
     /// <summary>Responsive Insight Canvas surface for the native planner window.</summary>
-    public sealed class AquacultureStockingPlannerDocument
+    public sealed class AquacultureStockingPlannerDocument : IAquacultureStockingPlannerView
     {
         private readonly Dialog_PondStockingPlanner owner;
         private readonly InsightUiDocument document;
