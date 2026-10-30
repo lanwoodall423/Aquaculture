@@ -361,6 +361,363 @@ namespace AquacultureFishing
         }
     }
 
+
+    /// <summary>
+    /// Source-only native settings prototype for general settings pages.
+    /// Fishing-specific expertise and Advanced trait controls remain for B5B.
+    /// This view is deliberately not selected by the current factory.
+    /// </summary>
+    public sealed class NativeAquacultureSettingsView : IAquacultureSettingsView
+    {
+        private readonly AquacultureSettings settings;
+        private Vector2 scrollPosition;
+        private string page = "gameplay";
+
+        public NativeAquacultureSettingsView(AquacultureSettings settings)
+        {
+            this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
+        }
+
+        public void OnSettingsWritten()
+        {
+            scrollPosition = Vector2.zero;
+        }
+
+        public void Draw(Rect rect)
+        {
+            Widgets.DrawMenuSection(rect);
+            Rect padded = rect.ContractedBy(8f);
+            if (padded.width <= 0f || padded.height <= 0f) return;
+            GameFont previousFont = Text.Font;
+            try
+            {
+                Text.Font = GameFont.Medium;
+                Widgets.Label(new Rect(padded.x, padded.y, padded.width, 32f),
+                    L("AquacultureFishing.SettingsTitle"));
+                Text.Font = GameFont.Small;
+                if (Widgets.ButtonText(new Rect(padded.x, padded.y + 36f,
+                    padded.width, 34f), PageTitle()))
+                {
+                    ChoosePage();
+                    return;
+                }
+
+                Rect viewport = new Rect(padded.x, padded.y + 78f, padded.width,
+                    Mathf.Max(0f, padded.height - 78f));
+                if (viewport.width <= 0f || viewport.height <= 0f) return;
+                float viewWidth = Mathf.Max(80f, viewport.width - 18f);
+
+                // B5A deliberately covers four general pages. The other
+                // settings pages are not silently omitted from a live build:
+                // this prototype is not selected until B5B completes them.
+                float pageHeight = page == "ecology" ? 1100f :
+                    page == "appearance" ? 800f : page == "breeding" ? 720f : 500f;
+                Rect content = new Rect(0f, 0f, viewWidth,
+                    Mathf.Max(viewport.height, pageHeight));
+                scrollPosition.y = Mathf.Clamp(scrollPosition.y, 0f,
+                    Mathf.Max(0f, content.height - viewport.height));
+                Widgets.BeginScrollView(viewport, ref scrollPosition, content);
+                try
+                {
+                    float y = 8f;
+                    switch (page)
+                    {
+                        case "ecology": DrawEcology(ref y, viewWidth); break;
+                        case "breeding": DrawBreeding(ref y, viewWidth); break;
+                        case "appearance": DrawAppearance(ref y, viewWidth); break;
+                        default: DrawGameplay(ref y, viewWidth); break;
+                    }
+                }
+                finally
+                {
+                    Widgets.EndScrollView();
+                }
+            }
+            finally
+            {
+                Text.Font = previousFont;
+            }
+        }
+
+        private string PageTitle()
+        {
+            switch (page)
+            {
+                case "ecology": return L("AquacultureFishing.SettingsEcology");
+                case "breeding": return L("AquacultureFishing.SettingsBreeding");
+                case "appearance": return L("AquacultureFishing.SettingsAppearance");
+                default: return L("AquacultureFishing.SettingsGameplay");
+            }
+        }
+
+        private void ChoosePage()
+        {
+            List<FloatMenuOption> options = new List<FloatMenuOption>
+            {
+                new FloatMenuOption(L("AquacultureFishing.SettingsGameplay"), () => SelectPage("gameplay")),
+                new FloatMenuOption(L("AquacultureFishing.SettingsEcology"), () => SelectPage("ecology")),
+                new FloatMenuOption(L("AquacultureFishing.SettingsBreeding"), () => SelectPage("breeding")),
+                new FloatMenuOption(L("AquacultureFishing.SettingsAppearance"), () => SelectPage("appearance"))
+            };
+            Find.WindowStack.Add(new FloatMenu(options));
+        }
+
+        private void SelectPage(string selected)
+        {
+            page = selected;
+            scrollPosition = Vector2.zero;
+        }
+
+        private void DrawGameplay(ref float y, float width)
+        {
+            Section(ref y, width, "AquacultureFishing.SettingsGameplay",
+                "AquacultureFishing.SettingsGameplaySubtitle");
+            Toggle(ref y, width, "AquacultureFishing.SettingsResearchProgression",
+                "AquacultureFishing.SettingsResearchProgressionTip",
+                ref settings.enableResearchProgression);
+            Toggle(ref y, width, "AquacultureFishing.SettingsPondAlerts",
+                "AquacultureFishing.SettingsPondAlertsTip", ref settings.showPondAlerts);
+            Slider(ref y, width, "AquacultureFishing.SettingsFishingDuration",
+                "AquacultureFishing.SettingsFishingDurationTip",
+                ref settings.fishingDurationFactor, 0.1f, 1f);
+            IntSlider(ref y, width, "AquacultureFishing.SettingsAnimaFishPerTree",
+                "AquacultureFishing.SettingsAnimaFishPerTreeTip",
+                ref settings.animaFishPerTree, 1, 100);
+            Note(ref y, width, L("AquacultureFishing.SettingsGameplayScopeBody"));
+            ResetButton(ref y, width, "AquacultureFishing.SettingsResetGameplay", ResetGameplay);
+        }
+
+        private void DrawEcology(ref float y, float width)
+        {
+            Section(ref y, width, "AquacultureFishing.SettingsEcology",
+                "AquacultureFishing.SettingsEcologySubtitle");
+            Slider(ref y, width, "AquacultureFishing.SettingsSimulationInterval",
+                "AquacultureFishing.SettingsSimulationIntervalTip",
+                ref settings.ecologyIntervalHours, 0.25f, 6f);
+            Slider(ref y, width, "AquacultureFishing.SettingsFoodDemand",
+                "AquacultureFishing.SettingsFoodDemandTip",
+                ref settings.foodDemandMultiplier, 0.1f, 5f);
+            Slider(ref y, width, "AquacultureFishing.SettingsAlgaeGrowth",
+                "AquacultureFishing.SettingsAlgaeGrowthTip",
+                ref settings.algaeGrowthMultiplier, 0f, 5f);
+            Slider(ref y, width, "AquacultureFishing.SettingsStarvationTime",
+                "AquacultureFishing.SettingsStarvationTimeTip",
+                ref settings.starvationHours, 6f, 600f);
+            Slider(ref y, width, "AquacultureFishing.SettingsWaterStress",
+                "AquacultureFishing.SettingsWaterStressTip",
+                ref settings.waterStressHours, 1f, 240f);
+            Slider(ref y, width, "AquacultureFishing.SettingsTemperatureStress",
+                "AquacultureFishing.SettingsTemperatureStressTip",
+                ref settings.temperatureStressHours, 1f, 240f);
+            Slider(ref y, width, "AquacultureFishing.PondBaseCapacitySetting",
+                "AquacultureFishing.PondCapacityBaselineTooltip",
+                ref settings.fishCapacityPerCell, 0.25f, 10f);
+            if (settings.capacityTransitionWarning)
+            {
+                Note(ref y, width, "AquacultureFishing.PondCapacityTransitionWarning".Translate(
+                    settings.fishCapacityPerCell.ToString("0.##"),
+                    PondCapacityRules.DefaultCapacityPerCell.ToString("0.##")).ToString());
+                float buttonWidth = Mathf.Max(40f, (width - 18f) / 2f);
+                if (Widgets.ButtonText(new Rect(6f, y, buttonWidth, 34f),
+                    L("AquacultureFishing.PondCapacityUseNewBaseline")))
+                {
+                    settings.fishCapacityPerCell = PondCapacityRules.DefaultCapacityPerCell;
+                    settings.capacityTransitionWarning = false;
+                }
+                if (Widgets.ButtonText(new Rect(12f + buttonWidth, y, buttonWidth, 34f),
+                    L("AquacultureFishing.PondCapacityKeepExisting")))
+                    settings.capacityTransitionWarning = false;
+                y += 40f;
+            }
+            Slider(ref y, width, "AquacultureFishing.SettingsFeedValue",
+                "AquacultureFishing.SettingsFeedValueTip",
+                ref settings.feedValuePerUnit, 0.005f, 0.25f);
+            Slider(ref y, width, "AquacultureFishing.SettingsFeederRange",
+                "AquacultureFishing.SettingsFeederRangeTip",
+                ref settings.feederRange, 1f, 30f);
+            Toggle(ref y, width, "AquacultureFishing.SettingsGlobalPredation",
+                "AquacultureFishing.SettingsGlobalPredationTip",
+                ref settings.predationEnabled);
+            ResetButton(ref y, width, "AquacultureFishing.SettingsResetEcology", ResetEcology);
+        }
+
+        private void DrawBreeding(ref float y, float width)
+        {
+            Section(ref y, width, "AquacultureFishing.SettingsBreeding",
+                "AquacultureFishing.SettingsBreedingSubtitle");
+            Toggle(ref y, width, "AquacultureFishing.SettingsEnableBreeding",
+                "AquacultureFishing.SettingsEnableBreedingTip",
+                ref settings.globalBreedingEnabled);
+            Slider(ref y, width, "AquacultureFishing.SettingsBreedingInterval",
+                "AquacultureFishing.SettingsBreedingIntervalTip",
+                ref settings.breedingIntervalDays, 1f, 60f);
+            Slider(ref y, width, "AquacultureFishing.SettingsEggHatch",
+                "AquacultureFishing.SettingsEggHatchTip",
+                ref settings.eggHatchDays, 0.25f, 30f);
+
+            int previousMinimum = settings.minimumOffspring;
+            IntSlider(ref y, width, "AquacultureFishing.SettingsMinimumOffspring",
+                "AquacultureFishing.SettingsMinimumOffspringTip",
+                ref settings.minimumOffspring, 1, 10);
+            if (previousMinimum != settings.minimumOffspring)
+                settings.maximumOffspring = Mathf.Max(settings.minimumOffspring, settings.maximumOffspring);
+            IntSlider(ref y, width, "AquacultureFishing.SettingsMaximumOffspring",
+                "AquacultureFishing.SettingsMaximumOffspringTip",
+                ref settings.maximumOffspring, settings.minimumOffspring, 12);
+
+            int previousLifespan = settings.minimumLifespanDays;
+            IntSlider(ref y, width, "AquacultureFishing.SettingsMinimumLifespan",
+                "AquacultureFishing.SettingsMinimumLifespanTip",
+                ref settings.minimumLifespanDays, 5, 600);
+            if (previousLifespan != settings.minimumLifespanDays)
+                settings.maximumLifespanDays = Mathf.Max(settings.minimumLifespanDays,
+                    settings.maximumLifespanDays);
+            IntSlider(ref y, width, "AquacultureFishing.SettingsMaximumLifespan",
+                "AquacultureFishing.SettingsMaximumLifespanTip",
+                ref settings.maximumLifespanDays, settings.minimumLifespanDays, 1200);
+            ResetButton(ref y, width, "AquacultureFishing.SettingsResetBreeding", ResetBreeding);
+        }
+
+        private void DrawAppearance(ref float y, float width)
+        {
+            Section(ref y, width, "AquacultureFishing.SettingsAppearance",
+                "AquacultureFishing.SettingsAppearanceSubtitle");
+            Toggle(ref y, width, "AquacultureFishing.SettingsEnhancedPondVisuals",
+                "AquacultureFishing.SettingsEnhancedPondVisualsTip", ref settings.enhancedPondVisuals);
+            Toggle(ref y, width, "AquacultureFishing.SettingsWaterTypeTint",
+                "AquacultureFishing.SettingsWaterTypeTintTip", ref settings.waterTypeTint);
+            Toggle(ref y, width, "AquacultureFishing.SettingsAlgaeTint",
+                "AquacultureFishing.SettingsAlgaeTintTip", ref settings.algaeTint);
+            Toggle(ref y, width, "AquacultureFishing.SettingsDepthShading",
+                "AquacultureFishing.SettingsDepthShadingTip", ref settings.depthShading);
+            Toggle(ref y, width, "AquacultureFishing.SettingsShoreline",
+                "AquacultureFishing.SettingsShorelineTip", ref settings.shorelineVisuals);
+            Toggle(ref y, width, "AquacultureFishing.SettingsDecorations",
+                "AquacultureFishing.SettingsDecorationsTip", ref settings.pondDecorations);
+            Toggle(ref y, width, "AquacultureFishing.SettingsFishShadows",
+                "AquacultureFishing.SettingsFishShadowsTip", ref settings.fishShadows);
+            Toggle(ref y, width, "AquacultureFishing.SettingsUnderwaterFishTint",
+                "AquacultureFishing.SettingsUnderwaterFishTintTip", ref settings.underwaterFishTint);
+            Toggle(ref y, width, "AquacultureFishing.SettingsSurfaceOverlay",
+                "AquacultureFishing.SettingsSurfaceOverlayTip", ref settings.surfaceOverlay);
+            Toggle(ref y, width, "AquacultureFishing.SettingsCaustics",
+                "AquacultureFishing.SettingsCausticsTip", ref settings.caustics);
+            Toggle(ref y, width, "AquacultureFishing.SettingsPseudoDepth",
+                "AquacultureFishing.SettingsPseudoDepthTip", ref settings.pseudoDepth);
+            Toggle(ref y, width, "AquacultureFishing.SettingsRipples",
+                "AquacultureFishing.SettingsRipplesTip", ref settings.pondRipples);
+            if (Widgets.ButtonText(new Rect(6f, y, Mathf.Max(40f, width - 12f), 34f),
+                L("AquacultureFishing.SettingsOpenMaskPainter")))
+                Find.WindowStack.Add(new Dialog_FishMaskPainter());
+        }
+
+        private static void Section(ref float y, float width, string titleKey, string subtitleKey)
+        {
+            Text.Font = GameFont.Medium;
+            Widgets.Label(new Rect(6f, y, width - 12f, 30f), L(titleKey));
+            Text.Font = GameFont.Small;
+            y += 32f;
+            Note(ref y, width, L(subtitleKey));
+            y += 8f;
+        }
+
+        private static void Note(ref float y, float width, string value)
+        {
+            float height = Mathf.Max(28f, Text.CalcHeight(value, Mathf.Max(20f, width - 12f)));
+            Widgets.Label(new Rect(6f, y, Mathf.Max(20f, width - 12f), height), value);
+            y += height + 8f;
+        }
+
+        private static void Toggle(ref float y, float width, string labelKey, string tooltipKey, ref bool value)
+        {
+            Rect row = new Rect(6f, y, Mathf.Max(40f, width - 12f), 32f);
+            Widgets.CheckboxLabeled(row, L(labelKey), ref value);
+            TooltipHandler.TipRegion(row, L(tooltipKey));
+            y += 40f;
+        }
+
+        private static void Slider(ref float y, float width, string labelKey, string tooltipKey,
+            ref float value, float minimum, float maximum)
+        {
+            Rect row = new Rect(6f, y, Mathf.Max(40f, width - 12f), 56f);
+            Widgets.Label(new Rect(row.x, row.y, row.width, 25f),
+                L(labelKey) + ": " + value.ToString("0.###"));
+            float changed = Widgets.HorizontalSlider(
+                new Rect(row.x, row.y + 28f, row.width, 20f), value, minimum, maximum, true);
+            if (!Mathf.Approximately(value, changed)) value = changed;
+            TooltipHandler.TipRegion(row, L(tooltipKey));
+            y += 64f;
+        }
+
+        private static void IntSlider(ref float y, float width, string labelKey, string tooltipKey,
+            ref int value, int minimum, int maximum)
+        {
+            Rect row = new Rect(6f, y, Mathf.Max(40f, width - 12f), 56f);
+            Widgets.Label(new Rect(row.x, row.y, row.width, 25f),
+                L(labelKey) + ": " + value);
+            int changed = Mathf.RoundToInt(Widgets.HorizontalSlider(
+                new Rect(row.x, row.y + 28f, row.width, 20f),
+                value, minimum, maximum, true));
+            if (changed != value) value = Mathf.Clamp(changed, minimum, maximum);
+            TooltipHandler.TipRegion(row, L(tooltipKey));
+            y += 64f;
+        }
+
+        private static void ResetButton(ref float y, float width, string labelKey, Action callback)
+        {
+            if (Widgets.ButtonText(new Rect(6f, y, Mathf.Max(40f, width - 12f), 34f),
+                L(labelKey)))
+                callback();
+            y += 42f;
+        }
+
+        private void ResetGameplay()
+        {
+            settings.enableResearchProgression = true;
+            settings.showPondAlerts = true;
+            settings.fishingDurationFactor = 0.30f;
+            settings.animaFishPerTree = 20;
+            ResetNotice("AquacultureFishing.SettingsGameplay");
+        }
+
+        private void ResetEcology()
+        {
+            settings.ecologyIntervalHours = 1f;
+            settings.foodDemandMultiplier = 1f;
+            settings.algaeGrowthMultiplier = 1f;
+            settings.starvationHours = 96f;
+            settings.waterStressHours = 12f;
+            settings.temperatureStressHours = 48f;
+            settings.fishCapacityPerCell = PondCapacityRules.DefaultCapacityPerCell;
+            settings.capacityTransitionWarning = false;
+            settings.capacityModelVersion = AquacultureSettings.CurrentCapacityModelVersion;
+            settings.predationEnabled = true;
+            settings.feedValuePerUnit = 0.05f;
+            settings.feederRange = 6f;
+            ResetNotice("AquacultureFishing.SettingsEcology");
+        }
+
+        private void ResetBreeding()
+        {
+            settings.globalBreedingEnabled = true;
+            settings.breedingIntervalDays = 15f;
+            settings.eggHatchDays = 3f;
+            settings.minimumOffspring = 1;
+            settings.maximumOffspring = 3;
+            settings.minimumLifespanDays = 48;
+            settings.maximumLifespanDays = 72;
+            ResetNotice("AquacultureFishing.SettingsBreeding");
+        }
+
+        private static void ResetNotice(string section)
+        {
+            Messages.Message("AquacultureFishing.SettingsResetComplete".Translate(
+                L(section)).ToString(), MessageTypeDefOf.TaskCompletion, false);
+        }
+
+        private static string L(string key) => key.Translate().ToString();
+    }
+
     public sealed class FishTextureVariation
     {
         public string key;

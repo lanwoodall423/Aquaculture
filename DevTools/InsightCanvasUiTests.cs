@@ -63,6 +63,7 @@ namespace AquacultureFishing.Tests
             TestConditionalDeferredRealityPackageContract(root);
             TestSerializedSettingsContract(root);
             TestSettingsRendererProviderBoundary(root);
+            TestNativeGeneralSettingsRendererPrototype(root);
             TestPresentationContract(root);
             Console.WriteLine(failures == 0 ? "Insight Canvas UI tests: PASS" : "Insight Canvas UI tests: FAIL (" + failures + ")");
             return failures == 0 ? 0 : 1;
@@ -2265,6 +2266,116 @@ namespace AquacultureFishing.Tests
                 compatibility.Contains("still requires Insight Canvas") &&
                 compatibility.Contains("RimTest"),
                 "settings renderer seam does not qualify an optional Canvas build or runtime release");
+        }
+
+        private static void TestNativeGeneralSettingsRendererPrototype(string root)
+        {
+            string source = File.ReadAllText(Path.Combine(root, "Source", "SettingsAndMasks.cs"));
+            string canvas = File.ReadAllText(Path.Combine(root, "Source", "UI",
+                "AquacultureSettingsDocument.cs"));
+            int start = source.IndexOf(
+                "public sealed class NativeAquacultureSettingsView : IAquacultureSettingsView",
+                StringComparison.Ordinal);
+            int end = start < 0 ? -1 : source.IndexOf(
+                "public sealed class FishTextureVariation", start, StringComparison.Ordinal);
+            string native = start >= 0 && end > start
+                ? source.Substring(start, end - start) : string.Empty;
+
+            Check(native.Contains("public NativeAquacultureSettingsView(AquacultureSettings settings)") &&
+                native.Contains("public void Draw(Rect rect)") &&
+                native.Contains("public void OnSettingsWritten()") &&
+                !Regex.IsMatch(source, @"(?m)^\s*using\s+InsightCanvas\s*;") &&
+                !native.Contains("InsightUi") &&
+                !native.Contains("AquacultureSettingsDocument"),
+                "native general settings view satisfies core interface with no Canvas dependencies");
+
+            Check(native.Contains("new FloatMenuOption(L(\"AquacultureFishing.SettingsGameplay\")") &&
+                native.Contains("new FloatMenuOption(L(\"AquacultureFishing.SettingsEcology\")") &&
+                native.Contains("new FloatMenuOption(L(\"AquacultureFishing.SettingsBreeding\")") &&
+                native.Contains("new FloatMenuOption(L(\"AquacultureFishing.SettingsAppearance\")") &&
+                !native.Contains("new FloatMenuOption(L(\"AquacultureFishing.SettingsFishing\")") &&
+                !native.Contains("new FloatMenuOption(L(\"AquacultureFishing.SettingsAdvanced\")") &&
+                native.Contains("private void SelectPage(string selected)") &&
+                native.Contains("scrollPosition = Vector2.zero;") &&
+                native.Contains("Widgets.BeginScrollView(viewport, ref scrollPosition, content);") &&
+                native.Contains("Widgets.EndScrollView();") &&
+                native.Contains("Text.Font = previousFont;") &&
+                native.Contains("TooltipHandler.TipRegion(row, L(tooltipKey))"),
+                "partial native settings has four discoverable pages with scrolling and local cleanup");
+
+            Check(native.Contains("ref settings.enableResearchProgression") &&
+                native.Contains("ref settings.showPondAlerts") &&
+                native.Contains("ref settings.fishingDurationFactor, 0.1f, 1f") &&
+                native.Contains("ref settings.animaFishPerTree, 1, 100") &&
+                native.Contains("settings.fishingDurationFactor = 0.30f;") &&
+                native.Contains("settings.animaFishPerTree = 20;") &&
+                native.Contains("ResetButton(ref y, width, \"AquacultureFishing.SettingsResetGameplay\", ResetGameplay);"),
+                "native Gameplay page preserves original fields, ranges and reset defaults");
+
+            Check(native.Contains("ref settings.ecologyIntervalHours, 0.25f, 6f") &&
+                native.Contains("ref settings.foodDemandMultiplier, 0.1f, 5f") &&
+                native.Contains("ref settings.algaeGrowthMultiplier, 0f, 5f") &&
+                native.Contains("ref settings.starvationHours, 6f, 600f") &&
+                native.Contains("ref settings.waterStressHours, 1f, 240f") &&
+                native.Contains("ref settings.temperatureStressHours, 1f, 240f") &&
+                native.Contains("ref settings.fishCapacityPerCell, 0.25f, 10f") &&
+                native.Contains("ref settings.feedValuePerUnit, 0.005f, 0.25f") &&
+                native.Contains("ref settings.feederRange, 1f, 30f") &&
+                native.Contains("ref settings.predationEnabled") &&
+                native.Contains("if (settings.capacityTransitionWarning)") &&
+                native.Contains("settings.capacityTransitionWarning = false;") &&
+                native.Contains("settings.capacityModelVersion = AquacultureSettings.CurrentCapacityModelVersion;") &&
+                native.Contains("ResetButton(ref y, width, \"AquacultureFishing.SettingsResetEcology\", ResetEcology);"),
+                "native Ecology page preserves parameter bounds and explicit migration actions");
+
+            Check(native.Contains("ref settings.globalBreedingEnabled") &&
+                native.Contains("ref settings.breedingIntervalDays, 1f, 60f") &&
+                native.Contains("ref settings.eggHatchDays, 0.25f, 30f") &&
+                native.Contains("ref settings.minimumOffspring, 1, 10") &&
+                native.Contains("ref settings.maximumOffspring, settings.minimumOffspring, 12") &&
+                native.Contains("ref settings.minimumLifespanDays, 5, 600") &&
+                native.Contains("ref settings.maximumLifespanDays, settings.minimumLifespanDays, 1200") &&
+                native.Contains("Mathf.Max(settings.minimumOffspring, settings.maximumOffspring)") &&
+                native.Contains("Mathf.Max(settings.minimumLifespanDays,") &&
+                native.Contains("ResetButton(ref y, width, \"AquacultureFishing.SettingsResetBreeding\", ResetBreeding);"),
+                "native Breeding page retains min/max coupling and reset rules");
+
+            Check(native.Contains("ref settings.enhancedPondVisuals") &&
+                native.Contains("ref settings.waterTypeTint") &&
+                native.Contains("ref settings.algaeTint") &&
+                native.Contains("ref settings.depthShading") &&
+                native.Contains("ref settings.shorelineVisuals") &&
+                native.Contains("ref settings.pondDecorations") &&
+                native.Contains("ref settings.fishShadows") &&
+                native.Contains("ref settings.underwaterFishTint") &&
+                native.Contains("ref settings.surfaceOverlay") &&
+                native.Contains("ref settings.caustics") &&
+                native.Contains("ref settings.pseudoDepth") &&
+                native.Contains("ref settings.pondRipples") &&
+                native.Contains("Find.WindowStack.Add(new Dialog_FishMaskPainter())") &&
+                native.Contains("Widgets.CheckboxLabeled(row, L(labelKey), ref value);") &&
+                native.Contains("Widgets.HorizontalSlider(") &&
+                !native.Contains("Scribe_") &&
+                !native.Contains("Settings.Write(") &&
+                !native.Contains("Current.Game"),
+                "native Appearance and general settings modify explicit fields without paint-time game writes");
+
+            Check(source.Contains("insightSettingsDocument = AquacultureSettingsViewFactory.Create(Settings);") &&
+                source.Contains("insightSettingsDocument?.OnSettingsWritten();") &&
+                source.Contains("base.WriteSettings();") &&
+                canvas.Contains("new AquacultureSettingsDocument(settings);") &&
+                canvas.Contains("Host.Draw(rect, Time.deltaTime);") &&
+                canvas.Contains("Host.PostClose();") &&
+                canvas.Contains("Document.Invalidate();"),
+                "native general settings prototype does not alter the Canvas default or saved-settings lifecycle");
+
+            string compatibility = File.ReadAllText(Path.Combine(root, "About", "COMPATIBILITY.md"));
+            Check(compatibility.Contains("AQ-DEP-05B5A") &&
+                compatibility.Contains("NativeAquacultureSettingsView") &&
+                compatibility.Contains("Fishing and Advanced") &&
+                compatibility.Contains("still requires Insight Canvas") &&
+                compatibility.Contains("RimTest"),
+                "partial Settings prototype explicitly documents missing pages and runtime qualification");
         }
 
         private static void TestPresentationContract(string root)
