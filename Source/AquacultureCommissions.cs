@@ -694,6 +694,23 @@ namespace AquacultureFishing
         }
     }
 
+    /// <summary>Copied, renderer-neutral row data for the commission delivery surface.</summary>
+    public sealed class AquacultureCommissionDeliverySnapshot
+    {
+        public AquacultureCommissionDeliverySnapshot(string stableId, int thingId, string label, string details)
+        {
+            StableId = stableId;
+            ThingId = thingId;
+            Label = label ?? string.Empty;
+            Details = details ?? string.Empty;
+        }
+
+        public string StableId { get; private set; }
+        public int ThingId { get; private set; }
+        public string Label { get; private set; }
+        public string Details { get; private set; }
+    }
+
     /// <summary>
     /// Aquaculture-owned commission delivery presentation boundary. The native
     /// dialog retains eligibility checks, delivery authority, pause, and close.
@@ -781,6 +798,167 @@ namespace AquacultureFishing
         {
             Close();
         }
+    }
+
+    /// <summary>
+    /// Native RimWorld Widgets commission delivery prototype. All eligibility,
+    /// rewards, consumption, and closing authority remains with the dialog.
+    /// The default Canvas factory is deliberately unchanged.
+    /// </summary>
+    public sealed class NativeAquacultureCommissionDeliveryView : IAquacultureCommissionDeliveryView
+    {
+        private readonly Dialog_DeliverAquacultureCommission owner;
+        private Vector2 scrollPosition;
+
+        public NativeAquacultureCommissionDeliveryView(Dialog_DeliverAquacultureCommission owner)
+        {
+            this.owner = owner ?? throw new ArgumentNullException(nameof(owner));
+        }
+
+        public void PostClose()
+        {
+            scrollPosition = Vector2.zero;
+        }
+
+        public void Draw(Rect rect)
+        {
+            // Capture a new eligibility snapshot before presenting any deliver
+            // button, just as the existing document-based renderer does.
+            IReadOnlyList<AquacultureCommissionDeliverySnapshot> rows =
+                owner.CaptureSpecimensForUi() ?? new AquacultureCommissionDeliverySnapshot[0];
+            string title = L("AquacultureFishing.CommissionDeliverTitle");
+            string[] details =
+            {
+                L("AquacultureFishing.CommissionDeliverInstruction"),
+                owner.RequirementsForUi,
+                owner.PreviewForUi,
+                owner.EligibleCountForUi,
+                L("AquacultureFishing.WorkspaceCommissionRules"),
+                L("AquacultureFishing.WorkspaceCommissionDisclosure")
+            };
+
+            Widgets.DrawMenuSection(rect);
+            Rect viewport = rect.ContractedBy(8f);
+            if (viewport.width <= 0f || viewport.height <= 0f) return;
+
+            float viewWidth = Mathf.Max(40f, viewport.width - 18f);
+            float labelWidth = Mathf.Max(24f, viewWidth - 12f);
+            float actionWidth = Mathf.Min(148f, Mathf.Max(80f, viewWidth * 0.29f));
+            float specimenWidth = Mathf.Max(24f, viewWidth - actionWidth - 26f);
+            GameFont previousFont = Text.Font;
+            try
+            {
+                Text.Font = GameFont.Medium;
+                float headingHeight = Mathf.Max(32f, Text.CalcHeight(title, labelWidth));
+                Text.Font = GameFont.Small;
+
+                float contentHeight = 8f + headingHeight + 10f;
+                for (int i = 0; i < details.Length; i++)
+                    contentHeight += LabelHeight(details[i], labelWidth) + 6f;
+                contentHeight += 12f;
+                if (rows.Count == 0)
+                {
+                    contentHeight += LabelHeight(L("AquacultureFishing.CommissionNoEligible"), labelWidth) + 8f;
+                }
+                else
+                {
+                    for (int i = 0; i < rows.Count; i++)
+                        contentHeight += SpecimenHeight(rows[i], specimenWidth) + 6f;
+                }
+
+                Rect view = new Rect(0f, 0f, viewWidth,
+                    Mathf.Max(viewport.height, contentHeight));
+                scrollPosition.y = Mathf.Clamp(scrollPosition.y, 0f,
+                    Mathf.Max(0f, view.height - viewport.height));
+                Widgets.BeginScrollView(viewport, ref scrollPosition, view);
+                try
+                {
+                    float y = 8f;
+                    Text.Font = GameFont.Medium;
+                    Widgets.Label(new Rect(6f, y, labelWidth, headingHeight), title);
+                    y += headingHeight + 10f;
+                    Text.Font = GameFont.Small;
+                    for (int i = 0; i < details.Length; i++)
+                    {
+                        float height = LabelHeight(details[i], labelWidth);
+                        Widgets.Label(new Rect(6f, y, labelWidth, height), details[i]);
+                        y += height + 6f;
+                    }
+                    y += 12f;
+                    if (rows.Count == 0)
+                    {
+                        Widgets.Label(new Rect(6f, y, labelWidth,
+                            LabelHeight(L("AquacultureFishing.CommissionNoEligible"), labelWidth)),
+                            L("AquacultureFishing.CommissionNoEligible"));
+                    }
+                    else
+                    {
+                        for (int i = 0; i < rows.Count; i++)
+                        {
+                            AquacultureCommissionDeliverySnapshot row = rows[i];
+                            float height = SpecimenHeight(row, specimenWidth);
+                            float rowBottom = y + height;
+                            // Iterate all heights, but paint only visible rows.
+                            if (rowBottom >= scrollPosition.y &&
+                                y <= scrollPosition.y + viewport.height)
+                            {
+                                Widgets.DrawHighlightIfMouseover(new Rect(2f, y, viewWidth - 4f, height));
+                                float nameHeight = LabelHeight(row.Label, specimenWidth);
+                                Widgets.Label(new Rect(8f, y + 4f, specimenWidth, nameHeight),
+                                    row.Label);
+                                Widgets.Label(new Rect(8f, y + nameHeight + 4f, specimenWidth,
+                                    height - nameHeight - 8f), row.Details);
+                                if (Widgets.ButtonText(new Rect(
+                                    viewWidth - actionWidth - 8f,
+                                    y + (height - 32f) / 2f, actionWidth, 32f),
+                                    L("AquacultureFishing.CommissionDeliverButton")))
+                                {
+                                    Deliver(row.ThingId);
+                                    return;
+                                }
+                            }
+                            y += height + 6f;
+                        }
+                    }
+                }
+                finally
+                {
+                    Widgets.EndScrollView();
+                }
+            }
+            finally
+            {
+                Text.Font = previousFont;
+            }
+        }
+
+        private void Deliver(int thingId)
+        {
+            // The owner resolves the ID against current eligibility and is the
+            // only path to AquacultureCommissionComponent.TryDeliver.
+            if (owner.TryDeliverForUi(thingId, out string reason))
+            {
+                Messages.Message(L("AquacultureFishing.CommissionDeliverySuccess"),
+                    MessageTypeDefOf.TaskCompletion, false);
+                owner.CloseForUi();
+                return;
+            }
+            Messages.Message(reason ?? L("AquacultureFishing.CommissionSpecimenInvalid"),
+                MessageTypeDefOf.RejectInput, false);
+        }
+
+        private static float LabelHeight(string value, float width)
+        {
+            return Mathf.Max(24f, Text.CalcHeight(value ?? string.Empty, width));
+        }
+
+        private static float SpecimenHeight(AquacultureCommissionDeliverySnapshot row, float width)
+        {
+            return Mathf.Max(64f, LabelHeight(row.Label, width) +
+                LabelHeight(row.Details, width) + 8f);
+        }
+
+        private static string L(string key) => key.Translate().ToString();
     }
 
     public static class AquacultureCommissionUi

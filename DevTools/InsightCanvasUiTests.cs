@@ -53,6 +53,7 @@ namespace AquacultureFishing.Tests
             TestBreedRegistrationRendererBoundary(root);
             TestNativeBreedRegistrationRendererPrototype(root);
             TestCommissionDeliveryRendererBoundary(root);
+            TestNativeCommissionDeliveryRendererPrototype(root);
             TestFishDossierRendererBoundary(root);
             TestNativeFishDossierRendererPrototype(root);
             TestNativeJournalExpertiseFallback(root);
@@ -1527,6 +1528,88 @@ namespace AquacultureFishing.Tests
                 compatibility.Contains("still requires Insight Canvas") &&
                 compatibility.Contains("RimTest"),
                 "commission renderer seam remains explicitly unqualified for optional UI or release");
+        }
+
+        private static void TestNativeCommissionDeliveryRendererPrototype(string root)
+        {
+            string core = File.ReadAllText(Path.Combine(root, "Source", "AquacultureCommissions.cs"));
+            string canvas = File.ReadAllText(Path.Combine(root, "Source", "UI",
+                "AquacultureCommissionDeliveryDocument.cs"));
+            int nativeStart = core.IndexOf(
+                "public sealed class NativeAquacultureCommissionDeliveryView : IAquacultureCommissionDeliveryView",
+                StringComparison.Ordinal);
+            int nativeEnd = nativeStart < 0 ? -1 : core.IndexOf(
+                "public static class AquacultureCommissionUi", nativeStart, StringComparison.Ordinal);
+            string native = nativeStart >= 0 && nativeEnd > nativeStart
+                ? core.Substring(nativeStart, nativeEnd - nativeStart) : string.Empty;
+
+            Check(Regex.Matches(core, "public sealed class AquacultureCommissionDeliverySnapshot").Count == 1 &&
+                !canvas.Contains("public sealed class AquacultureCommissionDeliverySnapshot") &&
+                core.Contains("AquacultureCommissionDeliverySnapshot(string stableId, int thingId, string label, string details)") &&
+                core.Contains("public string StableId { get; private set; }") &&
+                core.Contains("public int ThingId { get; private set; }") &&
+                core.Contains("public string Label { get; private set; }") &&
+                core.Contains("public string Details { get; private set; }") &&
+                canvas.Contains("List<AquacultureCommissionDeliverySnapshot>") &&
+                canvas.Contains("IReadOnlyList<AquacultureCommissionDeliverySnapshot> next"),
+                "commission snapshot lives exactly once in Canvas-free core with existing members");
+            
+            Check(native.Contains("public void Draw(Rect rect)") &&
+                native.Contains("public void PostClose()") &&
+                native.Contains("NativeAquacultureCommissionDeliveryView(Dialog_DeliverAquacultureCommission owner)") &&
+                !native.Contains("InsightUi") &&
+                !native.Contains("AquacultureCommissionDeliveryDocument") &&
+                !Regex.IsMatch(core, @"(?m)^\s*using\s+InsightCanvas\s*;"),
+                "native commission view implements the owner interface without Canvas types");
+
+            int captured = native.IndexOf("owner.CaptureSpecimensForUi()", StringComparison.Ordinal);
+            int scroll = native.IndexOf("Widgets.BeginScrollView(viewport, ref scrollPosition, view);",
+                StringComparison.Ordinal);
+            int button = native.IndexOf("Widgets.ButtonText(", StringComparison.Ordinal);
+            int deliveryClick = native.IndexOf("Deliver(row.ThingId);", StringComparison.Ordinal);
+            int deliverMethod = native.IndexOf("private void Deliver(int thingId)", StringComparison.Ordinal);
+            Check(captured >= 0 && scroll > captured && button > scroll &&
+                deliveryClick > button && deliverMethod > deliveryClick &&
+                native.Contains("owner.RequirementsForUi") &&
+                native.Contains("owner.PreviewForUi") &&
+                native.Contains("owner.EligibleCountForUi") &&
+                native.Contains("row.Label") && native.Contains("row.Details") &&
+                native.Contains("AquacultureFishing.CommissionNoEligible") &&
+                native.Contains("AquacultureFishing.WorkspaceCommissionDisclosure") &&
+                native.Contains("AquacultureFishing.CommissionDeliverButton"),
+                "native commission view captures eligible snapshots before drawing translated actions");
+
+            Check(native.Contains("owner.TryDeliverForUi(thingId, out string reason)") &&
+                native.Contains("owner.CloseForUi();") &&
+                native.Contains("MessageTypeDefOf.TaskCompletion") &&
+                native.Contains("MessageTypeDefOf.RejectInput") &&
+                native.Contains("reason ?? L(\"AquacultureFishing.CommissionSpecimenInvalid\")") &&
+                !native.Contains("component.TryDeliver(") &&
+                !native.Contains("Scribe_") &&
+                !native.Contains("AquacultureCommissionComponent.Current"),
+                "native commission delivery uses owner authority and reports both outcomes");
+
+            Check(native.Contains("scrollPosition = Vector2.zero;") &&
+                native.Contains("Mathf.Clamp(scrollPosition.y") &&
+                native.Contains("Widgets.EndScrollView();") &&
+                native.Contains("Text.Font = previousFont;") &&
+                core.Contains(".Where(specimen => specimen != null && !specimen.Destroyed && specimen.Spawned)") &&
+                core.Contains(".OrderBy(specimen => specimen.thingIDNumber)") &&
+                core.Contains("return component.TryDeliver(specimen, out reason);"),
+                "native view clears scroll, preserves eligibility filtering and delegates delivery");
+
+            Check(core.Contains("insightDocument = AquacultureCommissionDeliveryViewFactory.Create(this);") &&
+                canvas.Contains("new AquacultureCommissionDeliveryDocument(owner);") &&
+                canvas.Contains("Host.Draw(rect, UnityEngine.Time.deltaTime);") &&
+                canvas.Contains("Host.PostClose();"),
+                "native prototype leaves the existing Canvas provider and window lifecycle unchanged");
+
+            string compatibility = File.ReadAllText(Path.Combine(root, "About", "COMPATIBILITY.md"));
+            Check(compatibility.Contains("AQ-DEP-05B3") &&
+                compatibility.Contains("NativeAquacultureCommissionDeliveryView") &&
+                compatibility.Contains("still requires Insight Canvas") &&
+                compatibility.Contains("RimTest"),
+                "native commission prototype documents remaining dependency and runtime blockers");
         }
 
         private static void TestFishDossierRendererBoundary(string root)

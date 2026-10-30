@@ -6,23 +6,6 @@ using Verse;
 
 namespace AquacultureFishing
 {
-    /// <summary>Copied, renderer-neutral row data for the commission delivery surface.</summary>
-    public sealed class AquacultureCommissionDeliverySnapshot
-    {
-        public AquacultureCommissionDeliverySnapshot(string stableId, int thingId, string label, string details)
-        {
-            StableId = stableId;
-            ThingId = thingId;
-            Label = label ?? string.Empty;
-            Details = details ?? string.Empty;
-        }
-
-        public string StableId { get; private set; }
-        public int ThingId { get; private set; }
-        public string Label { get; private set; }
-        public string Details { get; private set; }
-    }
-
     /// <summary>
     /// Existing default Insight Canvas provider. A future native renderer can
     /// replace this factory without changing authoritative commission delivery.
