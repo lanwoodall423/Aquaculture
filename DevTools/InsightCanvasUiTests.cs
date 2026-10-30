@@ -50,6 +50,7 @@ namespace AquacultureFishing.Tests
             TestKnowledgeJournalAdapterBoundary(root);
             TestJournalWorkspaceProviderBoundary(root);
             TestStockingPlannerRendererBoundary(root);
+            TestBreedRegistrationRendererBoundary(root);
             TestNativeJournalExpertiseFallback(root);
             TestNativeKnowledgeFallbackBoundary(root);
             TestNativeColonyKnowledgeBoundary(root);
@@ -1281,6 +1282,85 @@ namespace AquacultureFishing.Tests
                 compatibility.Contains("still requires Insight Canvas") &&
                 compatibility.Contains("RimTest"),
                 "planner renderer isolation is not an optional Canvas release qualification");
+        }
+
+        private static void TestBreedRegistrationRendererBoundary(string root)
+        {
+            string owner = File.ReadAllText(Path.Combine(root, "Source", "AquacultureJournal.cs"));
+            string canvas = File.ReadAllText(Path.Combine(root, "Source", "UI",
+                "AquacultureBreedRegistrationDocument.cs"));
+
+            int contractStart = owner.IndexOf("public interface IAquacultureBreedRegistrationView",
+                StringComparison.Ordinal);
+            int dialogStart = contractStart < 0 ? -1 : owner.IndexOf(
+                "public sealed class Dialog_RegisterFishBreed", contractStart,
+                StringComparison.Ordinal);
+            string contract = contractStart >= 0 && dialogStart > contractStart
+                ? owner.Substring(contractStart, dialogStart - contractStart) : string.Empty;
+            Check(contract.Contains("void Draw(Rect rect);") &&
+                contract.Contains("void PostClose();") &&
+                Regex.Matches(contract, @"\bvoid\s+\w+\s*\(").Count == 2 &&
+                !contract.Contains("InsightUi") &&
+                !Regex.IsMatch(owner, @"(?m)^\s*using\s+InsightCanvas\s*;"),
+                "breed-registration renderer interface has no Insight Canvas types");
+
+            int dialogEnd = dialogStart < 0 ? -1 : owner.IndexOf(
+                "public interface IAquacultureJournalWorkspace", dialogStart,
+                StringComparison.Ordinal);
+            string dialog = dialogStart >= 0 && dialogEnd > dialogStart
+                ? owner.Substring(dialogStart, dialogEnd - dialogStart) : string.Empty;
+            int flags = dialog.IndexOf("absorbInputAroundWindow = true;", StringComparison.Ordinal);
+            int factory = dialog.IndexOf(
+                "insightDocument = AquacultureBreedRegistrationViewFactory.Create(this);",
+                StringComparison.Ordinal);
+            Check(dialog.Contains("private IAquacultureBreedRegistrationView insightDocument;") &&
+                !dialog.Contains("AquacultureBreedRegistrationDocument") &&
+                dialog.Contains("doCloseX = true;") &&
+                dialog.Contains("closeOnAccept = false;") &&
+                flags >= 0 && factory > flags &&
+                dialog.Contains("insightDocument.Draw(inRect);") &&
+                dialog.Contains("insightDocument?.PostClose();") &&
+                dialog.Contains("base.PostClose();"),
+                "native breed registration retains dialog lifecycle, flag order, draw and cleanup");
+
+            Check(dialog.Contains("if (canAcceptForUi && Event.current.type == EventType.KeyDown") &&
+                dialog.Contains("Event.current.keyCode == KeyCode.Return") &&
+                dialog.Contains("Event.current.keyCode == KeyCode.KeypadEnter") &&
+                dialog.Contains("Event.current.Use();") &&
+                dialog.Contains("AcceptForUi();") &&
+                dialog.Contains("internal void SetBreedNameForUi(string value)") &&
+                dialog.Contains("internal void RefreshValidationForUi()") &&
+                dialog.Contains("AquacultureFishing.BreedRegistrationEnterName") &&
+                dialog.Contains("AquacultureFishing.BreedRegistrationDuplicate") &&
+                dialog.Contains("CanRegisterBreed(founder, out reason, out cohort)") &&
+                dialog.Contains("RegisterBreed(founder, breedName)") &&
+                dialog.Contains("if (breed != null) Close();") &&
+                dialog.Contains("internal void CancelForUi() => Close();"),
+                "native dialog retains name validation, duplicate detection, Enter, accept and cancel authority");
+
+            Check(canvas.Contains("internal static class AquacultureBreedRegistrationViewFactory") &&
+                canvas.Contains("public static IAquacultureBreedRegistrationView Create(Dialog_RegisterFishBreed owner) =>") &&
+                canvas.Contains("new AquacultureBreedRegistrationDocument(owner);") &&
+                canvas.Contains("public sealed class AquacultureBreedRegistrationDocument : IAquacultureBreedRegistrationView") &&
+                canvas.Contains("public AquacultureBreedRegistrationDocument(Dialog_RegisterFishBreed owner)") &&
+                canvas.Contains("document = new InsightUiDocument(") &&
+                canvas.Contains("AquacultureInsightPresentation.Apply(document);") &&
+                canvas.Contains("owner.RefreshValidationForUi();") &&
+                canvas.Contains("registerButton.Enabled = owner.CanAcceptForUi;") &&
+                canvas.Contains("Host.Draw(rect, Time.deltaTime);") &&
+                canvas.Contains("Host.PostClose();") &&
+                canvas.Contains("owner.SetBreedNameForUi(value);") &&
+                canvas.Contains("owner.ValidationMessageForUi") &&
+                canvas.Contains("owner.AcceptForUi") &&
+                canvas.Contains("owner.CancelForUi"),
+                "default Canvas document retains original presentation, validation, callbacks and cleanup");
+
+            string compatibility = File.ReadAllText(Path.Combine(root, "About", "COMPATIBILITY.md"));
+            Check(compatibility.Contains("AQ-DEP-05A4") &&
+                compatibility.Contains("IAquacultureBreedRegistrationView") &&
+                compatibility.Contains("still requires Insight Canvas") &&
+                compatibility.Contains("RimTest"),
+                "breed registration renderer isolation is not a qualified optional UI build");
         }
 
         private static void TestNativeJournalExpertiseFallback(string root)

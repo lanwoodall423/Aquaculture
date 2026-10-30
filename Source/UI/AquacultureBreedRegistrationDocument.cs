@@ -7,10 +7,20 @@ using Verse;
 namespace AquacultureFishing
 {
     /// <summary>
+    /// Existing Insight Canvas provider for the native breed registration dialog.
+    /// A future native renderer can replace this factory without changing the owner.
+    /// </summary>
+    internal static class AquacultureBreedRegistrationViewFactory
+    {
+        public static IAquacultureBreedRegistrationView Create(Dialog_RegisterFishBreed owner) =>
+            new AquacultureBreedRegistrationDocument(owner);
+    }
+
+    /// <summary>
     /// Insight Canvas content embedded in the native breed-registration Window. The Window retains
     /// ownership of close behavior; registration itself remains AquacultureJournal authority.
     /// </summary>
-    public sealed class AquacultureBreedRegistrationDocument
+    public sealed class AquacultureBreedRegistrationDocument : IAquacultureBreedRegistrationView
     {
         private readonly Dialog_RegisterFishBreed owner;
         private readonly InsightUiDocument document;

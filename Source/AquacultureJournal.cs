@@ -506,11 +506,21 @@ namespace AquacultureFishing
         private static int CurrentTick => Find.TickManager?.TicksGame ?? 0;
     }
 
+    /// <summary>
+    /// Aquaculture-owned breed registration presentation boundary. The native
+    /// window remains responsible for name validation, accepting and closing.
+    /// </summary>
+    public interface IAquacultureBreedRegistrationView
+    {
+        void Draw(Rect rect);
+        void PostClose();
+    }
+
     public sealed class Dialog_RegisterFishBreed : Window
     {
         private readonly CompFishTraits founder;
         private string breedName = string.Empty;
-        private AquacultureBreedRegistrationDocument insightDocument;
+        private IAquacultureBreedRegistrationView insightDocument;
         private bool canAcceptForUi;
         private string validationMessageForUi = string.Empty;
 
@@ -522,7 +532,7 @@ namespace AquacultureFishing
             doCloseX = true;
             closeOnAccept = false;
             absorbInputAroundWindow = true;
-            insightDocument = new AquacultureBreedRegistrationDocument(this);
+            insightDocument = AquacultureBreedRegistrationViewFactory.Create(this);
         }
 
         public override void DoWindowContents(Rect inRect)
