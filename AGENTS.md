@@ -2,6 +2,25 @@
 
 This repository is a RimWorld content mod.
 
+## Platform target: RimWorld 1.7 only
+
+Starting 2026-10-30, all **new source changes, build candidate acceptance,
+runtime validation and player packaging** target **RimWorld 1.7** (Waylith)
+only. Version 1.7 was announced on the unstable beta branch; no 1.6 game
+binary or older-save compatibility qualification is required. Existing 1.6
+paths and release evidence are historical/unported, not an endorsement of a
+1.6 development target. No Aquaculture 1.7 build/load pass is established
+until the exact 1.7 candidate is tested.
+
+The 1.7 port must align the main mod and developer/add-on projects with
+`net10.0`, game-root `Assembly-CSharp.dll` / `Waylith.dll` /
+`UnityStubs.dll` references and a compatible Harmony 3. The supported
+version, content folder, load-folder mapping, dependency assemblies,
+RimTest deployment target and package assertions must switch as one
+coherent reviewed candidate before a player-facing 1.7 support claim.
+Do not accidentally run a RimWorld 1.6 installation, compile against
+1.6 managed assemblies or count a 1.6 DLL load as a 1.7 result.
+
 For source changes, RimTest owns build, generation, local deployment,
 RimWorld lifecycle, affected-test selection, and runtime validation.
 

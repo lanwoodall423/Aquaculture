@@ -1,13 +1,34 @@
 # Aquaculture - Fishing: Release Test Plan
 
+## RimWorld 1.7-only scope (2026-10-30)
+
+Aquaculture now targets **RimWorld 1.7 exclusively**. Use a **1.7 Waylith
+unstable-beta install** and verified compatible 1.7 versions of Harmony 3,
+Insight Canvas, Knowledge Framework, Deferred Reality Framework and Vanilla
+Fishing Expanded for the initial dependency-backed alpha. Do not execute
+new tests on 1.6 or require 1.6 game support or 1.6-save import. The
+older-version references and historical checks later in this document may
+help develop scenarios but do **not** define supported-version release gates.
+Same-version 1.7 save/reload is mandatory. If an external framework has no
+working 1.7 build, mark the relevant 1.7 runtime gate **BLOCKED**, not PASS.
+
+**Port prerequisites before calling the package 1.7-compatible:** rehome
+versioned runtime content into 1.7 only; switch supportedVersions,
+LoadFolders, main/provider/bridge C# projects to net10.0 and 1.7
+Assembly-CSharp/Waylith/UnityStubs/Harmony 3 references; retarget the RimTest
+stack and player package checks; then execute the exact 1.7 candidate.
+Current metadata and content remain 1.6-oriented during transition and
+must not be treated as proof of 1.7 compatibility. See README's
+1.7 migration checklist and AGENTS.md for execution ownership.
+
 Use a new colony with Harmony, Insight Canvas, Knowledge Framework, Deferred Reality Framework, Vanilla Fishing Expanded, and Aquaculture - Fishing enabled in that order. Fishing Treasures, Odyssey, Aquariums, and additional fish packs are optional configuration variants.
 
 The final release boundary, evidence status, isolated startup results, and prioritized manual cases are tracked in `About/RELEASE_READINESS_TEST_MATRIX.md`. Startup success is not a substitute for the gameplay, save/load, performance, or visual cases marked for manual RimWorld validation there.
 
 ## Playable Alpha 0 acceptance gate
 
-**Target:** useful dependency-backed development alpha on RimWorld 1.6, **not**
-a standalone or public beta. This gate is the immediate P0 priority in the
+**Target:** useful dependency-backed development alpha on **RimWorld 1.7
+only**, **not** a standalone or public beta. This gate is the immediate P0 priority in the
 [roadmap](../README.md#current-development-roadmap-2026-10-30).
 It deliberately retains the current required framework/content mods. Use a
 fresh, disposable RimTest-owned test profile and colony.
@@ -23,10 +44,10 @@ as a passing result.
 | Gate | Required observable acceptance | Status until fresh evidence |
 | --- | --- | --- |
 | A0 - Portable regression | Current candidate source runs both trusted trait/rules and UI contract suites; note scope is source/contract only. | NOT RUN |
-| A1 - Isolated exact-source build/load | Owner-managed RimLiaison/RimTest dev-check returns independent BUILD_PASS, STATIC_PASS, RUNTIME_LOAD_PASS, INFRASTRUCTURE_PASS and CLEANUP_PASS with exact candidate identity and loaded-artifact freshness proven. | NOT RUN |
+| A1 - Isolated **1.7 Waylith** build/load | Owner-managed RimLiaison/RimTest dev-check runs against the exact 1.7 source, net10.0/Waylith/UnityStubs/Harmony 3 and 1.7 dependencies; returns independent BUILD_PASS, STATIC_PASS, RUNTIME_LOAD_PASS, INFRASTRUCTURE_PASS and CLEANUP_PASS with exact candidate identity and loaded-artifact freshness proven. | NOT RUN |
 | A2 - Basic gameplay loop | In one disposable colony build a connected pond, catch a supported fish with a rod or stock it, verify food/water/health management, observe traits and at least one breeding or hatching outcome, harvest and process a fish, and check no Aquaculture-owned critical errors. | NOT RUN |
 | A3 - UI and research | Open Settings, Journal, fish dossier, pond management and stocking planner; interact with controls and scroll; verify appropriate research and unknown-species disclosure. Existing Canvas UI is used for this alpha. | NOT RUN |
-| A4 - Persistence | Save and reload the disposable colony, confirm pond stock, fish traits/breed/eggs, settings, journal knowledge and processing results survive, and resume normal play without duplication or loss. | NOT RUN |
+| A4 - **1.7-only** persistence | Save and reload the disposable 1.7 colony, confirm pond stock, fish traits/breed/eggs, settings, journal knowledge and processing results survive, and resume normal play without duplication or loss. Importing 1.6 saves is out of scope. | NOT RUN |
 | A5 - Repeatability | Rerun the RimTest-owned smoke catalog and the basic loop on the same exact candidate, with cleanup and no leak into the player ModsConfig or ordinary saves. | NOT RUN |
 
 **Alpha 0 exit:** A0 through A5 are PASS with evidence for one named
@@ -50,7 +71,7 @@ then remove the mandatory Insight Canvas, Knowledge Framework, Deferred Reality
 Framework and Vanilla Fishing Expanded edges one at a time. Audit Harmony for
 any indispensable core patches before promising a zero-external-mod build.
 Build a first-party freshwater/saltwater/brackishwater starter catalog and
-run standalone absent/present-integration, clean-package and legacy-save gates.
+run standalone 1.7 absent/present-integration, clean-package and same-version save/reload gates.
 Full release readiness still requires the separate extensive matrix below.
 
 ## Load And Progression

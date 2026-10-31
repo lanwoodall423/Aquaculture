@@ -1,8 +1,12 @@
 # Aquaculture - Fishing
 
-Aquaculture is a **RimWorld 1.6** content mod focused on living fish, selective
-breeding, sustainable ponds, and fishing. The tracked mod metadata declares
-RimWorld 1.6 support; newer game versions are **not** claimed here.
+Aquaculture is being developed **exclusively for RimWorld 1.7** (Waylith engine).
+We are not maintaining or testing a RimWorld 1.6 release. As of 2026-10-30,
+1.7 is available on the unstable testing branch; **Aquaculture has not yet
+passed its 1.7 build/load or gameplay gates**. Tracked 1.6-specific metadata
+and folders remain temporarily as unported implementation inputs, **not as a
+commitment to older-version support**. Do not publish a 1.7-compatible player
+package until the port and runtime checks pass.
 
 ## Gameplay
 
@@ -20,8 +24,8 @@ acceptance test.
 
 ## Current development roadmap (2026-10-30)
 
-**Priority: prove a useful, dependency-backed RimWorld 1.6 alpha before
-removing external dependencies.** This is a delivery sequence, not a claim of
+**Priority: port to RimWorld 1.7 and prove a useful 1.7 dependency-backed
+alpha before removing external dependencies.** This is a delivery sequence, not a claim of
 runtime qualification. Aquaculture's current player build continues to require
 the mods listed below. The detailed [Alpha 0 gate](About/TEST_PLAN.md#playable-alpha-0-acceptance-gate)
 and the historical [release evidence ledger](About/RELEASE_READINESS_TEST_MATRIX.md)
@@ -29,11 +33,11 @@ remain separate: historical PASS results do not transfer to a new candidate.
 
 | Priority / target | Current state | Exit gate |
 | --- | --- | --- |
-| P0 - Playable Alpha 0, **current dependencies** | **Next; current-head live qualification NOT RUN** | RimTest dev-check proves BUILD, STATIC, RUNTIME_LOAD, INFRASTRUCTURE and CLEANUP with matching source and artifact hashes; in a disposable colony verify pond construction, fishing or stocking, feeding, breeding/traits, harvesting/processing, usable Journal/settings and save/reload. Record actual results, not inferred PASS. |
+| P0 - **1.7-only port + Playable Alpha 0**, current dependencies | **Next; 1.7 build/load and live qualification NOT RUN** | Replace the 1.6 build/layout with 1.7 Waylith/.NET 10/Harmony 3 references and content, then require RimTest dev-check BUILD/STATIC/RUNTIME_LOAD/INFRASTRUCTURE/CLEANUP and fresh exact artifact hashes. On disposable 1.7 test colonies verify pond, fishing/stocking, feeding, breeding/traits, harvesting/processing, usable Journal/settings, and same-version save/reload. |
 | P1 - Native Journal parity | **In progress** | Native Overview and Species prototype integrated (AQ-DEP-05B6B1); complete Ponds and Breeds, then Conservation and Commissions with the current knowledge/research disclosure and owner gameplay rules. Test scrolling, selection and navigation in RimWorld. |
 | P2 - Native provider/build separation | **Not started** | Allow an exact built configuration without Insight Canvas or Knowledge Framework compile/runtime references; keep enhanced integrations optional. Prove real compile, startup and UI parity for each switch. |
 | P3 - First-party independent gameplay/content | **Partially developed** | Qualify native fishing/rod lifecycle, fallback natural-water and knowledge behavior, optional Deferred Reality and VFE integration, and a small balanced first-party freshwater/saltwater/brackishwater fish catalog. Audit Harmony and replace any remaining mandatory external-mod hook if zero external mod requirements is the goal. |
-| P4 - Standalone player alpha and release qualification | **Blocked on P0-P3** | Remove only proven-unnecessary About.xml dependencies and build references; eliminate legacy provider binaries; validate a clean player package, legacy save migration, live long-running ecology, UI/accessibility and regression variants with dependencies absent/present. |
+| P4 - Standalone 1.7 player alpha and release qualification | **Blocked on P0-P3** | Remove only proven-unnecessary About.xml dependencies and build references; eliminate legacy provider binaries; validate a clean 1.7 player package, 1.7 save/reload, long-running ecology, UI/accessibility and dependency-absent/present variants. No 1.6 game or save compatibility gate. |
 
 **Near-term definition of usefulness:** a player can create a pond, catch or
 stock fish, keep them healthy, breed and process them, inspect the result and
@@ -51,7 +55,50 @@ those through the owner-managed workflow before adding more test harnesses.
 checks, then an owner-managed candidate-exact build/load check; gameplay, UI,
 persistence and release gates are separate and must not be reported as passed
 until executed. ProjectNexus review/acceptance stays required before integration.
-Keep the compatible build as a comparison until the native build is proven.
+Keep the dependency-backed **1.7** build as the comparison until the native
+standalone **1.7** build is proven; never maintain a 1.6 build variant.
+
+## RimWorld 1.7-only migration prerequisites
+
+**Decision (2026-10-30):** no older RimWorld version is a supported runtime,
+packaging target, or required test matrix. Past 1.6 evidence remains dated
+history, not 1.7 proof; old-save import from 1.6 is not a release gate.
+The initial 1.7 playtest may still require the current dependency mods, and
+the later 1.7 standalone target can remove them independently.
+
+1. **Make a coherent 1.7 content package.** Replace the single 1.6
+   `About.xml` supported version with **1.7 only**, migrate versioned
+   Defs/Textures/Languages/Assemblies from `1.6/` to a real `1.7/`
+   directory, and change `LoadFolders.xml` to a single `v1.7` entry.
+   Do not expose or ship an old 1.6 assembly beside a new 1.7 assembly.
+2. **Retarget all owned C# outputs.** Move the main mod, optional DRF
+   provider and developer bridge projects from `net472` to `net10.0`.
+   Reference 1.7 `Assembly-CSharp.dll`, `Waylith.dll` and
+   `UnityStubs.dll` from the new installed game layout instead of
+   1.6 Unity module paths; verify the exact local 1.7 reference layout.
+   Use a 1.7-compatible Harmony 3 build and audit injected Harmony
+   parameter types. Verify compiled graphics/asset compatibility.
+3. **Pin compatible integration versions.** Verify 1.7 versions or
+   isolated replacements for Insight Canvas, Knowledge Framework, Deferred
+   Reality Framework and Vanilla Fishing Expanded. A dependency-backed
+   Alpha 0 requires compatible installed dependencies; optionalization
+   comes later and must be independently tested.
+4. **Move developer workflow and package assertions.** Update
+   `.rimdev/stack.json`, trusted RimTest recipes, source and
+   `DevTools/Test-PlayerPackage.ps1` assumptions from 1.6 paths to
+   exact 1.7 paths. Do not run game-changing operations outside
+   RimLiaison/RimTest's owner-managed lifecycle.
+5. **Qualify the 1.7 Waylith runtime.** Against an isolated 1.7 beta
+   installation, require exact-candidate BUILD/STATIC/RUNTIME_LOAD/
+   INFRASTRUCTURE/CLEANUP results, followed by live gameplay, Journal,
+   settings, same-version save/reload and package tests. Mark unrun stages
+   **NOT RUN**, never PASS, even if older DLLs appear loadable.
+
+Until steps 1–5 are verified, the repository is **1.7-only in development
+intent but not 1.7 runtime-qualified**. Do not change advertised support
+metadata alone or release a partial port. Background:
+[Ludeon's 1.7 announcement](https://ludeon.com/blog/2026/10/announcing-the-waylith-engine-and-update-1-7/)
+and the [1.7 modding update notes](https://www.rimworldwiki.com/wiki/Modding_Tutorials/RimWorld_1.7_Mod_Updates).
 
 ## Dependencies and compatibility
 
@@ -65,15 +112,17 @@ Keep the compatible build as a comparison until the native build is proven.
 
 Use the normal RimWorld mod-management flow and check the individual dependency
 projects for their supported versions. This repository does not bundle their
-assemblies as substitute dependencies. `LoadFolders.xml` currently selects
-only the `1.6/` content directory.
+assemblies as substitute dependencies. The current `LoadFolders.xml` and
+source assets still reference `1.6/` as **unported legacy layout**. Rehome
+runtime content into `1.7/` and switch to a `v1.7`-only loader before claiming
+1.7 support; these legacy paths are not an active 1.6 support target.
 
 ## Repository map
 
 | Path | Purpose |
 | --- | --- |
 | `About/About.xml` | Player-facing metadata, dependencies, supported version |
-| `1.6/` | RimWorld definitions, language, and other versioned content |
+| `1.6/` | Legacy content and assembly layout awaiting 1.7-only rehome; **not supported as a 1.6 target** |
 | `Source/` | Mod implementation, UI, and framework integration |
 | `DevTools/` | Portable rules and UI-contract test projects |
 | `.rimdev/stack.json` | RimLiaison-owned project and build contract |

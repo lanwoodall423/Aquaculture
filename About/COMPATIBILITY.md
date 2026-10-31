@@ -1,5 +1,29 @@
 # Compatibility Contract
 
+## RimWorld 1.7-only development target
+
+**Decision, 2026-10-30:** Aquaculture will target **RimWorld 1.7
+exclusively**. No 1.6 build, load order, content package, 1.6-save import
+or older-game compatibility test is required for future acceptance.
+RimWorld 1.7 is presently an **unstable Waylith beta**. Officially marking
+the mod compatible must wait for actual 1.7 runtime evidence.
+
+**Migration status: NOT QUALIFIED.** The existing tracked About.xml still
+declares only 1.6, LoadFolders.xml selects 1.6/, the mod and helper C#
+projects target net472, and .rimdev/stack.json still deploys to
+1.6/Assemblies. These are legacy source inputs, **not supported 1.6
+outputs**. They must be replaced together with a real 1.7 content tree,
+net10.0 and Waylith/UnityStubs/game-root references, Harmony 3, updated
+1.7-compatible integrations and owner-managed RimTest packaging. Do not
+simply change supportedVersions and ship the old binaries.
+
+The dependency-backed 1.7 Alpha 0 is the first runtime target. Only
+after its build/load, gameplay and same-version persistence gates pass
+will removing external dependencies be considered. Prior 1.6 results
+remain historical rather than evidence for 1.7; no actual 1.7
+RimTest/load/save proof has been recorded. README and TEST_PLAN.md list
+the current milestones and acceptance checks.
+
 ## Required
 
 - Harmony
@@ -13,10 +37,13 @@
 **Current status: dependency-required.** The list above is the current player
 install contract, not an optional list. Do not remove these `modDependencies`
 or treat successful portable/quicktest checks as proof of a standalone mod.
-The target for AQ-DEP is **RimWorld 1.6 + Harmony**, with Insight Canvas,
-Knowledge Framework, Deferred Reality Framework and Vanilla Fishing Expanded
-as separately enabled enhancements. No standalone build, clean-install, live
-gameplay or old-save compatibility qualification has passed for that target.
+The target for AQ-DEP is **RimWorld 1.7 + compatible Harmony 3**,
+with Insight Canvas, Knowledge Framework, Deferred Reality Framework and
+Vanilla Fishing Expanded intended as separately enabled enhancements.
+The existing player build still requires them. Neither a dependency-backed
+1.7 build nor a standalone 1.7 build, clean install, live gameplay or
+same-version save/reload has qualified. **1.6 runtime and old-save
+compatibility are not required deliverables.**
 
 The developer-only AQ-DEP-01 inventory runs as part of the portable
 `DevTools/InsightCanvasUiTests.csproj` executable. It reports the current
