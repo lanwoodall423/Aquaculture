@@ -3,16 +3,16 @@ param(
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Release',
     [string]$RimWorldDir = (Join-Path $PSScriptRoot '..\..\..'),
-    [string]$HarmonyPath = 'C:\Games\Steam\steamapps\workshop\content\294100\2009463077\Current\Assemblies\0Harmony.dll',
+    [string]$HarmonyPath = 'C:\Games\Steam\steamapps\workshop\content\294100\2009463077\1.7\Assemblies\0Harmony.dll',
     [string]$InsightCanvasDir = (Join-Path $PSScriptRoot '..\..\InsightCanvas'),
-    [string]$KnowledgeFrameworkAssemblyPath = (Join-Path $PSScriptRoot '..\..\KnowledgeFramework\1.6\Assemblies\KnowledgeFramework.dll'),
-    [string]$DeferredRealityAssembly = (Join-Path $PSScriptRoot '..\..\DeferredRealityFramework\1.6\Assemblies\DeferredRealityFramework.dll')
+    [string]$KnowledgeFrameworkAssemblyPath = (Join-Path $PSScriptRoot '..\..\KnowledgeFramework\1.7\Assemblies\KnowledgeFramework.dll'),
+    [string]$DeferredRealityAssembly = (Join-Path $PSScriptRoot '..\..\DeferredRealityFramework\1.7\Assemblies\DeferredRealityFramework.dll')
 )
 
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $project = Join-Path $repositoryRoot 'Source\DeferredRealityProvider\DeferredReality.Aquaculture.csproj'
-$assembly = Join-Path $repositoryRoot '1.6\DeferredReality\Assemblies\DeferredReality.Aquaculture.dll'
-$manifest = Join-Path $repositoryRoot '1.6\DeferredReality\Assemblies\DeferredReality.Aquaculture.manifest.json'
+$assembly = Join-Path $repositoryRoot '1.7\DeferredReality\Assemblies\DeferredReality.Aquaculture.dll'
+$manifest = Join-Path $repositoryRoot '1.7\DeferredReality\Assemblies\DeferredReality.Aquaculture.manifest.json'
 
 if (-not (Test-Path -LiteralPath $project)) { throw "Provider project not found: $project" }
 if (-not (Test-Path -LiteralPath $HarmonyPath)) { throw "Harmony assembly not found: $HarmonyPath" }

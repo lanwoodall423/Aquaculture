@@ -8,15 +8,15 @@ or older-game compatibility test is required for future acceptance.
 RimWorld 1.7 is presently an **unstable Waylith beta**. Officially marking
 the mod compatible must wait for actual 1.7 runtime evidence.
 
-**Migration status: NOT QUALIFIED.** The tracked About.xml still declares
-only 1.6, LoadFolders.xml selects 1.6/ and .rimdev/stack.json still deploys
-to 1.6/Assemblies. The main, optional DRF and developer bridge C# projects
-now contain 1.7-only net10.0 reference contracts, but no actual 1.7 build
-or content load has passed. These remaining legacy package paths are
-unported source inputs, **not supported 1.6 outputs**. They must be replaced
-together with a real 1.7 content tree, 1.7-compatible integrations and
-owner-managed RimTest packaging. Do not simply change supportedVersions
-and ship unqualified binaries.
+**Migration status: NOT QUALIFIED.** About.xml now declares 1.7 alone,
+LoadFolders.xml selects only 1.7/ and the RimTest stack deploys the 1.7
+assembly output. The main, optional DRF and developer bridge build projects
+target net10.0. All versioned player Defs, Languages and Textures are
+**generated** by a successful Release build from the tracked 1.6 asset
+seeds. The historical 1.6/Assemblies binaries remain tracked, but are never
+load folders or inputs to the strict 1.7 package. No actual 1.7 compilation,
+content load, integration compatibility or game qualification has passed.
+Metadata changes and portable checks alone do not authorize a player release.
 
 The dependency-backed 1.7 Alpha 0 is the first runtime target. Only
 after its build/load, gameplay and same-version persistence gates pass
@@ -39,17 +39,34 @@ remains outside the player package. Missing 1.7 references fail the
 build, rather than silently using a 1.6 DLL.
 
 **This is not a runnable 1.7 release.** The core still requires Insight Canvas
-and the other current mandatory frameworks, which need verified 1.7
-builds. The tracked `About.xml`, `LoadFolders.xml`, `1.6/` content
-tree, `.rimdev/stack.json` and package tester are deliberately not yet
-migrated, because source-only text edits cannot coherently move the
-versioned content and remove old binary artifacts. Exact 1.7
-game/toolchain availability, real compilation, RimTest load, UI,
-gameplay, save/reload and packaging qualification remain **NOT RUN**.
-The next migration must rehome content, update the player/loader and
-RimTest contract as one candidate; any remaining 1.6 binaries must be
-excluded, not double-loaded.
+and all current mandatory frameworks, which need verified 1.7 builds.
+AQ-17-01B updates the loader/package paths and generates the 1.7 content
+from historical source seeds rather than attempting an unauthorized tracked
+binary move. Exact 1.7 game/toolchain availability, real compilation,
+RimTest load, UI, gameplay, save/reload and packaging qualification remain
+**NOT RUN**. Any remaining 1.6 binaries are excluded, never double-loaded.
 
+
+## AQ-17-01B — 1.7 runtime folder and package contracts only
+
+A normal Release net10.0 core build stages the tracked legacy-source XML
+Defs, English keyed localization and fishing-rod texture into generated
+`1.7/{Defs,Languages,Textures}` alongside the new `1.7/Assemblies` output.
+The generator rejects absent source seeds and recreates the three generated
+content directories after a successful build. The experimental native
+Knowledge build does not run this staging target. `1.7/` is ignored by Git
+until an authorized tracked-file relocation can replace this temporary
+source-seed arrangement.
+
+The 1.7-only mod metadata, `v1.7` load folders, RimTest stack, optional
+`IfModActive`-gated Deferred Reality provider path, provider build scripts,
+player ZIP constructor and ZIP verifier must agree. Packaging checks all
+source/generated content hashes and rejects old version paths, additional
+core DLLs, incomplete provider pairs or provider hash mismatches. These are
+**source contracts, not a built release**: no 1.7 DLL, game runtime,
+RimTest, package ZIP, dependency variant, UI, gameplay or persistence has
+been qualified. Legacy `1.6/` source seeds and old prebuilt binaries remain
+tracked as historical inputs only; no 1.6 player support is offered.
 
 ## AQ-EXP-01 — Pond Chaos Lab feeder-outage experiment (source-only)
 

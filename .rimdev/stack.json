@@ -11,13 +11,13 @@
   "sourceProject": "Source/AquacultureFishing.csproj",
   "configuration": "Release",
   "expectedAssembly": "AquacultureFishing.dll",
-  "deploymentTarget": "1.6/Assemblies/AquacultureFishing.dll",
+  "deploymentTarget": "1.7/Assemblies/AquacultureFishing.dll",
   "testRecipe": "aquaculture-development-smoke",
   "runtimePackage": {
     "sourceRoot": ".",
     "include": [
       "About/**",
-      "1.*/**",
+      "1.7/**",
       "LoadFolders.xml",
       "LICENSE"
     ],
@@ -27,8 +27,9 @@
       "Source/**",
       "DevTools/**",
       "TestCatalog/**",
-      "1.6/Assemblies/DeferredReality.Aquaculture.dll",
-      "1.6/Assemblies/DeferredReality.Aquaculture.manifest.json",
+      "1.6/**",
+      "1.7/Assemblies/DeferredReality.Aquaculture.dll",
+      "1.7/Assemblies/DeferredReality.Aquaculture.manifest.json",
       "bin/**",
       "obj/**"
     ]

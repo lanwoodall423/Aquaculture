@@ -1,12 +1,14 @@
 # Aquaculture - Fishing
 
 Aquaculture is being developed **exclusively for RimWorld 1.7** (Waylith engine).
-We are not maintaining or testing a RimWorld 1.6 release. As of 2026-10-30,
-1.7 is available on the unstable testing branch; **Aquaculture has not yet
-passed its 1.7 build/load or gameplay gates**. Tracked 1.6-specific metadata
-and folders remain temporarily as unported implementation inputs, **not as a
-commitment to older-version support**. Do not publish a 1.7-compatible player
-package until the port and runtime checks pass.
+We are not maintaining or testing a RimWorld 1.6 release. The current 1.7
+Waylith development target is still unqualified: **Aquaculture has not yet
+passed its 1.7 build/load or gameplay gates**. About.xml, LoadFolders.xml
+and the developer package paths now target 1.7 exclusively. Tracked 1.6
+Defs/Languages/Textures remain temporary build-time source seeds, while
+historical prebuilt 1.6 DLLs are excluded from the runtime and ZIP. Do not
+publish a 1.7 player package until fresh compilation, dependency and
+owner-managed runtime tests pass.
 
 ## Gameplay
 
@@ -66,37 +68,38 @@ history, not 1.7 proof; old-save import from 1.6 is not a release gate.
 The initial 1.7 playtest may still require the current dependency mods, and
 the later 1.7 standalone target can remove them independently.
 
-1. **Make a coherent 1.7 content package.** Replace the single 1.6
-   `About.xml` supported version with **1.7 only**, migrate versioned
-   Defs/Textures/Languages/Assemblies from `1.6/` to a real `1.7/`
-   directory, and change `LoadFolders.xml` to a single `v1.7` entry.
-   Do not expose or ship an old 1.6 assembly beside a new 1.7 assembly.
-2. **Retarget all owned C# outputs.** Move the main mod, optional DRF
-   provider and developer bridge projects from `net472` to `net10.0`.
-   Reference 1.7 `Assembly-CSharp.dll`, `Waylith.dll` and
-   `UnityStubs.dll` from the new installed game layout instead of
-   1.6 Unity module paths; verify the exact local 1.7 reference layout.
-   Use a 1.7-compatible Harmony 3 build and audit injected Harmony
-   parameter types. Verify compiled graphics/asset compatibility.
+1. **Generate a coherent 1.7 content package (source contract completed;
+   runtime NOT RUN).** `About.xml` now declares **1.7 only** and
+   `LoadFolders.xml` selects `v1.7`. A successful ordinary Release build
+   copies the tracked 1.6 XML/PNG source seeds into generated `1.7/`
+   content, and the strict package verifier excludes historical 1.6 DLLs.
+   The generated content, actual 1.7 core DLL and clean player ZIP still
+   need owner-managed build and runtime proof.
+2. **Verify owned C# outputs (source contract completed; build NOT RUN).**
+   Main mod, optional DRF provider and developer bridge target `net10.0`.
+   Reference RimWorld 1.7 `Assembly-CSharp.dll`, `Waylith.dll` and
+   `UnityStubs.dll` from the installed game root. Require Harmony 3 and
+   compatible 1.7 framework builds, then audit injected Harmony parameter
+   types and compiled graphics/asset compatibility.
 3. **Pin compatible integration versions.** Verify 1.7 versions or
    isolated replacements for Insight Canvas, Knowledge Framework, Deferred
    Reality Framework and Vanilla Fishing Expanded. A dependency-backed
    Alpha 0 requires compatible installed dependencies; optionalization
    comes later and must be independently tested.
-4. **Move developer workflow and package assertions.** Update
-   `.rimdev/stack.json`, trusted RimTest recipes, source and
-   `DevTools/Test-PlayerPackage.ps1` assumptions from 1.6 paths to
-   exact 1.7 paths. Do not run game-changing operations outside
-   RimLiaison/RimTest's owner-managed lifecycle.
+4. **Verify developer workflow and package assertions.** The RimTest
+   stack and player-package tools now select 1.7-only paths and reject
+   mismatched staged content or old/duplicate binaries. These source-only
+   changes need a clean actual 1.7 package and owner-managed verification;
+   never run game-changing operations outside RimLiaison/RimTest.
 5. **Qualify the 1.7 Waylith runtime.** Against an isolated 1.7 beta
    installation, require exact-candidate BUILD/STATIC/RUNTIME_LOAD/
    INFRASTRUCTURE/CLEANUP results, followed by live gameplay, Journal,
    settings, same-version save/reload and package tests. Mark unrun stages
    **NOT RUN**, never PASS, even if older DLLs appear loadable.
 
-Until steps 1–5 are verified, the repository is **1.7-only in development
-intent but not 1.7 runtime-qualified**. Do not change advertised support
-metadata alone or release a partial port. Background:
+Until steps 1–5 are verified, the repository is **1.7-only in source
+contracts but not 1.7 runtime-qualified**. The version metadata is now 1.7;
+that is not evidence of a working 1.7 mod or permission to release. Background:
 [Ludeon's 1.7 announcement](https://ludeon.com/blog/2026/10/announcing-the-waylith-engine-and-update-1-7/)
 and the [1.7 modding update notes](https://www.rimworldwiki.com/wiki/Modding_Tutorials/RimWorld_1.7_Mod_Updates).
 
@@ -112,10 +115,10 @@ and the [1.7 modding update notes](https://www.rimworldwiki.com/wiki/Modding_Tut
 
 Use the normal RimWorld mod-management flow and check the individual dependency
 projects for their supported versions. This repository does not bundle their
-assemblies as substitute dependencies. The current `LoadFolders.xml` and
-source assets still reference `1.6/` as **unported legacy layout**. Rehome
-runtime content into `1.7/` and switch to a `v1.7`-only loader before claiming
-1.7 support; these legacy paths are not an active 1.6 support target.
+assemblies as substitute dependencies. `LoadFolders.xml` selects only 1.7
+runtime folders; the tracked `1.6/` XML/PNG assets are source seeds copied by
+the Release build to generated 1.7 content. Old prebuilt DLLs are excluded.
+Neither source migration nor metadata alone qualifies 1.7 runtime support.
 
 ## Repository map
 

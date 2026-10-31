@@ -568,11 +568,16 @@ namespace AquacultureFishing.Tests
                     !project.Contains("RimWorldWin64_Data") &&
                     !project.Contains("RimWorldManagedDir") &&
                     !project.Contains("UnityEngine.CoreModule") &&
-                    !project.Contains("UnityEngine.IMGUIModule") &&
-                    !project.Contains("1.6/") &&
-                    !project.Contains(@"1.6\"),
-                    "owned RimWorld build projects use only .NET 10 and never silently select 1.6 game references");
+                    !project.Contains("UnityEngine.IMGUIModule"),
+                    "owned RimWorld build projects use only .NET 10 and never select legacy engine references");
             }
+
+            Check(!provider.Contains("1.6/") && !provider.Contains(@"1.6\") &&
+                !bridge.Contains("1.6/") && !bridge.Contains(@"1.6\") &&
+                !XDocument.Parse(main).Descendants("HintPath")
+                    .Any(element => element.Value.Contains("1.6/", StringComparison.Ordinal) ||
+                        element.Value.Contains(@"1.6\", StringComparison.Ordinal)),
+                "legacy asset seeds cannot be used as 1.6 compiled assembly references");
 
             Check(main.Contains("Reference Include=\"Assembly-CSharp\"") &&
                 main.Contains("Reference Include=\"Waylith\"") &&
@@ -614,15 +619,36 @@ namespace AquacultureFishing.Tests
             XDocument about = XDocument.Load(Path.Combine(root, "About", "About.xml"));
             XDocument loaders = XDocument.Load(Path.Combine(root, "LoadFolders.xml"));
             Check(about.Descendants("supportedVersions").Elements("li")
-                    .Any(version => version.Value == "1.6") &&
-                loaders.Descendants("v1.6").Any(),
-                "build-only stage does not prematurely advertise a runnable 1.7 player package");
+                    .Select(version => version.Value).SequenceEqual(new[] { "1.7" }) &&
+                loaders.Root.Elements().Select(element => element.Name.LocalName)
+                    .SequenceEqual(new[] { "v1.7" }),
+                "runtime metadata and load folder declare RimWorld 1.7 exclusively");
+
+            XElement stage = XDocument.Parse(main).Descendants("Target")
+                .SingleOrDefault(element => (string)element.Attribute("Name") == "StageAquaculture17Content");
+            string normalizedStage = stage?.ToString().Replace('\\', '/') ?? string.Empty;
+            Check(stage != null && (string)stage.Attribute("AfterTargets") == "Build" &&
+                ((string)stage.Attribute("Condition") ?? string.Empty).Contains("'$(Configuration)' == 'Release'") &&
+                ((string)stage.Attribute("Condition") ?? string.Empty).Contains("AquacultureNativeKnowledge") &&
+                normalizedStage.Contains("1.6/Defs/") &&
+                normalizedStage.Contains("1.6/Languages/") &&
+                normalizedStage.Contains("1.6/Textures/") &&
+                normalizedStage.Contains("1.7/Defs/") &&
+                normalizedStage.Contains("1.7/Languages/") &&
+                normalizedStage.Contains("1.7/Textures/") &&
+                !normalizedStage.Contains("1.6/Assemblies/") &&
+                stage.Descendants("Copy").Count() == 3 &&
+                stage.Descendants("RemoveDir").Any() &&
+                File.ReadAllText(Path.Combine(root, ".gitignore")).Contains("/1.7/"),
+                "Release-only core target stages generated 1.7 XML/PNG and never old assembly binaries");
             string compatibility = File.ReadAllText(Path.Combine(root, "About", "COMPATIBILITY.md"));
             Check(compatibility.Contains("AQ-17-01A") &&
+                compatibility.Contains("AQ-17-01B") &&
                 compatibility.Contains("still requires Insight Canvas") &&
                 compatibility.Contains("not a runnable 1.7 release") &&
-                compatibility.Contains("RimTest"),
-                "1.7 build-contract prototype honestly documents unresolved runtime and packaging gates");
+                compatibility.Contains("RimTest") &&
+                compatibility.Contains("NOT RUN"),
+                "1.7 source-only content migration documents blocked game/runtime qualification");
         }
 
         private static void TestExplicitNativeFishIdentityBoundary(string root)
@@ -2156,9 +2182,9 @@ namespace AquacultureFishing.Tests
                     (string)element.Attribute("Include") == "DeferredRealityFramework");
             bool providerUsesPlayerAssemblyDirectory = providerProject.Descendants()
                 .Where(element => element.Name.LocalName == "OutputPath")
-                .Any(element => element.Value.Replace('\\', '/').Contains("1.6/Assemblies/"));
+                .Any(element => element.Value.Replace('\\', '/').Contains("1.7/Assemblies/"));
             bool packageIncludesVersionedAssemblies =
-                File.ReadAllText(Path.Combine(root, ".rimdev", "stack.json")).Contains("\"1.*/**\"");
+                File.ReadAllText(Path.Combine(root, ".rimdev", "stack.json")).Contains("\"1.7/**\"");
 
             string sourceRoot = Path.Combine(root, "Source");
             string[] coreSources = Directory.GetFiles(sourceRoot, "*.cs", SearchOption.AllDirectories)
@@ -2269,11 +2295,15 @@ namespace AquacultureFishing.Tests
         private static void TestConditionalDeferredRealityPackageContract(string root)
         {
             XDocument folders = XDocument.Load(Path.Combine(root, "LoadFolders.xml"));
-            XElement version = folders.Root?.Element("v1.6");
+            XElement version = folders.Root?.Element("v1.7");
             XElement conditional = version?.Elements("li").SingleOrDefault(element =>
-                element.Value.Trim() == "1.6/DeferredReality");
-            Check(version?.Elements("li").Any(element => element.Value.Trim() == "1.6" &&
+                element.Value.Trim() == "1.7/DeferredReality");
+            Check(version?.Elements("li").Any(element => element.Value.Trim() == "1.7" &&
                 !element.HasAttributes) == true, "core load folder remains unconditional");
+            Check(version != null && folders.Root.Elements().Count() == 1 &&
+                version.Elements("li").Count() == 2 &&
+                !folders.Descendants("v1.6").Any(),
+                "the load-folder contract contains exactly one 1.7 runtime and two gated/unconditional entries");
             Check(conditional != null &&
                 (string)conditional.Attribute("IfModActive") == "lan.deferredreality.framework" &&
                 conditional.Attributes().Count() == 1,
@@ -2290,15 +2320,19 @@ namespace AquacultureFishing.Tests
 
             string builder = File.ReadAllText(Path.Combine(root, "DevTools", "Build-DeferredRealityProvider.ps1"));
             string verifier = File.ReadAllText(Path.Combine(root, "DevTools", "Test-DeferredRealityProvider.ps1"));
-            const string folder = @"1.6\DeferredReality\Assemblies\DeferredReality.Aquaculture.";
+            const string folder = @"1.7\DeferredReality\Assemblies\DeferredReality.Aquaculture.";
             Check(builder.Contains(folder + "dll") && builder.Contains(folder + "manifest.json") &&
-                verifier.Contains(folder + "dll") && verifier.Contains(folder + "manifest.json"),
-                "provider manifest generation and verification agree on conditional folder");
+                verifier.Contains(folder + "dll") && verifier.Contains(folder + "manifest.json") &&
+                builder.Contains(@"2009463077\1.7\Assemblies\0Harmony.dll") &&
+                builder.Contains(@"KnowledgeFramework\1.7\Assemblies") &&
+                builder.Contains(@"DeferredRealityFramework\1.7\Assemblies") &&
+                !builder.Contains(@"1.6\") && !verifier.Contains(@"1.6\"),
+                "provider script and verifier exclusively select 1.7 framework and conditional folders");
 
             string packager = File.ReadAllText(Path.Combine(root, "DevTools", "New-PlayerPackage.ps1"));
             string packageVerifier = File.ReadAllText(Path.Combine(root, "DevTools", "Test-PlayerPackage.ps1"));
             Check(packager.Contains("Copy-Item -LiteralPath $sourceAssembly") &&
-                packager.Contains("$providerRelative = '1.6\\DeferredReality\\Assemblies'") &&
+                packager.Contains("$providerRelative = '1.7\\DeferredReality\\Assemblies'") &&
                 !packager.Contains("foreach ($name in @('AquacultureFishing.dll', 'DeferredReality.Aquaculture.dll'"),
                 "player package copies only the core DLL into unconditional Assemblies");
             Check(packager.Contains("$hasProviderAssembly -ne $hasProviderManifest") &&
@@ -2310,6 +2344,23 @@ namespace AquacultureFishing.Tests
                 packageVerifier.Contains("unexpectedProviderPaths") &&
                 packageVerifier.Contains("$baseAssemblies.Count -ne 1"),
                 "package verifier rejects any provider assembly in the unconditional core directory");
+            Check(packager.Contains("Staged 1.7 assets are missing or stale") &&
+                packager.Contains("Staged 1.7 content does not match the source seed") &&
+                packager.Contains("Get-FileHash -LiteralPath $seed.FullName") &&
+                packager.Contains("rimWorldTarget = '1.7'") &&
+                packager.Contains("Copy-Required '1.7\\Defs'") &&
+                packager.Contains("Copy-Required '1.7\\Languages'") &&
+                packager.Contains("Copy-Required '1.7\\Textures'") &&
+                packager.Contains("'Test-PlayerPackage.ps1') -PackagePath $zip"),
+                "player packager verifies generated 1.7 asset integrity and runs the ZIP verifier before output");
+            Check(packageVerifier.Contains("'1.7/Defs/ThingDefs.xml'") &&
+                packageVerifier.Contains("'1.7/Languages/English/Keyed/AquacultureFishing.xml'") &&
+                packageVerifier.Contains("'1.7/Textures/Things/Item/Equipment/FishingRod.png'") &&
+                packageVerifier.Contains("'1.7/Assemblies/AquacultureFishing.dll'") &&
+                packageVerifier.Contains("Packaged About.xml must advertise RimWorld 1.7 exclusively") &&
+                packageVerifier.Contains("1[.]6") &&
+                packageVerifier.Contains("/loadFolders/v1.7"),
+                "1.7-only player ZIP verifier rejects legacy paths and demands runtime assets and version metadata");
             Check(packageVerifier.Contains("Optional DRF provider DLL/manifest pair is incomplete.") &&
                 packageVerifier.Contains("ComputeHash($providerStream)") &&
                 packageVerifier.Contains("IfModActive") &&
@@ -2325,11 +2376,12 @@ namespace AquacultureFishing.Tests
                 string[] includes = runtime.GetProperty("include").EnumerateArray()
                     .Select(item => item.GetString()).ToArray();
                 Check(rootStack.GetProperty("deploymentTarget").GetString() ==
-                    "1.6/Assemblies/AquacultureFishing.dll" &&
-                    includes.Contains("1.*/**") &&
-                    excludes.Contains("1.6/Assemblies/DeferredReality.Aquaculture.dll") &&
-                    excludes.Contains("1.6/Assemblies/DeferredReality.Aquaculture.manifest.json"),
-                    "RimTest keeps its core DLL target and excludes both legacy unconditional provider artifacts");
+                    "1.7/Assemblies/AquacultureFishing.dll" &&
+                    includes.Contains("1.7/**") && !includes.Contains("1.*/**") &&
+                    excludes.Contains("1.6/**") &&
+                    excludes.Contains("1.7/Assemblies/DeferredReality.Aquaculture.dll") &&
+                    excludes.Contains("1.7/Assemblies/DeferredReality.Aquaculture.manifest.json"),
+                    "RimTest includes only the 1.7 player tree and rejects legacy/unconditional DRF binaries");
             }
         }
 

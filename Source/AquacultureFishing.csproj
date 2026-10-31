@@ -86,6 +86,35 @@
     <Error Condition="'$(AquacultureNativeKnowledge)' != 'true' and '$(KnowledgeFrameworkAssemblyPath)' == '' and !Exists('$(MSBuildThisFileDirectory)..\..\KnowledgeFramework\1.7\Assemblies\KnowledgeFramework.dll')" Text="AquacultureFishing requires KnowledgeFramework 1.7 via KnowledgeFrameworkAssemblyPath or the sibling 1.7 build." />
     <Error Condition="'$(AquacultureNativeKnowledge)' != 'true' and '$(KnowledgeFrameworkAssemblyPath)' != '' and !Exists('$(KnowledgeFrameworkAssemblyPath)')" Text="The explicit KnowledgeFrameworkAssemblyPath must identify a verified 1.7 DLL." />
   </Target>
+  <!--
+    AQ-17-01B: The only runtime tree is generated 1.7/. Existing tracked 1.6
+    Defs/Languages/Textures are temporary source inputs, NOT player load folders.
+    Never stage any 1.6 Assemblies. The target owns only generated content dirs.
+  -->
+  <Target Name="StageAquaculture17Content" AfterTargets="Build"
+          Condition="'$(Configuration)' == 'Release' and '$(AquacultureNativeKnowledge)' != 'true'">
+    <Error Condition="!Exists('$(MSBuildThisFileDirectory)..\1.6\Defs\ThingDefs.xml')"
+           Text="Missing tracked Aquaculture Def source seed for RimWorld 1.7 runtime staging." />
+    <Error Condition="!Exists('$(MSBuildThisFileDirectory)..\1.6\Languages\English\Keyed\AquacultureFishing.xml')"
+           Text="Missing tracked Aquaculture localization source seed for RimWorld 1.7 runtime staging." />
+    <Error Condition="!Exists('$(MSBuildThisFileDirectory)..\1.6\Textures\Things\Item\Equipment\FishingRod.png')"
+           Text="Missing tracked Aquaculture fishing rod texture source seed for RimWorld 1.7 runtime staging." />
+    <ItemGroup>
+      <AquacultureSeedDefs Include="$(MSBuildThisFileDirectory)..\1.6\Defs\**\*.xml" />
+      <AquacultureSeedLanguages Include="$(MSBuildThisFileDirectory)..\1.6\Languages\**\*.xml" />
+      <AquacultureSeedTextures Include="$(MSBuildThisFileDirectory)..\1.6\Textures\**\*.png" />
+    </ItemGroup>
+    <Error Condition="'@(AquacultureSeedDefs)' == '' or '@(AquacultureSeedLanguages)' == '' or '@(AquacultureSeedTextures)' == ''"
+           Text="RimWorld 1.7 runtime content requires all three nonempty source asset groups." />
+    <!-- Fail closed on stale generated Defs from earlier builds; leave DLL/provider folders untouched. -->
+    <RemoveDir Directories="$(MSBuildThisFileDirectory)..\1.7\Defs;$(MSBuildThisFileDirectory)..\1.7\Languages;$(MSBuildThisFileDirectory)..\1.7\Textures" />
+    <Copy SourceFiles="@(AquacultureSeedDefs)"
+          DestinationFiles="@(AquacultureSeedDefs->'$(MSBuildThisFileDirectory)..\1.7\Defs\%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Copy SourceFiles="@(AquacultureSeedLanguages)"
+          DestinationFiles="@(AquacultureSeedLanguages->'$(MSBuildThisFileDirectory)..\1.7\Languages\%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Copy SourceFiles="@(AquacultureSeedTextures)"
+          DestinationFiles="@(AquacultureSeedTextures->'$(MSBuildThisFileDirectory)..\1.7\Textures\%(RecursiveDir)%(Filename)%(Extension)')" />
+  </Target>
   <Target Name="BuildBridgeTools" AfterTargets="Build" Condition="'$(AquacultureDeveloperTests)' == 'true'">
     <Error Condition="'$(RimBridgeSdkAssemblyPath)' == '' or !Exists('$(RimBridgeSdkAssemblyPath)')" Text="Aquaculture developer tests require RimBridgeServer.Sdk.dll. Set RimBridgeSdkAssemblyPath or RimBridgeServerDir to the installed RimBridgeServer checkout." />
     <MSBuild

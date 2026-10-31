@@ -1,3 +1,6 @@
+# Build-generated 1.7 runtime tree (1.6 XML/PNG seeds remain tracked until authorized move)
+/1.7/
+
 # Local build intermediates
 **/bin/
 **/obj/
