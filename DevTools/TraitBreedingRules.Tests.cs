@@ -1293,6 +1293,131 @@ static class TraitBreedingRulesTests
             FishingRankRules.LegacySettingForRank((FishingRank)77) == 0);
     }
 
+
+    private static void TestFeederOutageResiliencePrototype()
+    {
+        static PondFeederOutagePrediction Drill(int hours, double demand, double feed,
+            double low, double high) =>
+            PondFeederOutageRiskRules.Evaluate(new PondFeederOutageInput(hours, demand, feed, low, high));
+        static bool Near(double? value, double expected) =>
+            value.HasValue && Math.Abs(value.Value - expected) < 0.000001d;
+        static bool Invalid(PondFeederOutagePrediction prediction) =>
+            prediction.Risk == PondFeederOutageRisk.InsufficientData &&
+            !prediction.MinimumFoodShortfall.HasValue &&
+            !prediction.MaximumFoodShortfall.HasValue &&
+            !prediction.ConservativeCoverageHours.HasValue &&
+            !prediction.OptimisticCoverageHours.HasValue;
+
+        // Two initially healthy ponds have identical feed reserves and fish demand,
+        // but the natural food web can make them dramatically different outage risks.
+        var balanced = Drill(48, 4d, 48d, 3.1d, 3.8d);
+        var dependent = Drill(48, 4d, 48d, 0.2d, 0.7d);
+        Check("balanced pond remains covered for 48 hours in the illustrative drill",
+            balanced.Risk == PondFeederOutageRisk.Covered &&
+            Near(balanced.MinimumFoodShortfall, 0d) &&
+            Near(balanced.MaximumFoodShortfall, 0d) &&
+            Near(balanced.ConservativeCoverageHours, 48d));
+        Check("identically healthy but feeder-dependent pond has definite shortage",
+            dependent.Risk == PondFeederOutageRisk.CertainShortfall &&
+            Near(dependent.MinimumFoodShortfall, 110.4d) &&
+            Near(dependent.MaximumFoodShortfall, 134.4d) &&
+            dependent.ConservativeCoverageHours < dependent.OptimisticCoverageHours &&
+            dependent.OptimisticCoverageHours < 48d);
+        var uncertain = Drill(48, 2d, 50d, 0.5d, 1.5d);
+        Check("uncertain food web reports possible shortage instead of false reassurance",
+            uncertain.Risk == PondFeederOutageRisk.PossibleShortfall &&
+            Near(uncertain.MinimumFoodShortfall, 0d) &&
+            Near(uncertain.MaximumFoodShortfall, 22d) &&
+            Near(uncertain.ConservativeCoverageHours, 50d / 1.5d) &&
+            Near(uncertain.OptimisticCoverageHours, 48d));
+        var noDemand = Drill(24, 0d, 0d, 0d, 0d);
+        Check("empty pond has no food demand and a bounded horizon",
+            noDemand.Risk == PondFeederOutageRisk.NoDemand &&
+            Near(noDemand.MinimumFoodShortfall, 0d) &&
+            Near(noDemand.MaximumFoodShortfall, 0d) &&
+            Near(noDemand.ConservativeCoverageHours, 24d) &&
+            Near(noDemand.OptimisticCoverageHours, 24d));
+        Check("existing natural food can sustain demand without feed",
+            Drill(48, 2d, 0d, 2d, 3d).Risk == PondFeederOutageRisk.Covered &&
+            Near(Drill(48, 2d, 0d, 2d, 3d).ConservativeCoverageHours, 48d));
+        Check("optimistic supply matching demand prevents definite shortage",
+            Drill(24, 2d, 0d, 0d, 2d).Risk == PondFeederOutageRisk.PossibleShortfall &&
+            Near(Drill(24, 2d, 0d, 0d, 2d).ConservativeCoverageHours, 0d) &&
+            Near(Drill(24, 2d, 0d, 0d, 2d).OptimisticCoverageHours, 24d));
+        Check("24-hour boundary covered but identical 48-hour outage is not",
+            Drill(24, 4d, 90d, 0.5d, 0.5d).Risk == PondFeederOutageRisk.Covered &&
+            Drill(48, 4d, 90d, 0.5d, 0.5d).Risk == PondFeederOutageRisk.CertainShortfall);
+        Check("exact total food equality is fully covered",
+            Drill(24, 4d, 96d, 0d, 0d).Risk == PondFeederOutageRisk.Covered &&
+            Drill(24, 4d, 95d, 0d, 0d).Risk == PondFeederOutageRisk.CertainShortfall);
+
+        // Across an ordered reserve sweep, additional feed cannot worsen either
+        // the shortage interval or the categorical risk for the same other inputs.
+        double previousMinimum = double.PositiveInfinity;
+        double previousMaximum = double.PositiveInfinity;
+        int previousRisk = (int)PondFeederOutageRisk.CertainShortfall;
+        for (int feed = 0; feed <= 200; feed += 5)
+        {
+            var candidate = Drill(48, 4d, feed, 0.5d, 1.5d);
+            Check("increasing reserve cannot increase shortfall or risk: " + feed,
+                candidate.Risk != PondFeederOutageRisk.InsufficientData &&
+                candidate.MinimumFoodShortfall <= previousMinimum &&
+                candidate.MaximumFoodShortfall <= previousMaximum &&
+                (int)candidate.Risk <= previousRisk);
+            previousMinimum = candidate.MinimumFoodShortfall.Value;
+            previousMaximum = candidate.MaximumFoodShortfall.Value;
+            previousRisk = (int)candidate.Risk;
+        }
+        Check("greater demand never improves shortage",
+            Drill(48, 3d, 50d, 0.5d, 1.5d).Risk == PondFeederOutageRisk.CertainShortfall &&
+            Drill(48, 3d, 50d, 0.5d, 1.5d).MaximumFoodShortfall >=
+                uncertain.MaximumFoodShortfall);
+        Check("extended outage never improves shortage for fixed rates and reserves",
+            Drill(48, 4d, 48d, 0.2d, 0.7d).MinimumFoodShortfall >
+                Drill(24, 4d, 48d, 0.2d, 0.7d).MinimumFoodShortfall);
+
+        Check("default, zero, negative and unsupported horizons fail closed",
+            Invalid(PondFeederOutageRiskRules.Evaluate(default)) &&
+            Invalid(Drill(0, 1d, 1d, 0d, 0d)) &&
+            Invalid(Drill(-24, 1d, 1d, 0d, 0d)) &&
+            Invalid(Drill(25, 1d, 1d, 0d, 0d)) &&
+            Invalid(Drill(int.MaxValue, 1d, 1d, 0d, 0d)));
+        Check("negative demand, reserves and bounds fail closed",
+            Invalid(Drill(24, -1d, 0d, 0d, 0d)) &&
+            Invalid(Drill(24, 1d, -1d, 0d, 0d)) &&
+            Invalid(Drill(24, 1d, 0d, -1d, 0d)) &&
+            Invalid(Drill(24, 1d, 0d, 0d, -1d)) &&
+            Invalid(Drill(24, 1d, 0d, 2d, 1d)));
+        Check("unknown and nonfinite inputs cannot become safe, even with no demand",
+            Invalid(Drill(48, double.NaN, 48d, 1d, 1d)) &&
+            Invalid(Drill(48, 4d, double.PositiveInfinity, 1d, 1d)) &&
+            Invalid(Drill(48, 4d, 48d, double.NaN, 1d)) &&
+            Invalid(Drill(48, 4d, 48d, 1d, double.NegativeInfinity)) &&
+            Invalid(Drill(24, 0d, 0d, double.NaN, 0d)));
+        Check("overflowing demand and available food fail closed",
+            Invalid(Drill(48, double.MaxValue, 0d, 0d, 0d)) &&
+            Invalid(Drill(48, 1d, double.MaxValue, 0d, double.MaxValue)));
+        Check("very large but finite arithmetic remains a meaningful bounded estimate",
+            Drill(48, double.MaxValue / 100d, 0d, 0d, 0d).Risk ==
+                PondFeederOutageRisk.CertainShortfall &&
+            Near(Drill(48, double.MaxValue / 100d, 0d, 0d, 0d).ConservativeCoverageHours, 0d));
+
+        var snapshot = new PondFeederOutageInput(48, 4d, 48d, 0.2d, 0.7d);
+        var once = PondFeederOutageRiskRules.Evaluate(snapshot);
+        var twice = PondFeederOutageRiskRules.Evaluate(snapshot);
+        Check("repeated predictions are deterministic without mutating immutable input",
+            once.Risk == twice.Risk &&
+            once.MinimumFoodShortfall == twice.MinimumFoodShortfall &&
+            once.MaximumFoodShortfall == twice.MaximumFoodShortfall &&
+            once.ConservativeCoverageHours == twice.ConservativeCoverageHours &&
+            once.OptimisticCoverageHours == twice.OptimisticCoverageHours &&
+            snapshot.HorizonHours == 48 &&
+            snapshot.FishDemandPerHour == 4d &&
+            snapshot.PreparedFeed == 48d &&
+            snapshot.NaturalFoodLowPerHour == 0.2d &&
+            snapshot.NaturalFoodHighPerHour == 0.7d);
+    }
+
     public static int Main()
     {
         TestNativeFishingProviderGate();
@@ -1310,6 +1435,7 @@ static class TraitBreedingRulesTests
         TestPondWatcherTiming();
         TestFishSchoolTiming();
         TestRecoveryRules();
+        TestFeederOutageResiliencePrototype();
         TestCommissionRules();
         TestKnowledgeContract();
         TestDeferredRealityProviderRules();

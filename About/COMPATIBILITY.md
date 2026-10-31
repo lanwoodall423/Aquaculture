@@ -50,6 +50,37 @@ The next migration must rehome content, update the player/loader and
 RimTest contract as one candidate; any remaining 1.6 binaries must be
 excluded, not double-loaded.
 
+
+## AQ-EXP-01 — Pond Chaos Lab feeder-outage experiment (source-only)
+
+This exploratory, **non-gameplay** prototype evaluates whether an aggregate pond's
+available food would cover a **24-hour or 48-hour feeder outage**. The pure
+`PondFeederOutageRiskRules` function lives alongside other portable recovery
+rules and is exercised in `DevTools/TraitBreedingRules.Tests.cs`. It reads
+only an immutable, explicitly supplied snapshot: total hourly fish demand,
+prepared feed, and conservative/optimistic natural-food rates. It neither
+reads nor changes the live pond, species, map, research knowledge, UI, save
+file, or fish traits. Unknown, nonfinite, inconsistent or unsupported inputs
+produce **InsufficientData**, never a safe verdict.
+
+The result distinguishes **NoDemand**, **Covered** even with conservative
+natural food, **PossibleShortfall** across the plausible range, and
+**CertainShortfall** even with optimistic food. It exposes best/worst food
+deficits and bounded conservative/optimistic *food-coverage hours*, not
+starvation onset, mortality or accurate long-term ecosystem dynamics. The
+model assumes fixed food consumption and natural-food rates; the real ecology
+simulates organism growth, depletion, diet shares, stress and predation.
+Portable tests exercise two equally fed ponds with different food-web
+support, 24/48-hour effects, monotonic risk under reserve changes,
+unknown/invalid data, overflow and deterministic read-only behavior.
+
+**Not integrated into gameplay.** No Journal display, diagnostic revelation,
+economy change or colony action is enabled. A future adapter must respect
+knowledge/research disclosure boundaries and must compare these estimates
+against actual owner-managed RimTest game scenarios before making player
+promises. This experiment does **not** constitute a RimWorld 1.7 compile,
+content load, live ecological prediction or save/reload pass.
+
 ## Required
 
 - Harmony
