@@ -1,8 +1,57 @@
 # Aquaculture - Fishing: Release Test Plan
 
-Use a new colony with Harmony, Knowledge Framework, Deferred Reality Framework, Vanilla Fishing Expanded, and Aquaculture - Fishing enabled in that order. Fishing Treasures, Odyssey, Aquariums, and additional fish packs are optional configuration variants.
+Use a new colony with Harmony, Insight Canvas, Knowledge Framework, Deferred Reality Framework, Vanilla Fishing Expanded, and Aquaculture - Fishing enabled in that order. Fishing Treasures, Odyssey, Aquariums, and additional fish packs are optional configuration variants.
 
 The final release boundary, evidence status, isolated startup results, and prioritized manual cases are tracked in `About/RELEASE_READINESS_TEST_MATRIX.md`. Startup success is not a substitute for the gameplay, save/load, performance, or visual cases marked for manual RimWorld validation there.
+
+## Playable Alpha 0 acceptance gate
+
+**Target:** useful dependency-backed development alpha on RimWorld 1.6, **not**
+a standalone or public beta. This gate is the immediate P0 priority in the
+[roadmap](../README.md#current-development-roadmap-2026-10-30).
+It deliberately retains the current required framework/content mods. Use a
+fresh, disposable RimTest-owned test profile and colony.
+
+**Current candidate evidence status: NOT RUN.** Passing portable contracts and
+older dated release-candidate smoke results do not prove the exact integrated
+source under test builds, loads, works in gameplay, or saves correctly.
+Record each gate as PASS / FAIL / BLOCKED / NOT RUN with the candidate commit,
+source hash, built/deployed/loaded artifact hashes, test run ID and logs or
+approved screenshots. Never reinterpret an unavailable owner-managed session
+as a passing result.
+
+| Gate | Required observable acceptance | Status until fresh evidence |
+| --- | --- | --- |
+| A0 - Portable regression | Current candidate source runs both trusted trait/rules and UI contract suites; note scope is source/contract only. | NOT RUN |
+| A1 - Isolated exact-source build/load | Owner-managed RimLiaison/RimTest dev-check returns independent BUILD_PASS, STATIC_PASS, RUNTIME_LOAD_PASS, INFRASTRUCTURE_PASS and CLEANUP_PASS with exact candidate identity and loaded-artifact freshness proven. | NOT RUN |
+| A2 - Basic gameplay loop | In one disposable colony build a connected pond, catch a supported fish with a rod or stock it, verify food/water/health management, observe traits and at least one breeding or hatching outcome, harvest and process a fish, and check no Aquaculture-owned critical errors. | NOT RUN |
+| A3 - UI and research | Open Settings, Journal, fish dossier, pond management and stocking planner; interact with controls and scroll; verify appropriate research and unknown-species disclosure. Existing Canvas UI is used for this alpha. | NOT RUN |
+| A4 - Persistence | Save and reload the disposable colony, confirm pond stock, fish traits/breed/eggs, settings, journal knowledge and processing results survive, and resume normal play without duplication or loss. | NOT RUN |
+| A5 - Repeatability | Rerun the RimTest-owned smoke catalog and the basic loop on the same exact candidate, with cleanup and no leak into the player ModsConfig or ordinary saves. | NOT RUN |
+
+**Alpha 0 exit:** A0 through A5 are PASS with evidence for one named
+unchanged source candidate. No unresolved Aquaculture-owned load errors,
+crash, save corruption, duplicate items, missing required research or broken
+core fishing/pond workflow may remain. A dependency-backed internal playtest
+may be useful before all external release gates pass; its limitations must be
+explicit. If any stage fails, mark FAIL, repair in a new reviewed candidate,
+and invalidate stale candidate-specific PASS evidence.
+
+**Execution owner:** only the authorized RimLiaison/RimTest workflow in
+AGENTS.md may run builds, install test artifacts, launch/close RimWorld,
+allocate sessions and manage test leases. The existing
+TestCatalog/rimtest.catalog.json and AQUACULTURE_DEV_TESTS harness should be
+used before adding another test runner. Do not manually copy DLLs, manipulate
+the live game, or infer gameplay success from RUNTIME_LOAD_PASS.
+
+**Next after Alpha 0:** complete native Journal Ponds/Breeds and
+Conservation/Commissions, validate optional native provider selection,
+then remove the mandatory Insight Canvas, Knowledge Framework, Deferred Reality
+Framework and Vanilla Fishing Expanded edges one at a time. Audit Harmony for
+any indispensable core patches before promising a zero-external-mod build.
+Build a first-party freshwater/saltwater/brackishwater starter catalog and
+run standalone absent/present-integration, clean-package and legacy-save gates.
+Full release readiness still requires the separate extensive matrix below.
 
 ## Load And Progression
 
