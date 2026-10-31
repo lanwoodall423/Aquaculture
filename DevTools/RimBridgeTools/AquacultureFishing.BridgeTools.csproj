@@ -1,19 +1,21 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net472</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <LangVersion>latest</LangVersion>
     <AssemblyName>AquacultureFishing.BridgeTools</AssemblyName>
     <RootNamespace>AquacultureFishing.BridgeTools</RootNamespace>
+    <!-- Developer bridge tooling is never part of the player assembly package. -->
     <OutputPath>..\..\artifacts\BridgeTools\AquacultureFishing\</OutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <AquacultureFishingAssemblyPath Condition="'$(AquacultureFishingAssemblyPath)' == ''">$(MSBuildThisFileDirectory)..\..\1.6\Assemblies\AquacultureFishing.dll</AquacultureFishingAssemblyPath>
+    <AquacultureFishingAssemblyPath Condition="'$(AquacultureFishingAssemblyPath)' == ''">$(MSBuildThisFileDirectory)..\..\1.7\Assemblies\AquacultureFishing.dll</AquacultureFishingAssemblyPath>
     <RimBridgeServerDir Condition="'$(RimBridgeServerDir)' == ''">$(MSBuildThisFileDirectory)..\..\..\RimBridgeServer</RimBridgeServerDir>
-    <RimBridgeSdkAssemblyPath Condition="'$(RimBridgeSdkAssemblyPath)' == ''">$(RimBridgeServerDir)\1.6\Assemblies\RimBridgeServer.Sdk.dll</RimBridgeSdkAssemblyPath>
+    <RimBridgeSdkAssemblyPath Condition="'$(RimBridgeSdkAssemblyPath)' == ''">$(RimBridgeServerDir)\1.7\Assemblies\RimBridgeServer.Sdk.dll</RimBridgeSdkAssemblyPath>
   </PropertyGroup>
   <ItemGroup>
-    <!-- Keep isolated DevBridge2 builds from globbing stale local intermediates. -->
+    <!-- Keep isolated DevBridge2 builds from globbing stale intermediates. -->
     <Compile Remove="obj\**" />
     <Compile Remove="bin\**" />
     <EmbeddedResource Remove="obj\**" />
@@ -30,7 +32,7 @@
     </Reference>
   </ItemGroup>
   <Target Name="ValidateBridgeToolReferences" BeforeTargets="ResolveReferences">
-    <Error Condition="'$(AquacultureFishingAssemblyPath)' == '' or !Exists('$(AquacultureFishingAssemblyPath)')" Text="AquacultureFishing.dll was not found. Build the developer mod assembly first or set AquacultureFishingAssemblyPath." />
-    <Error Condition="'$(RimBridgeSdkAssemblyPath)' == '' or !Exists('$(RimBridgeSdkAssemblyPath)')" Text="RimBridgeServer.Sdk.dll was not found. Set RimBridgeSdkAssemblyPath or RimBridgeServerDir." />
+    <Error Condition="'$(AquacultureFishingAssemblyPath)' == '' or !Exists('$(AquacultureFishingAssemblyPath)')" Text="The RimWorld 1.7 AquacultureFishing.dll was not found. Build the 1.7 developer mod assembly first or set AquacultureFishingAssemblyPath." />
+    <Error Condition="'$(RimBridgeSdkAssemblyPath)' == '' or !Exists('$(RimBridgeSdkAssemblyPath)')" Text="The RimWorld 1.7 RimBridgeServer.Sdk.dll was not found. Set RimBridgeSdkAssemblyPath to a verified 1.7 SDK build." />
   </Target>
 </Project>

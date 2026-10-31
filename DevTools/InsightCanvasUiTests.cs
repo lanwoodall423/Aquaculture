@@ -38,6 +38,7 @@ namespace AquacultureFishing.Tests
             TestPrompt3AuthorityMatrix();
             TestPrompt2Contracts(root);
             TestMetadataAndBuildContract(root);
+            TestRimWorld17BuildContracts(root);
             TestStandaloneDependencyInventory(root);
             TestNativeFishingRankBoundary(root);
             TestExplicitNativeFishIdentityBoundary(root);
@@ -535,9 +536,9 @@ namespace AquacultureFishing.Tests
             string providerProject = File.ReadAllText(Path.Combine(root, "Source", "DeferredRealityProvider", "DeferredReality.Aquaculture.csproj"));
             string harmonyEnvGuard = "'$(HarmonyPath)' == '' and '$(DEFERRED_REALITY_HARMONY_PATH)' != '' and Exists('$(DEFERRED_REALITY_HARMONY_PATH)')";
             Check(project.Contains(harmonyEnvGuard) && providerProject.Contains(harmonyEnvGuard) &&
-                project.Contains("$(RimWorldDir)/../../workshop/content/294100/2009463077/Current/Assemblies/0Harmony.dll") &&
+                project.Contains("$(RimWorldDir)/../../workshop/content/294100/2009463077/1.7/Assemblies/0Harmony.dll") &&
                 !project.Contains("$(RimWorldDir)/../../steamapps/workshop"),
-                "primary and provider builds use RimTest's verified Harmony path or the valid Steam Workshop layout");
+                "primary and provider 1.7 builds use explicit Harmony overrides or the versioned workshop layout");
             Check(!project.Contains("C:\\Games\\Steam\\"), "project has no machine-specific absolute reference path");
             Check(!Directory.GetFiles(root, "InsightCanvas.dll", SearchOption.AllDirectories).Any(),
                 "Aquaculture tree contains no bundled InsightCanvas.dll");
@@ -548,6 +549,80 @@ namespace AquacultureFishing.Tests
             Check(!Directory.GetFiles(uiRoot, "*.cs", SearchOption.AllDirectories)
                 .Select(File.ReadAllText).Any(text => text.Contains("GUI.skin")),
                 "new UI source does not mutate GUI.skin");
+        }
+
+        private static void TestRimWorld17BuildContracts(string root)
+        {
+            string main = File.ReadAllText(Path.Combine(root, "Source", "AquacultureFishing.csproj"));
+            string provider = File.ReadAllText(Path.Combine(root, "Source", "DeferredRealityProvider",
+                "DeferredReality.Aquaculture.csproj"));
+            string bridge = File.ReadAllText(Path.Combine(root, "DevTools", "RimBridgeTools",
+                "AquacultureFishing.BridgeTools.csproj"));
+
+            foreach (string project in new[] { main, provider, bridge })
+            {
+                XDocument xml = XDocument.Parse(project);
+                Check(xml.Descendants("TargetFramework").Single().Value == "net10.0" &&
+                    project.Contains("<GenerateDependencyFile>false</GenerateDependencyFile>") &&
+                    !project.Contains("net472") &&
+                    !project.Contains("RimWorldWin64_Data") &&
+                    !project.Contains("RimWorldManagedDir") &&
+                    !project.Contains("UnityEngine.CoreModule") &&
+                    !project.Contains("UnityEngine.IMGUIModule") &&
+                    !project.Contains("1.6/") &&
+                    !project.Contains(@"1.6\"),
+                    "owned RimWorld build projects use only .NET 10 and never silently select 1.6 game references");
+            }
+
+            Check(main.Contains("Reference Include=\"Assembly-CSharp\"") &&
+                main.Contains("Reference Include=\"Waylith\"") &&
+                main.Contains("Reference Include=\"UnityStubs\"") &&
+                main.Contains("RimWorldAssemblyDir") &&
+                main.Contains("RimWorldDir") &&
+                main.Contains("$(RIMWORLD_ROOT)") &&
+                main.Contains("!Exists('$(RimWorldAssemblyDir)/Waylith.dll')") &&
+                main.Contains("!Exists('$(RimWorldAssemblyDir)/UnityStubs.dll')") &&
+                main.Contains("!Exists('$(RimWorldAssemblyDir)/Assembly-CSharp.dll')"),
+                "core 1.7 build references exact installed Waylith, UnityStubs and game assemblies");
+            Check(main.Contains("2009463077/1.7/Assemblies/0Harmony.dll") &&
+                main.Contains("Harmony 3") &&
+                main.Contains("InsightCanvas/") == false &&
+                main.Contains("InsightCanvasAssemblyPath") &&
+                main.Contains("KnowledgeFrameworkAssemblyPath") &&
+                main.Contains("KnowledgeFramework") &&
+                main.Contains("1.7") &&
+                main.Contains("AquacultureNativeKnowledge") &&
+                main.Replace('\\', '/').Contains("1.7/Assemblies/"),
+                "core build retains explicit native knowledge seam and requires 1.7 framework references");
+
+            Check(provider.Contains("Reference Include=\"Assembly-CSharp\"") &&
+                provider.Contains("Reference Include=\"Waylith\"") &&
+                provider.Contains("Reference Include=\"UnityStubs\"") &&
+                provider.Contains("ValidateDeferredRealityReferences") &&
+                provider.Contains("$(DeferredRealityRoot)") &&
+                provider.Contains("1.7") &&
+                provider.Replace('\\', '/').Contains("1.7/DeferredReality/Assemblies/") &&
+                !provider.Contains("UnityEngine.CoreModule"),
+                "conditional DRF provider is independently 1.7-targeted without old Unity module references");
+            Check(bridge.Contains("1.7") &&
+                bridge.Contains("ValidateBridgeToolReferences") &&
+                bridge.Contains("AquacultureFishingAssemblyPath") &&
+                bridge.Contains("RimBridgeSdkAssemblyPath") &&
+                bridge.Replace('\\', '/').Contains("artifacts/BridgeTools/AquacultureFishing/"),
+                "developer-only bridge references a 1.7 SDK and keeps non-player output");
+
+            XDocument about = XDocument.Load(Path.Combine(root, "About", "About.xml"));
+            XDocument loaders = XDocument.Load(Path.Combine(root, "LoadFolders.xml"));
+            Check(about.Descendants("supportedVersions").Elements("li")
+                    .Any(version => version.Value == "1.6") &&
+                loaders.Descendants("v1.6").Any(),
+                "build-only stage does not prematurely advertise a runnable 1.7 player package");
+            string compatibility = File.ReadAllText(Path.Combine(root, "About", "COMPATIBILITY.md"));
+            Check(compatibility.Contains("AQ-17-01A") &&
+                compatibility.Contains("still requires Insight Canvas") &&
+                compatibility.Contains("not a runnable 1.7 release") &&
+                compatibility.Contains("RimTest"),
+                "1.7 build-contract prototype honestly documents unresolved runtime and packaging gates");
         }
 
         private static void TestExplicitNativeFishIdentityBoundary(string root)
@@ -2209,8 +2284,8 @@ namespace AquacultureFishing.Tests
             string providerOutput = provider.Descendants()
                 .FirstOrDefault(element => element.Name.LocalName == "OutputPath")?.Value
                 .Replace('\\', '/') ?? string.Empty;
-            Check(providerOutput.Contains("1.6/DeferredReality/Assemblies/") &&
-                !providerOutput.Contains("1.6/Assemblies/"),
+            Check(providerOutput.Contains("1.7/DeferredReality/Assemblies/") &&
+                !providerOutput.Contains("1.7/Assemblies/"),
                 "provider output cannot overwrite the ordinary core Assemblies directory");
 
             string builder = File.ReadAllText(Path.Combine(root, "DevTools", "Build-DeferredRealityProvider.ps1"));

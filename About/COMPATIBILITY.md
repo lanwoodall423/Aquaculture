@@ -8,14 +8,15 @@ or older-game compatibility test is required for future acceptance.
 RimWorld 1.7 is presently an **unstable Waylith beta**. Officially marking
 the mod compatible must wait for actual 1.7 runtime evidence.
 
-**Migration status: NOT QUALIFIED.** The existing tracked About.xml still
-declares only 1.6, LoadFolders.xml selects 1.6/, the mod and helper C#
-projects target net472, and .rimdev/stack.json still deploys to
-1.6/Assemblies. These are legacy source inputs, **not supported 1.6
-outputs**. They must be replaced together with a real 1.7 content tree,
-net10.0 and Waylith/UnityStubs/game-root references, Harmony 3, updated
-1.7-compatible integrations and owner-managed RimTest packaging. Do not
-simply change supportedVersions and ship the old binaries.
+**Migration status: NOT QUALIFIED.** The tracked About.xml still declares
+only 1.6, LoadFolders.xml selects 1.6/ and .rimdev/stack.json still deploys
+to 1.6/Assemblies. The main, optional DRF and developer bridge C# projects
+now contain 1.7-only net10.0 reference contracts, but no actual 1.7 build
+or content load has passed. These remaining legacy package paths are
+unported source inputs, **not supported 1.6 outputs**. They must be replaced
+together with a real 1.7 content tree, 1.7-compatible integrations and
+owner-managed RimTest packaging. Do not simply change supportedVersions
+and ship unqualified binaries.
 
 The dependency-backed 1.7 Alpha 0 is the first runtime target. Only
 after its build/load, gameplay and same-version persistence gates pass
@@ -23,6 +24,31 @@ will removing external dependencies be considered. Prior 1.6 results
 remain historical rather than evidence for 1.7; no actual 1.7
 RimTest/load/save proof has been recorded. README and TEST_PLAN.md list
 the current milestones and acceptance checks.
+
+## AQ-17-01A — 1.7 build contracts only
+
+AQ-17-01A retargets the three Aquaculture-owned C# projects to
+`net10.0`, requires the installed RimWorld 1.7 game-root
+`Assembly-CSharp.dll`, `Waylith.dll` and `UnityStubs.dll`, and
+uses only explicit overrides or 1.7 assembly paths for Harmony 3,
+Insight Canvas, Knowledge Framework, Deferred Reality Framework and
+the developer bridge SDK. The main project aims for
+`1.7/Assemblies/AquacultureFishing.dll`, while the DRF provider stays in
+its separate conditional output folder and the developer bridge
+remains outside the player package. Missing 1.7 references fail the
+build, rather than silently using a 1.6 DLL.
+
+**This is not a runnable 1.7 release.** The core still requires Insight Canvas
+and the other current mandatory frameworks, which need verified 1.7
+builds. The tracked `About.xml`, `LoadFolders.xml`, `1.6/` content
+tree, `.rimdev/stack.json` and package tester are deliberately not yet
+migrated, because source-only text edits cannot coherently move the
+versioned content and remove old binary artifacts. Exact 1.7
+game/toolchain availability, real compilation, RimTest load, UI,
+gameplay, save/reload and packaging qualification remain **NOT RUN**.
+The next migration must rehome content, update the player/loader and
+RimTest contract as one candidate; any remaining 1.6 binaries must be
+excluded, not double-loaded.
 
 ## Required
 

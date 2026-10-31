@@ -2,13 +2,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <TargetFramework>net472</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>AquacultureFishing</RootNamespace>
     <AssemblyName>AquacultureFishing</AssemblyName>
     <LangVersion>latest</LangVersion>
     <Deterministic>true</Deterministic>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
     <AquacultureDeveloperTests Condition="'$(AquacultureDeveloperTests)' == ''">false</AquacultureDeveloperTests>
     <!-- Developer-only opt-in: standard player build still requires Knowledge Framework. -->
     <AquacultureNativeKnowledge Condition="'$(AquacultureNativeKnowledge)' == ''">false</AquacultureNativeKnowledge>
@@ -25,21 +26,21 @@
       overrides authoritative, but make the standard Steam layout usable by
       that owning workflow as well.
     -->
-    <RimWorldDir Condition="'$(RimWorldDir)' == '' and '$(RIMWORLD_ROOT)' != '' and Exists('$(RIMWORLD_ROOT)/RimWorldWin64_Data/Managed/Assembly-CSharp.dll')">$(RIMWORLD_ROOT)</RimWorldDir>
-    <RimWorldDir Condition="'$(RimWorldDir)' == '' and Exists('$(MSBuildThisFileDirectory)..\..\..\RimWorldWin64_Data\Managed\Assembly-CSharp.dll')">$(MSBuildThisFileDirectory)..\..\..</RimWorldDir>
+    <!-- 1.7 Waylith ships the three game references in the install root. -->
+    <RimWorldDir Condition="'$(RimWorldDir)' == '' and '$(RIMWORLD_ROOT)' != '' and Exists('$(RIMWORLD_ROOT)/Waylith.dll')">$(RIMWORLD_ROOT)</RimWorldDir>
+    <RimWorldDir Condition="'$(RimWorldDir)' == '' and Exists('$(MSBuildThisFileDirectory)..\..\..\Waylith.dll')">$(MSBuildThisFileDirectory)..\..\..</RimWorldDir>
+    <RimWorldAssemblyDir Condition="'$(RimWorldAssemblyDir)' == '' and Exists('$(RimWorldDir)/Waylith.dll')">$(RimWorldDir)</RimWorldAssemblyDir>
+    <!-- An explicit HarmonyPath remains authoritative. Auto-discovery is 1.7-only. -->
     <HarmonyPath Condition="'$(HarmonyPath)' == '' and '$(DEFERRED_REALITY_HARMONY_PATH)' != '' and Exists('$(DEFERRED_REALITY_HARMONY_PATH)')">$(DEFERRED_REALITY_HARMONY_PATH)</HarmonyPath>
-    <HarmonyPath Condition="'$(HarmonyPath)' == '' and Exists('$(RimWorldDir)/../../workshop/content/294100/2009463077/Current/Assemblies/0Harmony.dll')">$(RimWorldDir)/../../workshop/content/294100/2009463077/Current/Assemblies/0Harmony.dll</HarmonyPath>
-    <HarmonyPath Condition="'$(HarmonyPath)' == '' and Exists('$(MSBuildThisFileDirectory)..\..\XenotypeGeneChances\Assemblies\0Harmony.dll')">$(MSBuildThisFileDirectory)..\..\XenotypeGeneChances\Assemblies\0Harmony.dll</HarmonyPath>
-    <RimWorldManagedDir Condition="'$(RimWorldManagedDir)' == '' and Exists('$(RimWorldDir)/RimWorldWin64_Data/Managed/Assembly-CSharp.dll')">$(RimWorldDir)/RimWorldWin64_Data/Managed</RimWorldManagedDir>
-    <RimWorldManagedDir Condition="'$(RimWorldManagedDir)' == '' and Exists('$(RimWorldDir)/RimWorldLinux_Data/Managed/Assembly-CSharp.dll')">$(RimWorldDir)/RimWorldLinux_Data/Managed</RimWorldManagedDir>
-    <RimWorldManagedDir Condition="'$(RimWorldManagedDir)' == '' and Exists('$(RimWorldDir)/RimWorldMac.app/Contents/Resources/Data/Managed/Assembly-CSharp.dll')">$(RimWorldDir)/RimWorldMac.app/Contents/Resources/Data/Managed</RimWorldManagedDir>
-    <InsightCanvasDir Condition="'$(InsightCanvasDir)' == '' and Exists('$(MSBuildThisFileDirectory)..\..\InsightCanvas\1.6\Assemblies\InsightCanvas.dll')">$(MSBuildThisFileDirectory)..\..\InsightCanvas</InsightCanvasDir>
-    <InsightCanvasAssemblyPath Condition="'$(InsightCanvasAssemblyPath)' == '' and '$(InsightCanvasDir)' != ''">$(InsightCanvasDir)/1.6/Assemblies/InsightCanvas.dll</InsightCanvasAssemblyPath>
+    <HarmonyPath Condition="'$(HarmonyPath)' == '' and Exists('$(RimWorldDir)/../../workshop/content/294100/2009463077/1.7/Assemblies/0Harmony.dll')">$(RimWorldDir)/../../workshop/content/294100/2009463077/1.7/Assemblies/0Harmony.dll</HarmonyPath>
+    <HarmonyPath Condition="'$(HarmonyPath)' == '' and Exists('$(MSBuildThisFileDirectory)..\..\Harmony\1.7\Assemblies\0Harmony.dll')">$(MSBuildThisFileDirectory)..\..\Harmony\1.7\Assemblies\0Harmony.dll</HarmonyPath>
+    <InsightCanvasDir Condition="'$(InsightCanvasDir)' == '' and Exists('$(MSBuildThisFileDirectory)..\..\InsightCanvas\1.7\Assemblies\InsightCanvas.dll')">$(MSBuildThisFileDirectory)..\..\InsightCanvas</InsightCanvasDir>
+    <InsightCanvasAssemblyPath Condition="'$(InsightCanvasAssemblyPath)' == '' and '$(InsightCanvasDir)' != ''">$(InsightCanvasDir)/1.7/Assemblies/InsightCanvas.dll</InsightCanvasAssemblyPath>
     <RimBridgeServerDir Condition="'$(RimBridgeServerDir)' == ''">$(MSBuildThisFileDirectory)..\..\RimBridgeServer</RimBridgeServerDir>
-    <RimBridgeSdkAssemblyPath Condition="'$(RimBridgeSdkAssemblyPath)' == '' and Exists('$(RimBridgeServerDir)/1.6/Assemblies/RimBridgeServer.Sdk.dll')">$(RimBridgeServerDir)/1.6/Assemblies/RimBridgeServer.Sdk.dll</RimBridgeSdkAssemblyPath>
+    <RimBridgeSdkAssemblyPath Condition="'$(RimBridgeSdkAssemblyPath)' == '' and Exists('$(RimBridgeServerDir)/1.7/Assemblies/RimBridgeServer.Sdk.dll')">$(RimBridgeServerDir)/1.7/Assemblies/RimBridgeServer.Sdk.dll</RimBridgeSdkAssemblyPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(AquacultureDeveloperTests)' == 'true'"><DefineConstants>$(DefineConstants);AQUACULTURE_DEV_TESTS</DefineConstants></PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|AnyCPU'"><Optimize>true</Optimize><OutputPath>..\1.6\Assemblies\</OutputPath><DebugType>none</DebugType></PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|AnyCPU'"><Optimize>true</Optimize><OutputPath>..\1.7\Assemblies\</OutputPath><DebugType>none</DebugType></PropertyGroup>
   <!-- Prevent an unqualified experimental DLL from replacing a player assembly. -->
   <PropertyGroup Condition="'$(AquacultureNativeKnowledge)' == 'true'">
     <DefineConstants>$(DefineConstants);AQUACULTURE_NATIVE_KNOWLEDGE</DefineConstants>
@@ -61,11 +62,10 @@
   <ItemGroup Condition="'$(AquacultureNativeKnowledge)' == 'true'">
     <Compile Remove="AquacultureKnowledgeAdapter.cs" />
   </ItemGroup>
-  <ItemGroup Condition="'$(RimWorldManagedDir)' != ''">
-    <Reference Include="Assembly-CSharp"><HintPath>$(RimWorldManagedDir)/Assembly-CSharp.dll</HintPath><Private>false</Private></Reference>
-    <Reference Include="UnityEngine.CoreModule"><HintPath>$(RimWorldManagedDir)/UnityEngine.CoreModule.dll</HintPath><Private>false</Private></Reference>
-    <Reference Include="UnityEngine.IMGUIModule"><HintPath>$(RimWorldManagedDir)/UnityEngine.IMGUIModule.dll</HintPath><Private>false</Private></Reference>
-    <Reference Include="UnityEngine.TextRenderingModule"><HintPath>$(RimWorldManagedDir)/UnityEngine.TextRenderingModule.dll</HintPath><Private>false</Private></Reference>
+  <ItemGroup Condition="'$(RimWorldAssemblyDir)' != ''">
+    <Reference Include="Assembly-CSharp"><HintPath>$(RimWorldAssemblyDir)/Assembly-CSharp.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Waylith"><HintPath>$(RimWorldAssemblyDir)/Waylith.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityStubs"><HintPath>$(RimWorldAssemblyDir)/UnityStubs.dll</HintPath><Private>false</Private></Reference>
   </ItemGroup>
   <ItemGroup Condition="'$(HarmonyPath)' != '' and Exists('$(HarmonyPath)')">
     <Reference Include="0Harmony"><HintPath>$(HarmonyPath)</HintPath><Private>false</Private></Reference>
@@ -73,18 +73,18 @@
   <ItemGroup Condition="'$(InsightCanvasAssemblyPath)' != '' and Exists('$(InsightCanvasAssemblyPath)')">
     <Reference Include="InsightCanvas"><HintPath>$(InsightCanvasAssemblyPath)</HintPath><Private>false</Private></Reference>
   </ItemGroup>
-  <ItemGroup Condition="'$(AquacultureNativeKnowledge)' != 'true' and '$(KnowledgeFrameworkAssemblyPath)' == '' and Exists('$(MSBuildThisFileDirectory)..\..\KnowledgeFramework\1.6\Assemblies\KnowledgeFramework.dll')">
-    <Reference Include="KnowledgeFramework"><HintPath>$(MSBuildThisFileDirectory)..\..\KnowledgeFramework\1.6\Assemblies\KnowledgeFramework.dll</HintPath><Private>false</Private></Reference>
+  <ItemGroup Condition="'$(AquacultureNativeKnowledge)' != 'true' and '$(KnowledgeFrameworkAssemblyPath)' == '' and Exists('$(MSBuildThisFileDirectory)..\..\KnowledgeFramework\1.7\Assemblies\KnowledgeFramework.dll')">
+    <Reference Include="KnowledgeFramework"><HintPath>$(MSBuildThisFileDirectory)..\..\KnowledgeFramework\1.7\Assemblies\KnowledgeFramework.dll</HintPath><Private>false</Private></Reference>
   </ItemGroup>
   <ItemGroup Condition="'$(AquacultureNativeKnowledge)' != 'true' and '$(KnowledgeFrameworkAssemblyPath)' != '' and Exists('$(KnowledgeFrameworkAssemblyPath)')">
     <Reference Include="KnowledgeFramework"><HintPath>$(KnowledgeFrameworkAssemblyPath)</HintPath><Private>false</Private></Reference>
   </ItemGroup>
   <Target Name="ValidateAquacultureReferences" BeforeTargets="ResolveReferences">
-    <Error Condition="'$(RimWorldDir)' == '' and '$(RimWorldManagedDir)' == ''" Text="AquacultureFishing requires RimWorldDir or RimWorldManagedDir. Set /p:RimWorldDir=&lt;path&gt; to the RimWorld installation directory." />
-    <Error Condition="'$(RimWorldManagedDir)' == ''" Text="AquacultureFishing could not find RimWorld managed assemblies. Set RimWorldDir to the 1.6 installation directory." />
-    <Error Condition="'$(HarmonyPath)' == '' or !Exists('$(HarmonyPath)')" Text="AquacultureFishing requires HarmonyPath pointing to 0Harmony.dll." />
-    <Error Condition="'$(InsightCanvasAssemblyPath)' == '' or !Exists('$(InsightCanvasAssemblyPath)')" Text="AquacultureFishing requires the installed InsightCanvas.dll. Set InsightCanvasDir or InsightCanvasAssemblyPath." />
-    <Error Condition="'$(AquacultureNativeKnowledge)' != 'true' and '$(KnowledgeFrameworkAssemblyPath)' == '' and !Exists('$(MSBuildThisFileDirectory)..\..\KnowledgeFramework\1.6\Assemblies\KnowledgeFramework.dll')" Text="AquacultureFishing requires KnowledgeFrameworkAssemblyPath or the sibling KnowledgeFramework checkout." />
+    <Error Condition="'$(RimWorldAssemblyDir)' == '' or !Exists('$(RimWorldAssemblyDir)/Assembly-CSharp.dll') or !Exists('$(RimWorldAssemblyDir)/Waylith.dll') or !Exists('$(RimWorldAssemblyDir)/UnityStubs.dll')" Text="AquacultureFishing requires the RimWorld 1.7 Waylith root assemblies. Set RimWorldDir or RimWorldAssemblyDir to the 1.7 installation root." />
+    <Error Condition="'$(HarmonyPath)' == '' or !Exists('$(HarmonyPath)')" Text="AquacultureFishing requires a 1.7-compatible Harmony 3 0Harmony.dll. Set HarmonyPath explicitly if the 1.7 mod location is nonstandard." />
+    <Error Condition="'$(InsightCanvasAssemblyPath)' == '' or !Exists('$(InsightCanvasAssemblyPath)')" Text="AquacultureFishing requires the 1.7 InsightCanvas.dll. Set InsightCanvasDir or InsightCanvasAssemblyPath to a verified 1.7 build." />
+    <Error Condition="'$(AquacultureNativeKnowledge)' != 'true' and '$(KnowledgeFrameworkAssemblyPath)' == '' and !Exists('$(MSBuildThisFileDirectory)..\..\KnowledgeFramework\1.7\Assemblies\KnowledgeFramework.dll')" Text="AquacultureFishing requires KnowledgeFramework 1.7 via KnowledgeFrameworkAssemblyPath or the sibling 1.7 build." />
+    <Error Condition="'$(AquacultureNativeKnowledge)' != 'true' and '$(KnowledgeFrameworkAssemblyPath)' != '' and !Exists('$(KnowledgeFrameworkAssemblyPath)')" Text="The explicit KnowledgeFrameworkAssemblyPath must identify a verified 1.7 DLL." />
   </Target>
   <Target Name="BuildBridgeTools" AfterTargets="Build" Condition="'$(AquacultureDeveloperTests)' == 'true'">
     <Error Condition="'$(RimBridgeSdkAssemblyPath)' == '' or !Exists('$(RimBridgeSdkAssemblyPath)')" Text="Aquaculture developer tests require RimBridgeServer.Sdk.dll. Set RimBridgeSdkAssemblyPath or RimBridgeServerDir to the installed RimBridgeServer checkout." />

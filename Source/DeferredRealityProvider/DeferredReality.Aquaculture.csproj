@@ -1,11 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net472</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <Deterministic>true</Deterministic>
     <DebugType>none</DebugType>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <AssemblyName>DeferredReality.Aquaculture</AssemblyName>
     <RootNamespace>DeferredReality.Aquaculture</RootNamespace>
@@ -13,20 +14,28 @@
     <RimWorldRoot Condition="'$(RimWorldRoot)' == '' and '$(RimWorldDir)' != ''">$(RimWorldDir)</RimWorldRoot>
     <RimWorldRoot Condition="'$(RimWorldRoot)' == '' and '$(RIMWORLD_ROOT)' != ''">$(RIMWORLD_ROOT)</RimWorldRoot>
     <RimWorldRoot Condition="'$(RimWorldRoot)' == ''">$(AquacultureRoot)\..\..</RimWorldRoot>
-    <RimWorldManagedPath Condition="'$(RimWorldManagedPath)' == ''">$(RimWorldRoot)\RimWorldWin64_Data\Managed</RimWorldManagedPath>
+    <RimWorldAssemblyDir Condition="'$(RimWorldAssemblyDir)' == ''">$(RimWorldRoot)</RimWorldAssemblyDir>
     <DeferredRealityRoot Condition="'$(DeferredRealityRoot)' == ''">$(AquacultureRoot)\..\DeferredRealityFramework</DeferredRealityRoot>
-    <DeferredRealityAssembly Condition="'$(DeferredRealityAssembly)' == ''">$(DeferredRealityRoot)\1.6\Assemblies\DeferredRealityFramework.dll</DeferredRealityAssembly>
+    <DeferredRealityAssembly Condition="'$(DeferredRealityAssembly)' == ''">$(DeferredRealityRoot)\1.7\Assemblies\DeferredRealityFramework.dll</DeferredRealityAssembly>
     <HarmonyPath Condition="'$(HarmonyPath)' == '' and '$(DEFERRED_REALITY_HARMONY_PATH)' != '' and Exists('$(DEFERRED_REALITY_HARMONY_PATH)')">$(DEFERRED_REALITY_HARMONY_PATH)</HarmonyPath>
-    <HarmonyPath Condition="'$(HarmonyPath)' == ''">$(RimWorldManagedPath)\0Harmony.dll</HarmonyPath>
-    <OutputPath>$(AquacultureRoot)\1.6\DeferredReality\Assemblies\</OutputPath>
+    <HarmonyPath Condition="'$(HarmonyPath)' == '' and Exists('$(RimWorldRoot)/../../workshop/content/294100/2009463077/1.7/Assemblies/0Harmony.dll')">$(RimWorldRoot)/../../workshop/content/294100/2009463077/1.7/Assemblies/0Harmony.dll</HarmonyPath>
+    <HarmonyPath Condition="'$(HarmonyPath)' == '' and Exists('$(AquacultureRoot)/../Harmony/1.7/Assemblies/0Harmony.dll')">$(AquacultureRoot)/../Harmony/1.7/Assemblies/0Harmony.dll</HarmonyPath>
+    <!-- Only this separately built, conditional provider may use the DRF integration. -->
+    <OutputPath>$(AquacultureRoot)\1.7\DeferredReality\Assemblies\</OutputPath>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="DeferredRealityAquacultureProvider.cs" />
     <Compile Include="DeferredRealityProviderRules.cs" />
     <ProjectReference Include="..\AquacultureFishing.csproj" ReferenceOutputAssembly="true" />
-    <Reference Include="Assembly-CSharp" HintPath="$(RimWorldManagedPath)\Assembly-CSharp.dll" Private="false" />
-    <Reference Include="UnityEngine.CoreModule" HintPath="$(RimWorldManagedPath)\UnityEngine.CoreModule.dll" Private="false" />
+    <Reference Include="Assembly-CSharp" HintPath="$(RimWorldAssemblyDir)\Assembly-CSharp.dll" Private="false" />
+    <Reference Include="Waylith" HintPath="$(RimWorldAssemblyDir)\Waylith.dll" Private="false" />
+    <Reference Include="UnityStubs" HintPath="$(RimWorldAssemblyDir)\UnityStubs.dll" Private="false" />
     <Reference Include="0Harmony" HintPath="$(HarmonyPath)" Private="false" />
     <Reference Include="DeferredRealityFramework" HintPath="$(DeferredRealityAssembly)" Private="false" />
   </ItemGroup>
+  <Target Name="ValidateDeferredRealityReferences" BeforeTargets="ResolveReferences">
+    <Error Condition="!Exists('$(RimWorldAssemblyDir)/Assembly-CSharp.dll') or !Exists('$(RimWorldAssemblyDir)/Waylith.dll') or !Exists('$(RimWorldAssemblyDir)/UnityStubs.dll')" Text="Deferred Reality Aquaculture requires the installed RimWorld 1.7 game-root Assembly-CSharp, Waylith, and UnityStubs references." />
+    <Error Condition="'$(HarmonyPath)' == '' or !Exists('$(HarmonyPath)')" Text="Deferred Reality Aquaculture requires the 1.7-compatible Harmony 3 0Harmony.dll. Set HarmonyPath." />
+    <Error Condition="'$(DeferredRealityAssembly)' == '' or !Exists('$(DeferredRealityAssembly)')" Text="Deferred Reality Aquaculture requires a verified RimWorld 1.7 DeferredRealityFramework.dll. Set DeferredRealityAssembly." />
+  </Target>
 </Project>
