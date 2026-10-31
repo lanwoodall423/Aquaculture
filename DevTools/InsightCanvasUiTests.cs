@@ -39,6 +39,7 @@ namespace AquacultureFishing.Tests
             TestPrompt2Contracts(root);
             TestMetadataAndBuildContract(root);
             TestRimWorld17BuildContracts(root);
+            TestRimWorld17InputPreflightContract(root);
             TestStandaloneDependencyInventory(root);
             TestNativeFishingRankBoundary(root);
             TestExplicitNativeFishIdentityBoundary(root);
@@ -649,6 +650,63 @@ namespace AquacultureFishing.Tests
                 compatibility.Contains("RimTest") &&
                 compatibility.Contains("NOT RUN"),
                 "1.7 source-only content migration documents blocked game/runtime qualification");
+        }
+
+        private static void TestRimWorld17InputPreflightContract(string root)
+        {
+            string path = Path.Combine(root, "DevTools", "Test-RimWorld17BuildInputs.ps1");
+            Check(File.Exists(path), "1.7 build-input inventory script exists in developer tools");
+            if (!File.Exists(path)) return;
+
+            string script = File.ReadAllText(path);
+            foreach (string required in new[]
+            {
+                "[CmdletBinding()]",
+                "[string]$RimWorldRoot",
+                "[string]$HarmonyAssemblyPath",
+                "[string]$InsightCanvasAssemblyPath",
+                "[string]$KnowledgeFrameworkAssemblyPath",
+                "[switch]$SelfTest",
+                "Get-Item -LiteralPath $Path",
+                "Get-FileHash -LiteralPath $Path -Algorithm SHA256",
+                "[IO.FileAttributes]::ReparsePoint",
+                "'PRESENT_HASHED_UNQUALIFIED'",
+                "'MISSING_PATH'",
+                "'INVALID_PATH'",
+                "'UNEXPECTED_FILENAME'",
+                "'NOT_17_ASSEMBLY_PATH'",
+                "'CHANGED_DURING_HASH'",
+                "'INPUTS_BLOCKED'",
+                "'INPUT_FILES_PRESENT_UNQUALIFIED'",
+                "'NOT_RUN'",
+                "'UNVERIFIED'",
+                "ConvertTo-Json -Depth 6"
+            })
+                Check(script.Contains(required, StringComparison.Ordinal),
+                    "1.7 input preflight retains read-only fail-closed contract: " + required);
+
+            Check(script.Contains(@"C:\1.6\Assemblies\0Harmony.dll", StringComparison.Ordinal) &&
+                script.Contains("AQUACULTURE17_INPUT_SELFTEST_PASS", StringComparison.Ordinal) &&
+                script.Contains("$version.state -ne 'NOT_17_ASSEMBLY_PATH'", StringComparison.Ordinal) &&
+                script.Contains("$relative.state -ne 'INVALID_PATH'", StringComparison.Ordinal) &&
+                script.Contains("$blank.state -ne 'MISSING_PATH'", StringComparison.Ordinal) &&
+                script.Contains("$name.state -ne 'UNEXPECTED_FILENAME'", StringComparison.Ordinal),
+                "source self-test explicitly rejects absent, relative, bad-name and legacy-version inputs");
+
+            Check(Regex.Matches(script, @"Test-InputFile -Id '(game|framework)\.").Count == 6 &&
+                script.Contains("Waylith.dll", StringComparison.Ordinal) &&
+                script.Contains("UnityStubs.dll", StringComparison.Ordinal) &&
+                script.Contains("Assembly-CSharp.dll", StringComparison.Ordinal) &&
+                script.Contains("InsightCanvas.dll", StringComparison.Ordinal) &&
+                script.Contains("KnowledgeFramework.dll", StringComparison.Ordinal) &&
+                script.Contains("0Harmony.dll", StringComparison.Ordinal),
+                "preflight hashes three installed 1.7 game assemblies and three dependency DLLs");
+
+            Check(!Regex.IsMatch(script,
+                @"\b(?:Set-Content|Add-Content|Out-File|Copy-Item|Move-Item|Remove-Item|New-Item|Start-Process|Stop-Process|Invoke-Expression|Invoke-WebRequest|Invoke-RestMethod|dotnet|git|rimtest)\b",
+                RegexOptions.IgnoreCase) &&
+                !Regex.IsMatch(script, @"(?im)^\s*(?:&|Start-Job)\b"),
+                "preflight source contains no file mutation, command launch, network or toolchain execution");
         }
 
         private static void TestExplicitNativeFishIdentityBoundary(string root)

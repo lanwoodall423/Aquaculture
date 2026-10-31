@@ -25,6 +25,19 @@ Use a new colony with Harmony, Insight Canvas, Knowledge Framework, Deferred Rea
 
 The final release boundary, evidence status, isolated startup results, and prioritized manual cases are tracked in `About/RELEASE_READINESS_TEST_MATRIX.md`. Startup success is not a substitute for the gameplay, save/load, performance, or visual cases marked for manual RimWorld validation there.
 
+### Developer-only 1.7 build-input inventory (AQ-17-01C)
+
+`DevTools/Test-RimWorld17BuildInputs.ps1` reads only explicitly supplied
+`-RimWorldRoot`, `-HarmonyAssemblyPath`, `-InsightCanvasAssemblyPath` and
+`-KnowledgeFrameworkAssemblyPath` inputs. It reports per-file presence,
+length and SHA-256, with only input IDs/statuses rather than private paths.
+`-SelfTest` runs missing/relative/wrong-name/legacy-folder negative cases
+without inspecting game files. A present file remains **UNQUALIFIED**;
+file hashes alone cannot prove the Waylith game version, Harmony API,
+framework compatibility, source freshness, installed DRF/VFE mods or a
+successful build/load. The actual A1 gate remains **NOT RUN** until an
+authorized owner-managed RimTest session passes all required stages.
+
 ## Playable Alpha 0 acceptance gate
 
 **Target:** useful dependency-backed development alpha on **RimWorld 1.7
