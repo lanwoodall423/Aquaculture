@@ -49,6 +49,7 @@ namespace AquacultureFishing.Tests
             TestNativeFishingReadOnlyRodPreflight(root);
             TestNativeFishingRuntimeSmokeCoverage(root);
             TestNativeKnowledgeBuildSeam(root);
+            TestNativeUiBuildSeam(root);
             TestKnowledgeJournalAdapterBoundary(root);
             TestJournalWorkspaceProviderBoundary(root);
             TestNativeJournalOverviewSpeciesPrototype(root);
@@ -1183,6 +1184,117 @@ namespace AquacultureFishing.Tests
                 adapter.Contains("KnowledgeMenuUI.Draw(bounds, state, ExpertiseModelFor, ExpertiseFor);") &&
                 adapter.Contains("AquacultureKnowledgeAdapter.ToKnowledgeRank("),
                 "canonical Knowledge Journal menu and rank conversion live behind the adapter boundary");
+        }
+
+        private static void TestNativeUiBuildSeam(string root)
+        {
+            // Native UI and native Knowledge are independent developer flags.
+            // This is a source-only boundary check, NOT a game runtime pass.
+            XDocument project = XDocument.Load(Path.Combine(root, "Source", "AquacultureFishing.csproj"));
+            XElement uiFlag = project.Descendants().SingleOrDefault(element =>
+                element.Name.LocalName == "AquacultureNativeUi" &&
+                ((string)element.Attribute("Condition") ?? string.Empty)
+                    .Contains("'$(AquacultureNativeUi)' == ''"));
+            Check(uiFlag?.Value.Trim() == "false",
+                "default build retains the Canvas provider, native UI is explicit opt-in");
+
+            XElement uiVariant = project.Root.Elements().SingleOrDefault(element =>
+                element.Name.LocalName == "PropertyGroup" &&
+                ((string)element.Attribute("Condition") ?? string.Empty) ==
+                    "'$(AquacultureNativeUi)' == 'true'");
+            Check(uiVariant != null &&
+                uiVariant.Descendants().Any(e => e.Name.LocalName == "DefineConstants" &&
+                    e.Value.Contains("AQUACULTURE_NATIVE_UI")) &&
+                uiVariant.Descendants().Any(e => e.Name.LocalName == "OutputPath" &&
+                    e.Value.Replace('\\', '/').Contains("artifacts/NativeUi/")),
+                "native UI compiles under distinct explicit symbol and developer-only output");
+
+            XElement combined = project.Root.Elements().SingleOrDefault(element =>
+                element.Name.LocalName == "PropertyGroup" &&
+                ((string)element.Attribute("Condition") ?? string.Empty) ==
+                    "'$(AquacultureNativeUi)' == 'true' and '$(AquacultureNativeKnowledge)' == 'true'");
+            Check(combined?.Elements().Any(e => e.Name.LocalName == "OutputPath" &&
+                e.Value.Replace('\\', '/').Contains("artifacts/NativeUiKnowledge/")) == true,
+                "native UI + native Knowledge combined outputs never overwrite player assemblies");
+
+            string[] removed = {
+                "AquacultureBreedRegistrationDocument.cs",
+                "AquacultureCommissionDeliveryDocument.cs",
+                "AquacultureFishDossierDocument.cs",
+                "AquacultureJournalWorkspaceDocument.cs",
+                "AquacultureSettingsDocument.cs",
+                "AquacultureStockingPlannerDocument.cs",
+                "AquacultureUiComponents.cs",
+                "AquacultureUiPresentation.cs",
+                "AquacultureUiTheme.cs"
+            };
+            XElement exclude = project.Root.Elements().SingleOrDefault(element =>
+                element.Name.LocalName == "ItemGroup" &&
+                ((string)element.Attribute("Condition") ?? string.Empty) ==
+                    "'$(AquacultureNativeUi)' == 'true'");
+            var actual = exclude?.Elements().Where(e => e.Name.LocalName == "Compile")
+                .Select(e => ((string)e.Attribute("Remove") ?? string.Empty)
+                    .Replace('\\', '/')).ToArray() ?? Array.Empty<string>();
+            Check(actual.Length == removed.Length &&
+                removed.All(name => actual.Contains("UI/" + name, StringComparer.Ordinal)),
+                "all and only nine Canvas-specific source files excluded; snapshots/contracts retained");
+
+            XElement canvasReference = project.Descendants().SingleOrDefault(e =>
+                e.Name.LocalName == "Reference" &&
+                (string)e.Attribute("Include") == "InsightCanvas");
+            Check(canvasReference != null &&
+                ((string)canvasReference.Parent.Attribute("Condition") ?? string.Empty)
+                    .Contains("'$(AquacultureNativeUi)' != 'true'"),
+                "native UI excludes the Insight Canvas assembly reference");
+            XElement canvasError = project.Descendants().SingleOrDefault(e =>
+                e.Name.LocalName == "Error" &&
+                ((string)e.Attribute("Text") ?? string.Empty)
+                    .Contains("requires the 1.7 InsightCanvas.dll"));
+            Check(canvasError != null &&
+                ((string)canvasError.Attribute("Condition") ?? string.Empty)
+                    .Contains("'$(AquacultureNativeUi)' != 'true'"),
+                "native UI removes only Canvas missing-assembly error; standard build still enforces it");
+
+            XElement staged = project.Descendants().SingleOrDefault(e =>
+                e.Name.LocalName == "Target" &&
+                (string)e.Attribute("Name") == "StageAquaculture17Content");
+            Check(staged != null &&
+                ((string)staged.Attribute("Condition") ?? string.Empty)
+                    .Contains("'$(AquacultureNativeUi)' != 'true'"),
+                "unqualified native UI pilot cannot stage player runtime content");
+
+            string journal = File.ReadAllText(Path.Combine(root, "Source", "AquacultureJournal.cs"));
+            int start = journal.IndexOf("#if AQUACULTURE_NATIVE_UI", StringComparison.Ordinal);
+            int end = start < 0 ? -1 : journal.IndexOf("#endif", start, StringComparison.Ordinal);
+            string factories = start >= 0 && end > start ? journal.Substring(start, end - start) : "";
+            string[] requiredFactories = {
+                "AquacultureJournalWorkspaceFactory",
+                "AquacultureBreedRegistrationViewFactory",
+                "AquacultureCommissionDeliveryViewFactory",
+                "AquacultureFishDossierViewFactory",
+                "AquacultureStockingPlannerViewFactory",
+                "AquacultureSettingsViewFactory"
+            };
+            string[] nativeViews = {
+                "NativeAquacultureJournalWorkspaceView",
+                "NativeAquacultureBreedRegistrationView",
+                "NativeAquacultureCommissionDeliveryView",
+                "NativeAquacultureFishDossierView",
+                "NativeAquacultureStockingPlannerView",
+                "NativeAquacultureSettingsView"
+            };
+            Check(factories.Length > 0 &&
+                requiredFactories.All(name => factories.Contains("class " + name)) &&
+                nativeViews.All(name => factories.Contains("new " + name + "(")) &&
+                !factories.Contains("InsightCanvas"),
+                "all six native provider factories route to existing Widgets-based views");
+            foreach (string name in requiredFactories)
+            {
+                string path = Directory.GetFiles(Path.Combine(root, "Source", "UI"), "*.cs")
+                    .FirstOrDefault(file => File.ReadAllText(file).Contains("class " + name));
+                Check(path != null,
+                    "default Canvas factory remains authored for " + name);
+            }
         }
 
         private static void TestNativeKnowledgeBuildSeam(string root)

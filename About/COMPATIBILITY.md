@@ -225,6 +225,26 @@ gameplay, old Knowledge V3 save migration or framework add/remove scenario
 has yet passed.** Do not install or publish the experimental DLL and do not
 remove the Knowledge Framework mod dependency on this evidence alone.
 
+AQ-DEP-06A adds an **opt-in developer-only native UI compilation variant**,
+`-p:AquacultureNativeUi=true`, alongside the existing native Knowledge
+variant. Its C# project excludes only six Canvas-specific documents and
+three Canvas drawing support files; the game's native factories instead
+select the existing native Journal, dossier, settings, stocking, breed and
+commission views. Portable presentation contracts and gameplay authorities
+stay shared. The combined developer pilot
+`-p:AquacultureNativeUi=true -p:AquacultureNativeKnowledge=true`
+routes output only to `artifacts/NativeUiKnowledge/`, does not publish a
+player DLL or stage source assets, and requires no Canvas/Knowledge direct
+assembly reference. The standard player build, its dependencies and default
+Canvas/Knowledge integrations remain unchanged.
+
+This is **not** proof of a successful independent 1.7 build or adequate native
+UI parity: only Journal overview/species currently have a native prototype,
+and the other screens still require live usability checks. Native-core
+content-load and save/reload are NOT RUN until validated through the
+existing RimLiaison/ProjectNexus path. In-progress Canvas and Knowledge 1.7
+upgrades should not delay further core independence work.
+
 Complete optionalization only after a build **without the four optional
 mods or their APIs**, a clean player package, a managed RimTest load, a
 fresh-colony fishing/stocking/breeding/harvest path, UI access, save/reload and

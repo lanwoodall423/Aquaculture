@@ -13,6 +13,8 @@
     <AquacultureDeveloperTests Condition="'$(AquacultureDeveloperTests)' == ''">false</AquacultureDeveloperTests>
     <!-- Developer-only opt-in: standard player build still requires Knowledge Framework. -->
     <AquacultureNativeKnowledge Condition="'$(AquacultureNativeKnowledge)' == ''">false</AquacultureNativeKnowledge>
+    <!-- Developer-only native UI pilot; default Canvas player build is unchanged. -->
+    <AquacultureNativeUi Condition="'$(AquacultureNativeUi)' == ''">false</AquacultureNativeUi>
   </PropertyGroup>
   <!--
     These paths are intentionally configurable. They may come from the command
@@ -59,8 +61,28 @@
     <EmbeddedResource Remove="DeferredRealityProvider\**" />
     <None Remove="DeferredRealityProvider\**" />
   </ItemGroup>
+  <PropertyGroup Condition="'$(AquacultureNativeUi)' == 'true'">
+    <DefineConstants>$(DefineConstants);AQUACULTURE_NATIVE_UI</DefineConstants>
+    <OutputPath>..\artifacts\NativeUi\</OutputPath>
+  </PropertyGroup>
+  <!-- Keep the two independent native pilots' output away from player assemblies. -->
+  <PropertyGroup Condition="'$(AquacultureNativeUi)' == 'true' and '$(AquacultureNativeKnowledge)' == 'true'">
+    <OutputPath>..\artifacts\NativeUiKnowledge\</OutputPath>
+  </PropertyGroup>
   <ItemGroup Condition="'$(AquacultureNativeKnowledge)' == 'true'">
     <Compile Remove="AquacultureKnowledgeAdapter.cs" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(AquacultureNativeUi)' == 'true'">
+    <!-- Keep portable UI snapshots and disclosure contracts, remove Canvas drawing code only. -->
+    <Compile Remove="UI\AquacultureBreedRegistrationDocument.cs" />
+    <Compile Remove="UI\AquacultureCommissionDeliveryDocument.cs" />
+    <Compile Remove="UI\AquacultureFishDossierDocument.cs" />
+    <Compile Remove="UI\AquacultureJournalWorkspaceDocument.cs" />
+    <Compile Remove="UI\AquacultureSettingsDocument.cs" />
+    <Compile Remove="UI\AquacultureStockingPlannerDocument.cs" />
+    <Compile Remove="UI\AquacultureUiComponents.cs" />
+    <Compile Remove="UI\AquacultureUiPresentation.cs" />
+    <Compile Remove="UI\AquacultureUiTheme.cs" />
   </ItemGroup>
   <ItemGroup Condition="'$(RimWorldAssemblyDir)' != ''">
     <Reference Include="Assembly-CSharp"><HintPath>$(RimWorldAssemblyDir)/Assembly-CSharp.dll</HintPath><Private>false</Private></Reference>
@@ -70,7 +92,7 @@
   <ItemGroup Condition="'$(HarmonyPath)' != '' and Exists('$(HarmonyPath)')">
     <Reference Include="0Harmony"><HintPath>$(HarmonyPath)</HintPath><Private>false</Private></Reference>
   </ItemGroup>
-  <ItemGroup Condition="'$(InsightCanvasAssemblyPath)' != '' and Exists('$(InsightCanvasAssemblyPath)')">
+  <ItemGroup Condition="'$(AquacultureNativeUi)' != 'true' and '$(InsightCanvasAssemblyPath)' != '' and Exists('$(InsightCanvasAssemblyPath)')">
     <Reference Include="InsightCanvas"><HintPath>$(InsightCanvasAssemblyPath)</HintPath><Private>false</Private></Reference>
   </ItemGroup>
   <ItemGroup Condition="'$(AquacultureNativeKnowledge)' != 'true' and '$(KnowledgeFrameworkAssemblyPath)' == '' and Exists('$(MSBuildThisFileDirectory)..\..\KnowledgeFramework\1.7\Assemblies\KnowledgeFramework.dll')">
@@ -82,7 +104,7 @@
   <Target Name="ValidateAquacultureReferences" BeforeTargets="ResolveReferences">
     <Error Condition="'$(RimWorldAssemblyDir)' == '' or !Exists('$(RimWorldAssemblyDir)/Assembly-CSharp.dll') or !Exists('$(RimWorldAssemblyDir)/Waylith.dll') or !Exists('$(RimWorldAssemblyDir)/UnityStubs.dll')" Text="AquacultureFishing requires the RimWorld 1.7 Waylith root assemblies. Set RimWorldDir or RimWorldAssemblyDir to the 1.7 installation root." />
     <Error Condition="'$(HarmonyPath)' == '' or !Exists('$(HarmonyPath)')" Text="AquacultureFishing requires a 1.7-compatible Harmony 3 0Harmony.dll. Set HarmonyPath explicitly if the 1.7 mod location is nonstandard." />
-    <Error Condition="'$(InsightCanvasAssemblyPath)' == '' or !Exists('$(InsightCanvasAssemblyPath)')" Text="AquacultureFishing requires the 1.7 InsightCanvas.dll. Set InsightCanvasDir or InsightCanvasAssemblyPath to a verified 1.7 build." />
+    <Error Condition="'$(AquacultureNativeUi)' != 'true' and ('$(InsightCanvasAssemblyPath)' == '' or !Exists('$(InsightCanvasAssemblyPath)'))" Text="AquacultureFishing requires the 1.7 InsightCanvas.dll for the Canvas renderer. Set InsightCanvasDir or InsightCanvasAssemblyPath, or select the developer-only native UI variant." />
     <Error Condition="'$(AquacultureNativeKnowledge)' != 'true' and '$(KnowledgeFrameworkAssemblyPath)' == '' and !Exists('$(MSBuildThisFileDirectory)..\..\KnowledgeFramework\1.7\Assemblies\KnowledgeFramework.dll')" Text="AquacultureFishing requires KnowledgeFramework 1.7 via KnowledgeFrameworkAssemblyPath or the sibling 1.7 build." />
     <Error Condition="'$(AquacultureNativeKnowledge)' != 'true' and '$(KnowledgeFrameworkAssemblyPath)' != '' and !Exists('$(KnowledgeFrameworkAssemblyPath)')" Text="The explicit KnowledgeFrameworkAssemblyPath must identify a verified 1.7 DLL." />
   </Target>
@@ -92,7 +114,7 @@
     Never stage any 1.6 Assemblies. The target owns only generated content dirs.
   -->
   <Target Name="StageAquaculture17Content" AfterTargets="Build"
-          Condition="'$(Configuration)' == 'Release' and '$(AquacultureNativeKnowledge)' != 'true'">
+          Condition="'$(Configuration)' == 'Release' and '$(AquacultureNativeKnowledge)' != 'true' and '$(AquacultureNativeUi)' != 'true'">
     <Error Condition="!Exists('$(MSBuildThisFileDirectory)..\1.6\Defs\ThingDefs.xml')"
            Text="Missing tracked Aquaculture Def source seed for RimWorld 1.7 runtime staging." />
     <Error Condition="!Exists('$(MSBuildThisFileDirectory)..\1.6\Languages\English\Keyed\AquacultureFishing.xml')"

@@ -26,18 +26,16 @@ acceptance test.
 
 ## Current development roadmap (2026-10-30)
 
-**Priority: port to RimWorld 1.7 and prove a useful 1.7 dependency-backed
-alpha before removing external dependencies.** This is a delivery sequence, not a claim of
-runtime qualification. Aquaculture's current player build continues to require
-the mods listed below. The detailed [Alpha 0 gate](About/TEST_PLAN.md#playable-alpha-0-acceptance-gate)
+**Priority: prove a native-core 1.7 development pilot without waiting for unfinished Insight Canvas or Knowledge Framework 1.7 upgrades, while retaining the dependency-backed player build as a comparison.** This is a development sequence, not a claim of runtime qualification or a new player release. Aquaculture's current player build continues to require the mods listed below. The independent compile switches are developer-only until their own build/runtime/gameplay evidence is complete. The detailed [Alpha 0 gate](About/TEST_PLAN.md#playable-alpha-0-acceptance-gate)
 and the historical [release evidence ledger](About/RELEASE_READINESS_TEST_MATRIX.md)
 remain separate: historical PASS results do not transfer to a new candidate.
 
 | Priority / target | Current state | Exit gate |
 | --- | --- | --- |
-| P0 - **1.7-only port + Playable Alpha 0**, current dependencies | **Next; 1.7 build/load and live qualification NOT RUN** | Replace the 1.6 build/layout with 1.7 Waylith/.NET 10/Harmony 3 references and content, then require RimTest dev-check BUILD/STATIC/RUNTIME_LOAD/INFRASTRUCTURE/CLEANUP and fresh exact artifact hashes. On disposable 1.7 test colonies verify pond, fishing/stocking, feeding, breeding/traits, harvesting/processing, usable Journal/settings, and same-version save/reload. |
+| P0a - **Native-core 1.7 compile pilot (no Canvas/Knowledge DLL)** | **Developer-only native UI + native Knowledge source seam; independent build/load NOT RUN** | Request `AquacultureNativeUi=true` plus `AquacultureNativeKnowledge=true` with verified 1.7 Waylith/Harmony inputs, then prove both DLL references are absent, the six RimWorld-native views compile, and no player assembly or save is overwritten. Preserve a bounded failure report if prerequisites remain missing. | 
+| P0b - **1.7-only dependency-backed Playable Alpha 0** | **In parallel; 1.7 build/load and live qualification NOT RUN** | Use a compatible 1.7 dependency set when each integration becomes available; independently require RimTest BUILD/STATIC/RUNTIME_LOAD/INFRASTRUCTURE/CLEANUP and fresh exact artifact hashes. On disposable colonies verify fishing/stocking, pond care, breeding/traits, harvesting, usable Journal/settings, and same-version save/reload. Do not delay P0a while the two other frameworks are in development. |
 | P1 - Native Journal parity | **In progress** | Native Overview and Species prototype integrated (AQ-DEP-05B6B1); complete Ponds and Breeds, then Conservation and Commissions with the current knowledge/research disclosure and owner gameplay rules. Test scrolling, selection and navigation in RimWorld. |
-| P2 - Native provider/build separation | **Not started** | Allow an exact built configuration without Insight Canvas or Knowledge Framework compile/runtime references; keep enhanced integrations optional. Prove real compile, startup and UI parity for each switch. |
+| P2 - Native provider/build separation | **Developer-only source variants added; real build/startup unverified** | Use existing `AquacultureNativeKnowledge=true` and new `AquacultureNativeUi=true` (independent or combined) to remove framework compile references. Keep enhanced integrations separately available. Prove real compile/startup, native Journal parity and absent/present integration behavior before changing player dependencies. |
 | P3 - First-party independent gameplay/content | **Partially developed** | Qualify native fishing/rod lifecycle, fallback natural-water and knowledge behavior, optional Deferred Reality and VFE integration, and a small balanced first-party freshwater/saltwater/brackishwater fish catalog. Audit Harmony and replace any remaining mandatory external-mod hook if zero external mod requirements is the goal. |
 | P4 - Standalone 1.7 player alpha and release qualification | **Blocked on P0-P3** | Remove only proven-unnecessary About.xml dependencies and build references; eliminate legacy provider binaries; validate a clean 1.7 player package, 1.7 save/reload, long-running ecology, UI/accessibility and dependency-absent/present variants. No 1.6 game or save compatibility gate. |
 
@@ -46,9 +44,10 @@ stock fish, keep them healthy, breed and process them, inspect the result and
 save/reload without major failures. We can reach that test gate *before*
 standalone work is complete; no calendar delivery promise is supported yet.
 
-**Current critical blockers:** no fresh exact-head RimTest build/load and
+**Current critical blockers:** no passing exact-head RimTest build/load and
 disposable-colony gameplay/save evidence has been recorded for this roadmap
-candidate; the main build and manifest still depend on external frameworks;
+candidate; the standard player build and manifest still depend on external frameworks;
+the native-core variant has source contracts only and is not yet runtime qualified;
 native Journal parity is incomplete; standalone first-party species coverage is
 limited. The repository already has a RimTest catalog and in-game tests. Use
 those through the owner-managed workflow before adding more test harnesses.

@@ -872,6 +872,47 @@ namespace AquacultureFishing
         private static string L(string key) => key.Translate().ToString();
     }
 
+    // Developer-only native UI routing, selected at compile time. No
+    // Insight Canvas types enter any native factory or gameplay authority.
+    // The default Canvas factories remain compiled in the standard variant.
+#if AQUACULTURE_NATIVE_UI
+    internal static class AquacultureJournalWorkspaceFactory
+    {
+        public static IAquacultureJournalWorkspace Create() =>
+            new NativeAquacultureJournalWorkspaceView();
+    }
+
+    internal static class AquacultureBreedRegistrationViewFactory
+    {
+        public static IAquacultureBreedRegistrationView Create(Dialog_RegisterFishBreed owner) =>
+            new NativeAquacultureBreedRegistrationView(owner);
+    }
+
+    internal static class AquacultureCommissionDeliveryViewFactory
+    {
+        public static IAquacultureCommissionDeliveryView Create(Dialog_DeliverAquacultureCommission owner) =>
+            new NativeAquacultureCommissionDeliveryView(owner);
+    }
+
+    internal static class AquacultureFishDossierViewFactory
+    {
+        public static IAquacultureFishDossierView Create() =>
+            new NativeAquacultureFishDossierView();
+    }
+
+    internal static class AquacultureStockingPlannerViewFactory
+    {
+        public static IAquacultureStockingPlannerView Create(Dialog_PondStockingPlanner owner) =>
+            new NativeAquacultureStockingPlannerView(owner);
+    }
+
+    internal static class AquacultureSettingsViewFactory
+    {
+        public static IAquacultureSettingsView Create(AquacultureSettings settings) =>
+            new NativeAquacultureSettingsView(settings);
+    }
+#endif
+
     public sealed class MainTabWindow_AquacultureJournal : MainTabWindow
     {
         private enum JournalPage { Species, Waters, Ponds, Expertise, Breeds, Anglers, Records }

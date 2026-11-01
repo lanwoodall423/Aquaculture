@@ -38,6 +38,28 @@ framework compatibility, source freshness, installed DRF/VFE mods or a
 successful build/load. The actual A1 gate remains **NOT RUN** until an
 authorized owner-managed RimTest session passes all required stages.
 
+## Native-core 1.7 pilot (parallel prerequisite, not a player release)
+
+The Insight Canvas and Knowledge Framework 1.7 upgrades are still being developed
+independently. Existing native fish dossier, Settings, Journal, breed,
+commission and stocking planner view prototypes, plus native fishing
+knowledge, should be validated *without waiting on those projects*. In the
+developer-only build, select `AquacultureNativeUi=true` and
+`AquacultureNativeKnowledge=true` together. The two flags remove their
+respective external C# references, select six native view factories, and
+route outputs to ignored developer artifacts instead of `1.7/Assemblies`.
+The game 1.7 DLLs and any indispensable Harmony dependency still require
+verification. No player-facing dependencies are removed by this pilot.
+
+**Gate status: source seam only; native build, content-load, gameplay,
+UI parity and save/reload NOT RUN.** Run portable contracts, then the
+RimLiaison-owned exact 1.7 native-variant build with explicit inputs, then
+separate in-game tests. Keep the current dependency-backed alpha as a
+comparison rather than blocking native-core work on unfinished optional
+enhancement frameworks. Any `BUILD_FAIL` or missing 1.7 dependency stays
+FAIL/BLOCKED, never a false content-load PASS. Only after real absent/present
+tests should the player-facing `About.xml` dependency list change.
+
 ## Playable Alpha 0 acceptance gate
 
 **Target:** useful dependency-backed development alpha on **RimWorld 1.7
