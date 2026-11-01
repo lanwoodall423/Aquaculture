@@ -815,8 +815,10 @@ namespace AquacultureFishing
                 if (toggled != enabled)
                     settings.GetTraitSetting(trait).enabled = toggled;
 
+                // FishTraitDef's canonical unsaved weight is commonality.
+                // DefaultWeight exists on UI snapshots, not the definition.
                 float savedWeight = settings.GetTraitSetting(trait, false)?.weight ??
-                    trait.DefaultWeight;
+                    trait.commonality;
                 float weight = Mathf.Clamp(savedWeight, 0f, 5f);
                 Widgets.Label(new Rect(row.x, y + height - 70f, row.width, 24f),
                     L("AquacultureFishing.SettingsTraitWeight") + ": " + weight.ToString("0.00"));

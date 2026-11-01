@@ -2831,7 +2831,8 @@ namespace AquacultureFishing.Tests
             Check(native.Contains("settings.GetTraitSetting(trait, false)?.enabled ?? true") &&
                 native.Contains("settings.GetTraitSetting(trait).enabled = toggled") &&
                 native.Contains("settings.GetTraitSetting(trait, false)?.weight ??") &&
-                native.Contains("trait.DefaultWeight;") &&
+                native.Contains("trait.commonality;") &&
+                !native.Contains("trait.DefaultWeight;") &&
                 native.Contains("Mathf.Clamp(savedWeight, 0f, 5f)") &&
                 native.Contains("weight, 0f, 5f, true") &&
                 native.Contains("settings.GetTraitSetting(trait).weight = changed") &&
